@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    environment:
+      POSTGRES_DB: wit_db
+      POSTGRES_USER: wit_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    volumes:
+      - ./deployment/mosquitto/config:/mosquitto/config
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+
+  backend:
+    build: ./software/backend
+    depends_on:
+      - postgres
+      - redis
+      - mqtt
+    environment:
+      DATABASE_URL: postgresql://wit_user:${DB_PASSWORD}@postgres:5432/wit_db
+      REDIS_URL: redis://redis:6379
+      MQTT_BROKER: mqtt://mqtt:1883
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./software/backend:/app
+
+  frontend:
+    build: ./software/frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:8000
+
+volumes:
+  postgres_data:
+  redis_data:
+  mosquitto_data:
+  mosquitto_logs:
