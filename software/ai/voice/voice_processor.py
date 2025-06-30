@@ -541,3 +541,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+    WAKE_WORD_DETECTED = "wake_word_detected"

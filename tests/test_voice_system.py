@@ -135,7 +135,7 @@ class TestVoiceProcessor:
         audio_data, sample_rate = sample_audio
         
         # Simulate wake word detection
-        voice_processor.state = VoiceState.WAKE_DETECTED
+        voice_processor.state = VoiceState.WAKE_WORD_DETECTED
         
         # Start recording
         max_duration = 5000  # 5 seconds
@@ -182,7 +182,7 @@ class TestVoiceProcessor:
         )
         
         # Execute
-        await assistant._execute_command(command)
+        await voice_processor._execute_command(command)
         
         # Verify execution
         assert len(executed_commands) > 0
@@ -369,7 +369,7 @@ class TestSafetyFeatures:
             audio_duration=1.0
         )
         
-        await assistant._execute_command(command)
+        await voice_processor._execute_command(command)
         assert emergency_triggered
         
     def test_command_validation(self):
