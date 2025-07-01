@@ -18,13 +18,21 @@ from datetime import datetime
 from enum import Enum
 import base64
 
-# Import voice processor (from ai/voice module)
-import sys
-sys.path.append('../../ai/voice')
-from voice_processor import (
-    VoiceProcessor, ProcessingConfig, VoiceCommand, 
-    VoiceState, WorkshopVoiceAssistant
-)
+# Import voice processor - handle if not available
+try:
+    from ...ai.voice.voice_processor import (
+        VoiceProcessor, ProcessingConfig, VoiceCommand, 
+        VoiceState, WorkshopVoiceAssistant
+    )
+    VOICE_AVAILABLE = True
+except ImportError:
+    VOICE_AVAILABLE = False
+    # Create dummy classes so the API still loads
+    class VoiceProcessor: pass
+    class ProcessingConfig: pass
+    class VoiceCommand: pass
+    class VoiceState: pass
+    class WorkshopVoiceAssistant: pass
 
 # Configure logging
 logger = logging.getLogger(__name__)
