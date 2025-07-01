@@ -64,7 +64,7 @@ class Equipment(Base):
     location = Column(String(100))
     added_at = Column(DateTime, default=datetime.utcnow)
     last_seen = Column(DateTime)
-    metadata = Column(JSONB, default={})
+    extra_data = Column(JSONB, default={})
     
     __table_args__ = (
         Index("idx_equipment_type_status", "type", "status"),
@@ -86,7 +86,7 @@ class Project(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     completed_at = Column(DateTime)
     files = Column(JSONB, default=[])
-    metadata = Column(JSONB, default={})
+    extra_data = Column(JSONB, default={})
 
 
 class Job(Base):

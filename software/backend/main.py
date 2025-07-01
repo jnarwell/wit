@@ -22,12 +22,17 @@ from .api.vision_api import router as vision_router
 from .api.equipment_api import router as equipment_router
 from .api.workspace_api import router as workspace_router
 from .api.system_api import router as system_router
+from .api.network_api import router as network_router
+
 
 # Import services with relative imports
 from .services.database_services import DatabaseService
 from .services.mqtt_service import MQTTService
 from .services.event_service import EventService
 from .services.auth_services import auth_router
+
+from fastapi.staticfiles import StaticFiles
+app.mount("/dashboard", StaticFiles(directory="software/frontend/dashboard"), name="dashboard")
 
 
 # Configure logging
@@ -148,6 +153,8 @@ app.include_router(vision_router)
 app.include_router(equipment_router)
 app.include_router(workspace_router)
 app.include_router(system_router)
+app.include_router(network_router)
+
 
 
 # Root endpoint

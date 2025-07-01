@@ -18,9 +18,9 @@ import json
 
 # Import services
 import sys
-sys.path.append('..')
-from services.auth_service import get_current_user
-from services.event_service import EventService
+# Import path handled by main module
+from software.backend.services.auth_services import get_current_user
+from software.backend.services.event_service import EventService
 
 # Configure logging
 logger = logging.getLogger(__name__)

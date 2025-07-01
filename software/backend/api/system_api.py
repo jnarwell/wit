@@ -22,8 +22,8 @@ import aiofiles
 
 # Import services
 import sys
-sys.path.append('..')
-from services.auth_service import get_current_user, is_admin
+# sys.path handled by main module
+from software.backend.services.auth_services import get_current_user, is_admin
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -547,8 +547,8 @@ async def get_debug_info(
 
 
 # Middleware to track requests
-@router.middleware("http")
-async def track_requests(request, call_next):
+# @router.middleware("http")  # Middleware should be on app, not router
+# async def track_requests(request, call_next):
     """Track request metrics"""
     system_metrics["requests_total"] += 1
     

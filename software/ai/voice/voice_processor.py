@@ -31,6 +31,7 @@ class VoiceState(Enum):
     LISTENING = "listening"
     PROCESSING = "processing"
     RESPONDING = "responding"
+    WAKE_WORD_DETECTED = "wake_word_detected"
     ERROR = "error"
 
 

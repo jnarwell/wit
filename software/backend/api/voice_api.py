@@ -20,7 +20,7 @@ import base64
 
 # Import voice processor - handle if not available
 try:
-    from ...ai.voice.voice_processor import (
+    from software.ai.voice.voice_processor import (
         VoiceProcessor, ProcessingConfig, VoiceCommand, 
         VoiceState, WorkshopVoiceAssistant
     )

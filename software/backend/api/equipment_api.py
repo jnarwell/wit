@@ -17,16 +17,16 @@ import io
 
 # Import integrations
 import sys
-sys.path.append('..')
-from integrations.octoprint_integration import (
+# Import path handled by main module
+from software.integrations.octoprint_integration import (
     OctoPrintManager, OctoPrintConfig, PrinterState, JobState
 )
-from integrations.grbl_integration import (
+from software.integrations.grbl_integration import (
     GRBLController, GRBLConfig, MachineState
 )
 
 # Import auth
-from services.auth_service import get_current_user
+from software.backend.services.auth_services import get_current_user
 
 # Configure logging
 logger = logging.getLogger(__name__)

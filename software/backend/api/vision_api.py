@@ -20,8 +20,8 @@ from enum import Enum
 
 # Import vision processor
 import sys
-sys.path.append('../../ai/vision')
-from vision_processor import (
+# sys.path handled by main module
+from software.ai.vision.vision_processor import (
     VisionProcessor, VisionConfig, VisionTask, SafetyAlert,
     Detection, SafetyEvent
 )
