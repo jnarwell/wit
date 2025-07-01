@@ -31,6 +31,8 @@ from .services.mqtt_service import MQTTService
 from .services.event_service import EventService
 from .services.auth_services import auth_router
 
+from fastapi.staticfiles import StaticFiles
+app.mount("/dashboard", StaticFiles(directory="software/frontend/dashboard"), name="dashboard")
 
 
 # Configure logging
@@ -119,17 +121,6 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
-
-# Mount static files for dashboard
-try:
-    from fastapi.staticfiles import StaticFiles
-    import os
-    dashboard_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "dashboard")
-    if os.path.exists(dashboard_path):
-        app.mount("/dashboard", StaticFiles(directory=dashboard_path), name="dashboard")
-except Exception as e:
-    logger.warning(f"Could not mount dashboard: {e}")
-
 
 # Configure CORS
 app.add_middleware(
