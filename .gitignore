@@ -1,23 +1,35 @@
-# Created by pytest automatically.
-*
-# Add these lines to your .gitignore if not already present
-echo "# Virtual Environments" >> .gitignore
-echo "venv/" >> .gitignore
-echo "venv311/" >> .gitignore
-echo "env/" >> .gitignore
-echo ".env/" >> .gitignore
-echo "ENV/" >> .gitignore
-echo "env.bak/" >> .gitignore
-echo "venv.bak/" >> .gitignore
-echo "" >> .gitignore
-echo "__pycache__/" >> .gitignore
-echo "*.pyc" >> .gitignore
-echo "*.pyo" >> .gitignore
-echo "pip-log.txt" >> .gitignore
-echo "pip-delete-this-directory.txt" >> .gitignore
-echo ".tox/" >> .gitignore
-echo ".coverage" >> .gitignore
-echo ".coverage.*" >> .gitignore
-echo ".cache" >> .gitignore
-echo "*.egg-info/" >> .gitignore
-echo "*.egg" >> .gitignore
+# Virtual Environments
+venv/
+venv311/
+env/
+.env/
+ENV/
+env.bak/
+venv.bak/
+
+# Python cache files (but NOT .py source files)
+__pycache__/
+*.pyc
+*.pyo
+
+# Other Python artifacts
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+*.egg-info/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keep your LFS entries
+*.dylib
+*.so

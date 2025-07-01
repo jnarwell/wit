@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>W.I.T. Terminal Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-900 text-white">
+    <div x-data="witDashboard()" x-init="init()" class="container mx-auto p-4">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold mb-2">W.I.T. Terminal</h1>
+            <p class="text-gray-400">Workshop Integrated Terminal - Development Mode</p>
+        </div>
+
+        <!-- Network Status -->
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-xl font-semibold mb-2">Network Status</h2>
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <p class="text-sm text-gray-400">Mode</p>
+                    <p class="text-lg" x-text="networkMode"></p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-400">Local IP</p>
+                    <p class="text-lg" x-text="localIP"></p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-400">Connected Hubs</p>
+                    <p class="text-lg" x-text="hubs.length"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Voice Control -->
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-xl font-semibold mb-2">Voice Control</h2>
+            <button @click="startListening()" 
+                    class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
+                    :class="{'bg-red-600': listening}">
+                <span x-show="!listening">Start Listening</span>
+                <span x-show="listening">Listening...</span>
+            </button>
+            <div class="mt-2">
+                <p class="text-sm text-gray-400">Last Command:</p>
+                <p x-text="lastCommand"></p>
+            </div>
+        </div>
+
+        <!-- Connected Hubs -->
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-xl font-semibold mb-2">Connected Hubs</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <template x-for="hub in hubs" :key="hub.hub_id">
+                    <div class="bg-gray-700 rounded p-3">
+                        <h3 class="font-semibold" x-text="hub.name"></h3>
+                        <p class="text-sm text-gray-400" x-text="hub.device_type"></p>
+                        <p class="text-xs text-gray-500" x-text="hub.ip_address"></p>
+                        <button @click="controlHub(hub)" 
+                                class="mt-2 bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm">
+                            Control
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Simulated Devices -->
+        <div class="bg-gray-800 rounded-lg p-4">
+            <h2 class="text-xl font-semibold mb-2">Simulated Devices (Development)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- 3D Printer Simulator -->
+                <div class="bg-gray-700 rounded p-3">
+                    <h3 class="font-semibold">Virtual 3D Printer</h3>
+                    <div class="mt-2">
+                        <p class="text-sm">Status: <span x-text="printer.status"></span></p>
+                        <p class="text-sm">Progress: <span x-text="printer.progress"></span>%</p>
+                        <button @click="togglePrinter()" 
+                                class="mt-2 bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">
+                            <span x-text="printer.status === 'idle' ? 'Start Print' : 'Stop'"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CNC Simulator -->
+                <div class="bg-gray-700 rounded p-3">
+                    <h3 class="font-semibold">Virtual CNC</h3>
+                    <div class="mt-2">
+                        <p class="text-sm">X: <span x-text="cnc.x"></span>mm</p>
+                        <p class="text-sm">Y: <span x-text="cnc.y"></span>mm</p>
+                        <p class="text-sm">Z: <span x-text="cnc.z"></span>mm</p>
+                        <button @click="homeCNC()" 
+                                class="mt-2 bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">
+                            Home
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function witDashboard() {
+        return {
+            networkMode: 'Hybrid',
+            localIP: '192.168.1.100',
+            listening: false,
+            lastCommand: 'None',
+            hubs: [],
+            printer: { status: 'idle', progress: 0 },
+            cnc: { x: 0, y: 0, z: 0 },
+            ws: null,
+
+            async init() {
+                // Get network info
+                await this.getNetworkInfo();
+                
+                // Start hub discovery
+                await this.discoverHubs();
+                
+                // Connect WebSocket for real-time updates
+                this.connectWebSocket();
+                
+                // Refresh hubs every 10 seconds
+                setInterval(() => this.discoverHubs(), 10000);
+            },
+
+            async getNetworkInfo() {
+                try {
+                    const response = await fetch('/api/v1/system/info');
+                    const data = await response.json();
+                    this.localIP = data.local_ip || '192.168.1.100';
+                } catch (error) {
+                    console.error('Failed to get network info:', error);
+                }
+            },
+
+            async discoverHubs() {
+                try {
+                    const response = await fetch('/api/v1/network/hubs');
+                    this.hubs = await response.json();
+                } catch (error) {
+                    console.error('Failed to discover hubs:', error);
+                }
+            },
+
+            connectWebSocket() {
+                this.ws = new WebSocket(`ws://${window.location.host}/ws`);
+                
+                this.ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'command') {
+                        this.lastCommand = data.text;
+                    }
+                };
+            },
+
+            async startListening() {
+                this.listening = !this.listening;
+                
+                if (this.listening) {
+                    // Start voice recording
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        // Would implement actual voice recording here
+                        
+                        // Simulate voice command after 3 seconds
+                        setTimeout(() => {
+                            this.lastCommand = "Start the 3D printer";
+                            this.listening = false;
+                        }, 3000);
+                    } catch (error) {
+                        console.error('Microphone access denied:', error);
+                        this.listening = false;
+                    }
+                }
+            },
+
+            controlHub(hub) {
+                // Open hub control interface
+                window.open(`/hub/${hub.hub_id}`, '_blank');
+            },
+
+            togglePrinter() {
+                if (this.printer.status === 'idle') {
+                    this.printer.status = 'printing';
+                    // Simulate print progress
+                    const interval = setInterval(() => {
+                        this.printer.progress += 5;
+                        if (this.printer.progress >= 100) {
+                            this.printer.status = 'idle';
+                            this.printer.progress = 0;
+                            clearInterval(interval);
+                        }
+                    }, 1000);
+                } else {
+                    this.printer.status = 'idle';
+                    this.printer.progress = 0;
+                }
+            },
+
+            homeCNC() {
+                this.cnc = { x: 0, y: 0, z: 0 };
+            }
+        };
+    }
+    </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "tests/test_voice_system.py::TestVoiceProcessor::test_processor_initialization": true,
+  "tests/test_voice_system.py::TestVoiceProcessor::test_audio_chunk_processing": true,
+  "tests/test_voice_system.py::TestVoiceProcessor::test_vad_detection": true,
+  "tests/test_voice_system.py::TestVoiceProcessor::test_command_parsing": true,
+  "tests/test_voice_system.py::TestVoiceProcessor::test_recording_functionality": true,
+  "tests/test_voice_system.py::TestVoiceProcessor::test_workshop_assistant": true,
+  "tests/test_voice_system.py::TestVoiceAPI::test_status_endpoint": true,
+  "tests/test_voice_system.py::TestVoiceAPI::test_health_check": true,
+  "tests/test_voice_system.py::TestVoiceAPI::test_commands_list": true,
+  "tests/test_voice_system.py::TestSafetyFeatures::test_emergency_stop": true
+}

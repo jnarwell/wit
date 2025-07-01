@@ -1,0 +1,21 @@
+[
+  "tests/test_voice_system.py::TestAudioDriver::test_audio_format_conversion",
+  "tests/test_voice_system.py::TestAudioDriver::test_audio_interleaving",
+  "tests/test_voice_system.py::TestAudioDriver::test_circular_buffer",
+  "tests/test_voice_system.py::TestPerformance::test_audio_processing_latency",
+  "tests/test_voice_system.py::TestPerformance::test_mfcc_extraction_speed",
+  "tests/test_voice_system.py::TestSafetyFeatures::test_command_validation",
+  "tests/test_voice_system.py::TestSafetyFeatures::test_emergency_stop",
+  "tests/test_voice_system.py::TestVoiceAPI::test_commands_list",
+  "tests/test_voice_system.py::TestVoiceAPI::test_health_check",
+  "tests/test_voice_system.py::TestVoiceAPI::test_status_endpoint",
+  "tests/test_voice_system.py::TestVoiceAPI::test_websocket_connection",
+  "tests/test_voice_system.py::TestVoiceProcessor::test_audio_chunk_processing",
+  "tests/test_voice_system.py::TestVoiceProcessor::test_command_parsing",
+  "tests/test_voice_system.py::TestVoiceProcessor::test_processor_initialization",
+  "tests/test_voice_system.py::TestVoiceProcessor::test_recording_functionality",
+  "tests/test_voice_system.py::TestVoiceProcessor::test_vad_detection",
+  "tests/test_voice_system.py::TestVoiceProcessor::test_workshop_assistant",
+  "tests/test_voice_system.py::TestWakeWordDetection::test_mfcc_extraction",
+  "tests/test_voice_system.py::TestWakeWordDetection::test_wake_word_windowing"
+]
