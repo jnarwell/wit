@@ -131,10 +131,10 @@ except Exception as e:
     logger.warning(f"Could not mount dashboard: {e}")
 
 
-# Configure CORS
+# Add CORS middleware - ALLOW ALL ORIGINS FOR DEVELOPMENT
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "*").split(","),
+    allow_origins=["http://localhost:3000", "http://localhost:5173", "*"],  # Add * for development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
