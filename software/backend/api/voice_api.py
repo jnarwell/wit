@@ -1,11 +1,11 @@
 """
-W.I.T. Voice API
+W.I.T. Voice API with Claude Integration
 
-FastAPI endpoints for voice processing and control.
+FastAPI endpoints for voice processing using Claude API.
 """
 
 from fastapi import APIRouter, WebSocket, UploadFile, File, HTTPException, Depends
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import asyncio
@@ -15,24 +15,33 @@ import json
 import logging
 import wave
 from datetime import datetime
-from enum import Enum
 import base64
+import os
 
-# Import voice processor - handle if not available
+# Import our Claude-based voice processor
 try:
-    from software.ai.voice.voice_processor import (
-        VoiceProcessor, ProcessingConfig, VoiceCommand, 
+    from software.ai.voice.claude_voice_processor import (
+        ClaudeVoiceProcessor, ProcessingConfig, VoiceCommand, 
         VoiceState, WorkshopVoiceAssistant
     )
     VOICE_AVAILABLE = True
 except ImportError:
-    VOICE_AVAILABLE = False
-    # Create dummy classes so the API still loads
-    class VoiceProcessor: pass
-    class ProcessingConfig: pass
-    class VoiceCommand: pass
-    class VoiceState: pass
-    class WorkshopVoiceAssistant: pass
+    # Try relative import
+    try:
+        from claude_voice_processor import (
+            ClaudeVoiceProcessor, ProcessingConfig, VoiceCommand,
+            VoiceState, WorkshopVoiceAssistant
+        )
+        VOICE_AVAILABLE = True
+    except ImportError:
+        VOICE_AVAILABLE = False
+        print("Warning: Voice processor not available")
+        # Create dummy classes
+        class ClaudeVoiceProcessor: pass
+        class ProcessingConfig: pass
+        class VoiceCommand: pass
+        class VoiceState: pass
+        class WorkshopVoiceAssistant: pass
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -41,42 +50,41 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/voice", tags=["voice"])
 
 # Global voice processor instance
-voice_processor: Optional[VoiceProcessor] = None
+voice_processor: Optional[ClaudeVoiceProcessor] = None
 workshop_assistant: Optional[WorkshopVoiceAssistant] = None
 
 
 # Request/Response Models
 class VoiceConfig(BaseModel):
     """Voice configuration model"""
-    model_size: str = Field(default="base", description="Whisper model size")
+    anthropic_api_key: Optional[str] = Field(None, description="Anthropic API key")
+    claude_model: str = Field(default="claude-3-sonnet-20240229", description="Claude model to use")
     language: str = Field(default="en", description="Language code")
     sample_rate: int = Field(default=16000, description="Audio sample rate")
-    vad_aggressiveness: int = Field(default=3, ge=0, le=3)
-    energy_threshold: float = Field(default=-30.0, description="Energy threshold in dBFS")
-    enable_npu: bool = Field(default=True, description="Enable NPU acceleration")
+    energy_threshold: int = Field(default=4000, description="Energy threshold for voice detection")
+    enable_wake_word: bool = Field(default=True, description="Enable wake word detection")
 
 
 class TranscriptionRequest(BaseModel):
     """Transcription request model"""
     audio_data: str = Field(..., description="Base64 encoded audio data")
     format: str = Field(default="wav", description="Audio format")
-    real_time: bool = Field(default=False, description="Real-time processing mode")
+    include_intent: bool = Field(default=True, description="Include intent analysis")
 
 
 class TranscriptionResponse(BaseModel):
     """Transcription response model"""
     text: str
-    confidence: float
-    duration: float
-    timestamp: datetime
     intent: Optional[str] = None
     entities: Optional[Dict[str, Any]] = None
+    confidence: float
+    timestamp: datetime
+    claude_response: Optional[str] = None
 
 
 class CommandRequest(BaseModel):
     """Voice command request"""
     text: str = Field(..., description="Command text")
-    audio_data: Optional[str] = Field(None, description="Optional audio data")
     context: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
@@ -85,44 +93,44 @@ class CommandResponse(BaseModel):
     success: bool
     command: str
     intent: str
+    entities: Dict[str, Any]
     result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
+    response: Optional[str] = None
 
 
 class VoiceStatus(BaseModel):
     """Voice system status"""
     state: str
     is_listening: bool
-    model_loaded: bool
+    api_key_configured: bool
     statistics: Dict[str, Any]
-    active_sessions: int
 
 
-class WakeWordConfig(BaseModel):
-    """Wake word configuration"""
-    word: str
-    threshold: float = Field(default=0.5, ge=0.0, le=1.0)
-    enabled: bool = True
-
-
-# API Endpoints
-
+# Initialize on startup
 @router.on_event("startup")
 async def startup_event():
     """Initialize voice processor on startup"""
     global voice_processor, workshop_assistant
     
     try:
-        config = ProcessingConfig()
-        voice_processor = VoiceProcessor(config)
+        # Get API key from environment or config
+        api_key = os.getenv("ANTHROPIC_API_KEY", "")
+        
+        config = ProcessingConfig(
+            anthropic_api_key=api_key,
+            claude_model="claude-3-sonnet-20240229"  # Faster for voice
+        )
+        
+        voice_processor = ClaudeVoiceProcessor(config)
         workshop_assistant = WorkshopVoiceAssistant(voice_processor)
         
         await voice_processor.start()
-        logger.info("Voice processor initialized successfully")
+        logger.info("Claude voice processor initialized successfully")
         
     except Exception as e:
         logger.error(f"Failed to initialize voice processor: {e}")
-        raise
+        # Don't raise - let the API work even without voice
 
 
 @router.on_event("shutdown")
@@ -135,20 +143,25 @@ async def shutdown_event():
         logger.info("Voice processor shut down")
 
 
+# API Endpoints
 @router.get("/status", response_model=VoiceStatus)
 async def get_voice_status():
     """Get voice system status"""
     if not voice_processor:
-        raise HTTPException(status_code=503, detail="Voice processor not initialized")
+        return VoiceStatus(
+            state="not_initialized",
+            is_listening=False,
+            api_key_configured=False,
+            statistics={}
+        )
         
     stats = voice_processor.get_statistics()
     
     return VoiceStatus(
         state=stats["state"],
         is_listening=stats["state"] == "listening",
-        model_loaded=True,
-        statistics=stats,
-        active_sessions=1  # TODO: Track actual sessions
+        api_key_configured=bool(voice_processor.config.anthropic_api_key),
+        statistics=stats
     )
 
 
@@ -164,16 +177,16 @@ async def configure_voice(config: VoiceConfig):
             
         # Create new configuration
         processing_config = ProcessingConfig(
-            model_size=config.model_size,
+            anthropic_api_key=config.anthropic_api_key or os.getenv("ANTHROPIC_API_KEY", ""),
+            claude_model=config.claude_model,
             language=config.language,
             sample_rate=config.sample_rate,
-            vad_aggressiveness=config.vad_aggressiveness,
             energy_threshold=config.energy_threshold,
-            enable_npu=config.enable_npu
+            enable_wake_word=config.enable_wake_word
         )
         
         # Reinitialize
-        voice_processor = VoiceProcessor(processing_config)
+        voice_processor = ClaudeVoiceProcessor(processing_config)
         workshop_assistant = WorkshopVoiceAssistant(voice_processor)
         await voice_processor.start()
         
@@ -186,7 +199,7 @@ async def configure_voice(config: VoiceConfig):
 
 @router.post("/transcribe", response_model=TranscriptionResponse)
 async def transcribe_audio(request: TranscriptionRequest):
-    """Transcribe audio data"""
+    """Transcribe audio and optionally analyze intent"""
     if not voice_processor:
         raise HTTPException(status_code=503, detail="Voice processor not initialized")
         
@@ -194,44 +207,30 @@ async def transcribe_audio(request: TranscriptionRequest):
         # Decode audio data
         audio_bytes = base64.b64decode(request.audio_data)
         
-        # Parse audio format
-        if request.format == "wav":
-            with io.BytesIO(audio_bytes) as wav_io:
-                with wave.open(wav_io, 'rb') as wav_file:
-                    frames = wav_file.readframes(wav_file.getnframes())
-                    audio_data = np.frombuffer(frames, dtype=np.int16)
-                    sample_rate = wav_file.getframerate()
-        else:
-            # Assume raw int16 PCM
-            audio_data = np.frombuffer(audio_bytes, dtype=np.int16)
-            sample_rate = 16000
+        # Transcribe
+        text = await voice_processor.transcribe_audio(audio_bytes)
+        if not text:
+            raise HTTPException(status_code=400, detail="No speech detected")
             
-        # Process audio
-        timestamp = datetime.now().timestamp()
-        
-        if request.real_time:
-            # Process in chunks for real-time
-            chunk_size = int(sample_rate * 0.1)  # 100ms chunks
-            for i in range(0, len(audio_data), chunk_size):
-                chunk = audio_data[i:i + chunk_size]
-                await voice_processor.process_audio_chunk(chunk, timestamp + i/sample_rate)
-        else:
-            # Process entire audio at once
-            audio_float = audio_data.astype(np.float32) / 32768.0
-            result = await voice_processor._process_recording(audio_float, timestamp)
+        # Analyze intent if requested
+        if request.include_intent:
+            command = await voice_processor.understand_with_claude(text)
             
-            if result:
-                return TranscriptionResponse(
-                    text=result.text,
-                    confidence=result.confidence,
-                    duration=result.audio_duration,
-                    timestamp=result.timestamp,
-                    intent=result.intent,
-                    entities=result.entities
-                )
-            else:
-                raise HTTPException(status_code=400, detail="No speech detected")
-                
+            return TranscriptionResponse(
+                text=text,
+                intent=command.intent,
+                entities=command.entities,
+                confidence=command.confidence,
+                timestamp=command.timestamp,
+                claude_response=command.claude_response
+            )
+        else:
+            return TranscriptionResponse(
+                text=text,
+                confidence=1.0,
+                timestamp=datetime.now()
+            )
+            
     except Exception as e:
         logger.error(f"Transcription error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -240,38 +239,23 @@ async def transcribe_audio(request: TranscriptionRequest):
 @router.post("/command", response_model=CommandResponse)
 async def execute_command(request: CommandRequest):
     """Execute voice command"""
-    if not workshop_assistant:
-        raise HTTPException(status_code=503, detail="Workshop assistant not initialized")
+    if not voice_processor:
+        raise HTTPException(status_code=503, detail="Voice processor not initialized")
         
     try:
-        # Create command from text
-        command = VoiceCommand(
-            text=request.text,
-            intent="",  # Will be parsed
-            entities={},
-            confidence=1.0,
-            timestamp=datetime.now(),
-            audio_duration=0.0
+        # Understand command with Claude
+        command = await voice_processor.understand_with_claude(
+            request.text,
+            request.context
         )
-        
-        # Parse intent
-        intent, entities, confidence = await voice_processor._parse_intent(request.text)
-        command.intent = intent
-        command.entities = entities
-        command.confidence = confidence
-        
-        # Add context
-        if request.context:
-            command.entities.update(request.context)
-            
-        # Execute command
-        await workshop_assistant._execute_command(command)
         
         return CommandResponse(
             success=True,
             command=command.text,
             intent=command.intent,
-            result={"entities": command.entities}
+            entities=command.entities,
+            response=command.claude_response,
+            result={"confidence": command.confidence}
         )
         
     except Exception as e:
@@ -280,6 +264,7 @@ async def execute_command(request: CommandRequest):
             success=False,
             command=request.text,
             intent="error",
+            entities={},
             error=str(e)
         )
 
@@ -290,86 +275,46 @@ async def voice_stream(websocket: WebSocket):
     await websocket.accept()
     
     if not voice_processor:
-        await websocket.close(code=1003, reason="Voice processor not initialized")
+        await websocket.send_json({
+            "type": "error",
+            "message": "Voice processor not initialized"
+        })
+        await websocket.close()
         return
         
     client_id = id(websocket)
     logger.info(f"Voice stream client connected: {client_id}")
     
-    # Command queue for this client
-    command_queue = asyncio.Queue()
-    
-    # Register callback for commands
-    async def command_callback(command: VoiceCommand):
-        await command_queue.put(command)
-        
-    voice_processor.register_command_handler("*", command_callback)
-    
     try:
-        # Create tasks for bidirectional communication
-        async def receive_audio():
-            """Receive audio from client"""
-            while True:
-                try:
-                    data = await websocket.receive_bytes()
-                    
-                    # Parse message
-                    if len(data) > 4:
-                        # First 4 bytes are timestamp
-                        timestamp = int.from_bytes(data[:4], 'little') / 1000.0
-                        audio_data = np.frombuffer(data[4:], dtype=np.int16)
-                        
-                        # Process audio chunk
-                        await voice_processor.process_audio_chunk(audio_data, timestamp)
-                        
-                except Exception as e:
-                    logger.error(f"Error receiving audio: {e}")
-                    break
-                    
-        async def send_results():
-            """Send results to client"""
-            while True:
-                try:
-                    # Wait for command with timeout
-                    command = await asyncio.wait_for(
-                        command_queue.get(), 
-                        timeout=1.0
-                    )
-                    
-                    # Send result
-                    result = {
-                        "type": "transcription",
-                        "text": command.text,
-                        "intent": command.intent,
-                        "entities": command.entities,
-                        "confidence": command.confidence,
-                        "timestamp": command.timestamp.isoformat()
-                    }
-                    
-                    await websocket.send_json(result)
-                    
-                except asyncio.TimeoutError:
-                    # Send heartbeat
-                    await websocket.send_json({"type": "heartbeat"})
-                    
-                except Exception as e:
-                    logger.error(f"Error sending results: {e}")
-                    break
-                    
-        # Run both tasks
-        receive_task = asyncio.create_task(receive_audio())
-        send_task = asyncio.create_task(send_results())
-        
-        # Wait for either task to complete
-        done, pending = await asyncio.wait(
-            [receive_task, send_task],
-            return_when=asyncio.FIRST_COMPLETED
-        )
-        
-        # Cancel pending tasks
-        for task in pending:
-            task.cancel()
+        while True:
+            # Receive audio data
+            data = await websocket.receive_json()
             
+            if data.get("type") == "audio":
+                # Process audio chunk
+                audio_bytes = base64.b64decode(data["audio"])
+                audio_array = np.frombuffer(audio_bytes, dtype=np.int16)
+                
+                await voice_processor.process_audio_chunk(
+                    audio_array,
+                    data.get("timestamp", 0)
+                )
+                
+            elif data.get("type") == "command":
+                # Process text command
+                command = await voice_processor.understand_with_claude(
+                    data["text"],
+                    data.get("context", {})
+                )
+                
+                await websocket.send_json({
+                    "type": "command_result",
+                    "intent": command.intent,
+                    "entities": command.entities,
+                    "response": command.claude_response,
+                    "confidence": command.confidence
+                })
+                
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         
@@ -388,115 +333,67 @@ async def upload_audio_file(file: UploadFile = File(...)):
         # Read file
         contents = await file.read()
         
-        # Save temporarily
-        import tempfile
-        with tempfile.NamedTemporaryFile(delete=False, suffix=file.filename) as tmp:
-            tmp.write(contents)
-            tmp_path = tmp.name
+        # Transcribe
+        text = await voice_processor.transcribe_audio(contents)
+        if not text:
+            raise HTTPException(status_code=400, detail="No speech detected")
             
-        # Transcribe file
-        result = await voice_processor.transcribe_file(tmp_path)
+        # Analyze with Claude
+        command = await voice_processor.understand_with_claude(text)
         
-        # Clean up
-        import os
-        os.unlink(tmp_path)
+        return TranscriptionResponse(
+            text=text,
+            intent=command.intent,
+            entities=command.entities,
+            confidence=command.confidence,
+            timestamp=command.timestamp,
+            claude_response=command.claude_response
+        )
         
-        if result:
-            return TranscriptionResponse(
-                text=result.text,
-                confidence=result.confidence,
-                duration=result.audio_duration,
-                timestamp=result.timestamp,
-                intent=result.intent,
-                entities=result.entities
-            )
-        else:
-            raise HTTPException(status_code=400, detail="Transcription failed")
-            
     except Exception as e:
         logger.error(f"File upload error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/wake-words", response_model=List[WakeWordConfig])
-async def get_wake_words():
-    """Get configured wake words"""
-    # TODO: Implement wake word management
-    return [
-        WakeWordConfig(word="hey wit", threshold=0.5, enabled=True),
-        WakeWordConfig(word="workshop", threshold=0.6, enabled=True),
-        WakeWordConfig(word="computer", threshold=0.7, enabled=False)
-    ]
-
-
-@router.put("/wake-words/{word}", response_model=Dict[str, str])
-async def update_wake_word(word: str, config: WakeWordConfig):
-    """Update wake word configuration"""
-    # TODO: Implement wake word update
-    return {"status": "updated", "word": word}
-
-
-@router.get("/commands", response_model=List[Dict[str, Any]])
-async def get_available_commands():
-    """Get list of available voice commands"""
-    commands = [
-        {
-            "intent": "print",
-            "description": "3D printing commands",
-            "examples": ["start printing", "pause the print", "cancel print job"],
-            "parameters": ["filename", "layer_height", "infill"]
-        },
-        {
-            "intent": "design",
-            "description": "CAD and design commands",
-            "examples": ["create a cube", "rotate 45 degrees", "save design"],
-            "parameters": ["shape", "dimensions", "operation"]
-        },
-        {
-            "intent": "control",
-            "description": "Equipment control",
-            "examples": ["start the CNC", "stop all machines", "emergency stop"],
-            "parameters": ["equipment", "action"]
-        },
-        {
-            "intent": "query",
-            "description": "Information queries",
-            "examples": ["what's the print status", "show temperature", "list materials"],
-            "parameters": ["subject", "property"]
-        },
-        {
-            "intent": "safety",
-            "description": "Safety commands",
-            "examples": ["emergency stop", "alert", "safety check"],
-            "parameters": ["action", "severity"]
-        }
-    ]
+@router.get("/test")
+async def test_voice_system():
+    """Test the voice system with a sample command"""
+    if not voice_processor:
+        raise HTTPException(status_code=503, detail="Voice processor not initialized")
+        
+    # Test command
+    test_command = "Start the 3D printer and set temperature to 220 degrees"
     
-    return commands
-
-
-@router.get("/audio/test", response_model=Dict[str, Any])
-async def test_audio_system():
-    """Test audio capture system"""
-    # TODO: Implement audio system test
-    return {
-        "microphones": 8,
-        "channels_active": [True] * 8,
-        "sample_rate": 16000,
-        "latency_ms": 25.3,
-        "noise_floor_db": -45.2
-    }
+    try:
+        command = await voice_processor.understand_with_claude(
+            test_command,
+            {"test": True, "equipment_available": ["3d_printer", "laser_cutter", "cnc_mill"]}
+        )
+        
+        return {
+            "test_command": test_command,
+            "intent": command.intent,
+            "entities": command.entities,
+            "confidence": command.confidence,
+            "claude_response": command.claude_response,
+            "api_working": True
+        }
+        
+    except Exception as e:
+        return {
+            "test_command": test_command,
+            "error": str(e),
+            "api_working": False
+        }
 
 
 # Health check
 @router.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    if not voice_processor:
-        raise HTTPException(status_code=503, detail="Voice processor not initialized")
-        
+    """Voice system health check"""
     return {
-        "status": "healthy",
-        "service": "voice",
-        "timestamp": datetime.now().isoformat()
+        "status": "healthy" if voice_processor else "degraded",
+        "voice_available": VOICE_AVAILABLE,
+        "processor_initialized": voice_processor is not None,
+        "api_key_configured": bool(os.getenv("ANTHROPIC_API_KEY")) if voice_processor else False
     }

@@ -1,221 +1,90 @@
 {
   "voice_processing": {
-    "model": {
-      "whisper_model_size": "base",
-      "whisper_device": "cuda",
-      "language": "en",
-      "enable_multilingual": false,
-      "cache_dir": "/opt/wit/models/whisper"
+    "claude_api": {
+      "model": "claude-3-sonnet-20240229",
+      "max_tokens": 1000,
+      "temperature": 0.3
     },
     "audio": {
       "sample_rate": 16000,
-      "channels": 8,
-      "bits_per_sample": 16,
-      "frame_duration_ms": 20,
-      "buffer_duration_ms": 1000,
-      "format": "int16"
-    },
-    "voice_activity_detection": {
-      "enabled": true,
-      "aggressiveness": 3,
-      "energy_threshold_db": -30.0,
-      "zero_crossing_rate": 0.1,
-      "frame_threshold": 3,
-      "silence_duration_ms": 1000
+      "channels": 1,
+      "format": "int16",
+      "chunk_duration_ms": 100,
+      "energy_threshold": 4000,
+      "silence_duration": 1.0,
+      "max_recording_duration": 30.0
     },
     "wake_word": {
       "enabled": true,
       "models": [
-        {
-          "name": "hey_wit",
-          "file": "models/wake_words/hey_wit.onnx",
-          "threshold": 0.5,
-          "window_ms": 1500
-        },
-        {
-          "name": "workshop",
-          "file": "models/wake_words/workshop.onnx",
-          "threshold": 0.6,
-          "window_ms": 1500
-        },
-        {
-          "name": "computer",
-          "file": "models/wake_words/computer.onnx",
-          "threshold": 0.7,
-          "window_ms": 1500,
-          "enabled": false
-        }
+        "hey wit",
+        "okay wit", 
+        "workshop",
+        "computer"
       ],
-      "timeout_ms": 5000,
-      "cooldown_ms": 500
+      "sensitivity": 0.5,
+      "timeout": 5.0
     },
-    "beamforming": {
-      "enabled": true,
-      "mic_array_geometry": [
-        {"id": 0, "x": 0.0, "y": 0.0, "z": 0.0},
-        {"id": 1, "x": 0.05, "y": 0.0, "z": 0.0},
-        {"id": 2, "x": 0.1, "y": 0.0, "z": 0.0},
-        {"id": 3, "x": 0.15, "y": 0.0, "z": 0.0},
-        {"id": 4, "x": 0.0, "y": 0.05, "z": 0.0},
-        {"id": 5, "x": 0.05, "y": 0.05, "z": 0.0},
-        {"id": 6, "x": 0.1, "y": 0.05, "z": 0.0},
-        {"id": 7, "x": 0.15, "y": 0.05, "z": 0.0}
-      ],
-      "steering_mode": "adaptive",
-      "beam_width_degrees": 60,
-      "null_steering": true
-    },
-    "noise_suppression": {
-      "enabled": true,
-      "level": 0.8,
-      "spectral_subtraction": true,
-      "wiener_filter": true,
-      "noise_estimation_frames": 20
-    },
-    "echo_cancellation": {
-      "enabled": true,
-      "filter_length_ms": 128,
-      "adaptation_rate": 0.05,
-      "nonlinear_processing": true
-    },
-    "automatic_gain_control": {
-      "enabled": true,
-      "target_level_dbfs": -20,
-      "compression_gain_db": 9,
-      "limiter_enable": true,
-      "max_gain_db": 30
-    }
-  },
-  "intent_recognition": {
-    "model": "models/intent/wit_intent_model.onnx",
-    "threshold": 0.7,
-    "max_alternatives": 3,
-    "context_window": 5,
-    "entities": {
-      "equipment": ["printer", "cnc", "laser", "mill", "lathe"],
-      "actions": ["start", "stop", "pause", "resume", "cancel", "reset"],
-      "parameters": ["speed", "temperature", "position", "layer", "time"],
-      "materials": ["pla", "abs", "petg", "wood", "metal", "acrylic"],
-      "units": ["mm", "cm", "inch", "celsius", "fahrenheit", "percent"]
-    }
-  },
-  "command_mapping": {
-    "print": {
-      "patterns": ["print", "3d print", "fabricate", "make"],
-      "requires_confirmation": ["cancel", "delete"],
-      "parameters": {
-        "filename": {"type": "string", "required": false},
-        "material": {"type": "enum", "values": ["pla", "abs", "petg"], "default": "pla"},
-        "quality": {"type": "enum", "values": ["draft", "normal", "high"], "default": "normal"}
-      }
-    },
-    "design": {
-      "patterns": ["design", "create", "model", "cad", "draw"],
-      "parameters": {
-        "shape": {"type": "string", "required": true},
-        "dimensions": {"type": "array", "items": "number"},
-        "operation": {"type": "enum", "values": ["extrude", "revolve", "loft", "sweep"]}
-      }
-    },
-    "control": {
-      "patterns": ["start", "stop", "pause", "resume", "emergency"],
-      "safety_level": {
-        "start": 1,
-        "stop": 2,
-        "emergency": 3
-      }
-    },
-    "query": {
-      "patterns": ["what", "where", "when", "how", "status", "show"],
-      "response_format": "natural_language"
-    }
-  },
-  "workshop_integration": {
-    "equipment_endpoints": {
-      "printer": {
-        "type": "octoprint",
-        "url": "http://localhost:5000",
-        "api_key": "${OCTOPRINT_API_KEY}"
+    "intents": {
+      "control_equipment": {
+        "description": "Control workshop equipment",
+        "examples": [
+          "start the 3D printer",
+          "stop the laser cutter",
+          "pause the CNC mill"
+        ]
       },
-      "cnc": {
-        "type": "grbl",
-        "port": "/dev/ttyUSB0",
-        "baudrate": 115200
+      "get_status": {
+        "description": "Get equipment or system status",
+        "examples": [
+          "what's the status of the printer?",
+          "is the laser cutter ready?",
+          "show me all equipment status"
+        ]
       },
-      "laser": {
-        "type": "lightburn",
-        "url": "http://localhost:8080",
-        "safety_interlock": true
+      "emergency_stop": {
+        "description": "Emergency stop all equipment",
+        "examples": [
+          "emergency stop",
+          "stop everything",
+          "shut down all machines"
+        ],
+        "priority": "critical"
+      },
+      "project_help": {
+        "description": "Get help with projects or techniques",
+        "examples": [
+          "how do I level the print bed?",
+          "what settings for cutting acrylic?",
+          "help with G-code"
+        ]
       }
     },
-    "safety": {
-      "emergency_stop_phrase": ["emergency stop", "stop everything", "abort all"],
-      "confirmation_required": true,
-      "lockout_commands": ["delete", "format", "reset all"],
-      "alert_volume_db": 85
+    "equipment_mappings": {
+      "3d_printer": ["printer", "3d printer", "ender", "prusa"],
+      "laser_cutter": ["laser", "laser cutter", "glowforge"],
+      "cnc_mill": ["cnc", "mill", "router", "cnc router"],
+      "vinyl_cutter": ["vinyl", "vinyl cutter", "cricut", "silhouette"],
+      "resin_printer": ["resin", "resin printer", "sla", "msla"]
+    }
+  },
+  "api_endpoints": {
+    "voice": {
+      "base_url": "/api/v1/voice",
+      "endpoints": {
+        "status": "/status",
+        "transcribe": "/transcribe", 
+        "command": "/command",
+        "stream": "/stream",
+        "upload": "/upload"
+      }
     }
   },
   "performance": {
-    "max_concurrent_streams": 4,
-    "processing_threads": 4,
-    "gpu_memory_fraction": 0.5,
-    "cache_size_mb": 512,
-    "batch_timeout_ms": 100
-  },
-  "logging": {
-    "level": "INFO",
-    "audio_logging": false,
-    "transcription_logging": true,
-    "performance_metrics": true,
-    "log_directory": "/var/log/wit/voice",
-    "max_file_size_mb": 100,
-    "retention_days": 30
-  },
-  "privacy": {
-    "local_processing_only": false,
-    "audio_retention_seconds": 60,
-    "transcription_retention_days": 7,
-    "anonymize_logs": true,
-    "opt_out_cloud_improvements": false
-  },
-  "npu_acceleration": {
-    "enabled": true,
-    "device": "hailo",
-    "model_optimization": {
-      "quantization": "int8",
-      "pruning_sparsity": 0.5,
-      "batch_size": 1
-    },
-    "fallback_to_cpu": true,
-    "power_mode": "balanced"
-  },
-  "api": {
-    "websocket": {
-      "port": 8765,
-      "max_connections": 10,
-      "ping_interval_seconds": 30,
-      "frame_size_bytes": 4096
-    },
-    "rest": {
-      "port": 8000,
-      "max_upload_size_mb": 100,
-      "timeout_seconds": 300
-    },
-    "grpc": {
-      "enabled": false,
-      "port": 50051
-    }
-  },
-  "localization": {
-    "supported_languages": ["en", "es", "de", "fr", "zh", "ja"],
-    "default_language": "en",
-    "auto_detect": true,
-    "translation_service": "local"
-  },
-  "experimental": {
-    "multimodal_context": false,
-    "gesture_recognition": false,
-    "3d_audio_localization": false,
-    "federated_learning": false
+    "target_latency_ms": 100,
+    "max_concurrent_streams": 10,
+    "buffer_size_seconds": 60,
+    "enable_gpu": true,
+    "enable_npu": true
   }
 }
