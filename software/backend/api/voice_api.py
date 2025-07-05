@@ -58,7 +58,7 @@ workshop_assistant: Optional[WorkshopVoiceAssistant] = None
 class VoiceConfig(BaseModel):
     """Voice configuration model"""
     anthropic_api_key: Optional[str] = Field(None, description="Anthropic API key")
-    claude_model: str = Field(default="claude-3-sonnet-20240229", description="Claude model to use")
+    claude_model: str = Field(default="claude-3-5-sonnet-20241022", description="Claude model to use")
     language: str = Field(default="en", description="Language code")
     sample_rate: int = Field(default=16000, description="Audio sample rate")
     energy_threshold: int = Field(default=4000, description="Energy threshold for voice detection")
@@ -119,7 +119,7 @@ async def startup_event():
         
         config = ProcessingConfig(
             anthropic_api_key=api_key,
-            claude_model="claude-3-sonnet-20240229"  # Faster for voice
+            claude_model="claude-3-5-sonnet-20241022"  # Faster for voice
         )
         
         voice_processor = ClaudeVoiceProcessor(config)

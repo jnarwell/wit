@@ -1,90 +1,29 @@
 {
   "voice_processing": {
-    "claude_api": {
-      "model": "claude-3-sonnet-20240229",
-      "max_tokens": 1000,
-      "temperature": 0.3
-    },
-    "audio": {
-      "sample_rate": 16000,
-      "channels": 1,
-      "format": "int16",
-      "chunk_duration_ms": 100,
-      "energy_threshold": 4000,
-      "silence_duration": 1.0,
-      "max_recording_duration": 30.0
-    },
-    "wake_word": {
-      "enabled": true,
-      "models": [
-        "hey wit",
-        "okay wit", 
-        "workshop",
-        "computer"
-      ],
-      "sensitivity": 0.5,
-      "timeout": 5.0
-    },
-    "intents": {
-      "control_equipment": {
-        "description": "Control workshop equipment",
-        "examples": [
-          "start the 3D printer",
-          "stop the laser cutter",
-          "pause the CNC mill"
-        ]
-      },
-      "get_status": {
-        "description": "Get equipment or system status",
-        "examples": [
-          "what's the status of the printer?",
-          "is the laser cutter ready?",
-          "show me all equipment status"
-        ]
-      },
-      "emergency_stop": {
-        "description": "Emergency stop all equipment",
-        "examples": [
-          "emergency stop",
-          "stop everything",
-          "shut down all machines"
-        ],
-        "priority": "critical"
-      },
-      "project_help": {
-        "description": "Get help with projects or techniques",
-        "examples": [
-          "how do I level the print bed?",
-          "what settings for cutting acrylic?",
-          "help with G-code"
-        ]
-      }
-    },
-    "equipment_mappings": {
-      "3d_printer": ["printer", "3d printer", "ender", "prusa"],
-      "laser_cutter": ["laser", "laser cutter", "glowforge"],
-      "cnc_mill": ["cnc", "mill", "router", "cnc router"],
-      "vinyl_cutter": ["vinyl", "vinyl cutter", "cricut", "silhouette"],
-      "resin_printer": ["resin", "resin printer", "sla", "msla"]
-    }
+    "anthropic_api_key": "${ANTHROPIC_API_KEY}",
+    "claude_model": "claude-3-5-sonnet-20241022",
+    "language": "en",
+    "sample_rate": 16000,
+    "energy_threshold": 4000,
+    "silence_duration": 1.0,
+    "max_recording_duration": 30.0,
+    "enable_wake_word": true,
+    "wake_words": ["hey wit", "okay wit", "workshop", "computer"]
   },
-  "api_endpoints": {
-    "voice": {
-      "base_url": "/api/v1/voice",
-      "endpoints": {
-        "status": "/status",
-        "transcribe": "/transcribe", 
-        "command": "/command",
-        "stream": "/stream",
-        "upload": "/upload"
+  "workshop_commands": {
+    "equipment": {
+      "3d_printer": {
+        "aliases": ["printer", "3d", "prusa", "ender"],
+        "commands": ["start", "stop", "pause", "resume", "heat", "cool", "status"]
+      },
+      "laser_cutter": {
+        "aliases": ["laser", "cutter", "engraver"],
+        "commands": ["start", "stop", "pause", "focus", "power", "status"]
+      },
+      "cnc_mill": {
+        "aliases": ["cnc", "mill", "router"],
+        "commands": ["start", "stop", "pause", "home", "zero", "status"]
       }
     }
-  },
-  "performance": {
-    "target_latency_ms": 100,
-    "max_concurrent_streams": 10,
-    "buffer_size_seconds": 60,
-    "enable_gpu": true,
-    "enable_npu": true
   }
 }

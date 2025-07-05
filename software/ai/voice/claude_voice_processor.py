@@ -424,7 +424,7 @@ async def main():
     # Configure with your API key
     config = ProcessingConfig(
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", "your-api-key-here"),
-        claude_model="claude-3-sonnet-20240229"  # Faster and cheaper for voice commands
+        claude_model="claude-3-5-sonnet-20241022"  # Faster and cheaper for voice commands
     )
     
     processor = ClaudeVoiceProcessor(config)

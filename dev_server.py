@@ -1,63 +1,79 @@
 #!/usr/bin/env python3
 """
-W.I.T. Development Server - No Database Required
+W.I.T. Development Server
+Quick server to test the voice API (without memory)
 """
+
 import os
 import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pathlib import Path
 
-# Patch the main app to skip database and MQTT
-from software.backend import main
-from contextlib import asynccontextmanager
+# Add project to path
+sys.path.insert(0, str(Path(__file__).parent))
+
 from fastapi import FastAPI
-import logging
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Import the voice API router
+try:
+    from software.backend.api.voice_api import router as voice_router
+except ImportError:
+    print("Could not import voice API")
+    sys.exit(1)
 
-# Mock services
-class MockDB:
-    async def connect(self): logger.info("Mock DB connected")
-    async def disconnect(self): pass
-    async def create_tables(self): pass
+# Create FastAPI app
+app = FastAPI(
+    title="W.I.T. Voice API",
+    description="Workshop Integrated Terminal - Voice Processing API",
+    version="0.1.0"
+)
 
-class MockMQTT:
-    async def connect(self): logger.info("Mock MQTT connected") 
-    async def disconnect(self): pass
+# Add CORS middleware for web testing
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure properly for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-class MockEvents:
-    async def publish_system_event(self, *args, **kwargs): pass
+# Include voice router
+app.include_router(voice_router)
 
-@asynccontextmanager
-async def dev_lifespan(app: FastAPI):
-    """Development lifespan without external dependencies"""
-    logger.info("Starting W.I.T. Development Server (no external dependencies)...")
-    
-    # Set mock services
-    app.state.db = MockDB()
-    app.state.mqtt = MockMQTT()
-    app.state.events = MockEvents()
-    
-    yield
-    
-    logger.info("Shutting down...")
-
-# Replace the lifespan
-main.app.router.lifespan_context = dev_lifespan
-
-# Make app available for import
-app = main.app
+# Root endpoint
+@app.get("/")
+async def root():
+    return {
+        "message": "W.I.T. Voice API",
+        "status": "running",
+        "endpoints": {
+            "status": "/api/v1/voice/status",
+            "test": "/api/v1/voice/test",
+            "docs": "/docs"
+        }
+    }
 
 if __name__ == "__main__":
-    import uvicorn
-    print("\n🚀 W.I.T. Terminal API - Development Mode")
-    print("=" * 50)
-    print("✅ No database required")
-    print("✅ No MQTT required") 
-    print("✅ All endpoints available")
-    print("\n📍 API URL: http://localhost:8000")
-    print("📚 API Docs: http://localhost:8000/docs")
-    print("=" * 50 + "\n")
+    # Load .env if exists
+    if Path(".env").exists():
+        try:
+            from dotenv import load_dotenv
+            load_dotenv()
+        except ImportError:
+            pass
     
-    # Use string import for reload to work
-    uvicorn.run("dev_server:app", host="0.0.0.0", port=8000, reload=True)
+    # Check API key
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        print("⚠️  Warning: ANTHROPIC_API_KEY not set!")
+        print("Set it with: export ANTHROPIC_API_KEY='your-key'")
+    
+    # Run server
+    print("🚀 Starting W.I.T. Voice API server...")
+    print("📚 API docs: http://localhost:8000/docs")
+    
+    try:
+        # Use the app object directly to avoid the reload issue
+        uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    except KeyboardInterrupt:
+        print("\n👋 Server stopped")
