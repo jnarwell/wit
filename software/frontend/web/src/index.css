@@ -1,329 +1,73 @@
-/* W.I.T. Terminal - Industrial Style CSS */
-/* File: wit/software/frontend/web/src/index.css */
-
-/* Import industrial fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Bebas+Neue&family=Oswald:wght@400;500;600;700&display=swap');
-
-/* Tailwind CSS Directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Base Styles */
-@layer base {
-  * {
-    @apply box-border;
-  }
-  
-  html {
-    @apply h-full overflow-hidden;
-  }
-  
-  body {
-    @apply m-0 p-0 h-full overflow-hidden;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #f3f4f6;
-    color: #000000;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  /* Typography */
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-black uppercase tracking-wider;
-    font-family: 'Oswald', sans-serif;
-    color: #000000;
-  }
-
-  /* Selection */
-  ::selection {
-    background: #000000;
-    color: #ffffff;
-  }
-
-  ::-moz-selection {
-    background: #000000;
-    color: #ffffff;
-  }
+/* Global styles */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Component Styles */
-@layer components {
-  /* Industrial Container */
-  .industrial-container {
-    @apply relative;
-    background: #ffffff;
-    border: 2px solid #000000;
-    box-shadow: 4px 4px 0 #000000;
-  }
-
-  /* Industrial Header */
-  .industrial-header {
-    @apply px-4 py-3 flex items-center justify-between;
-    background: #f3f4f6;
-    color: #000000;
-    border-bottom: 2px solid #000000;
-    font-family: 'Oswald', sans-serif;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  /* Industrial Input */
-  .industrial-input {
-    @apply w-full px-4 py-2;
-    background: #ffffff;
-    border: 2px solid #000000;
-    color: #000000;
-    font-family: 'Inter', sans-serif;
-    font-weight: 500;
-    outline: none;
-    transition: all 0.2s ease;
-  }
-
-  .industrial-input:focus {
-    background: #f9fafb;
-    box-shadow: 4px 4px 0 #000000;
-    transform: translate(-2px, -2px);
-  }
-
-  .industrial-input::placeholder {
-    color: #6b7280;
-    opacity: 1;
-  }
-
-  /* Industrial Button */
-  .industrial-btn {
-    @apply px-6 py-2 uppercase font-bold tracking-wider;
-    background: #ffffff;
-    border: 2px solid #000000;
-    color: #000000;
-    font-family: 'Oswald', sans-serif;
-    cursor: pointer;
-    position: relative;
-    transition: all 0.2s ease;
-    box-shadow: 2px 2px 0 #000000;
-  }
-
-  .industrial-btn:hover {
-    background: #000000;
-    color: #ffffff;
-    transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0 #000000;
-  }
-
-  .industrial-btn:active {
-    transform: translate(0, 0);
-    box-shadow: 0 0 0 #000000;
-  }
-
-  .industrial-btn:disabled {
-    @apply opacity-50 cursor-not-allowed;
-    transform: none;
-    box-shadow: 2px 2px 0 #9ca3af;
-  }
-
-  /* Primary Button Variant */
-  .industrial-btn-primary {
-    @apply px-6 py-2 uppercase font-bold tracking-wider;
-    background: #000000;
-    border: 2px solid #000000;
-    color: #ffffff;
-    font-family: 'Oswald', sans-serif;
-    cursor: pointer;
-    position: relative;
-    transition: all 0.2s ease;
-    box-shadow: 2px 2px 0 #4b5563;
-  }
-
-  .industrial-btn-primary:hover {
-    background: #1f2937;
-    border-color: #1f2937;
-    transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0 #4b5563;
-  }
-
-  /* Danger Button Variant */
-  .industrial-btn-danger {
-    @apply px-6 py-2 uppercase font-bold tracking-wider;
-    background: #ffffff;
-    border: 2px solid #ef4444;
-    color: #ef4444;
-    font-family: 'Oswald', sans-serif;
-    cursor: pointer;
-    position: relative;
-    transition: all 0.2s ease;
-    box-shadow: 2px 2px 0 #ef4444;
-  }
-
-  .industrial-btn-danger:hover {
-    background: #ef4444;
-    color: #ffffff;
-    transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0 #dc2626;
-  }
-
-  /* Status Classes */
-  .status-online {
-    @apply bg-black text-white;
-  }
-
-  .status-offline {
-    @apply bg-gray-400 text-white;
-  }
-
-  .status-busy {
-    @apply bg-yellow-400 text-black;
-  }
-
-  .status-error {
-    @apply bg-red-600 text-white;
-  }
-
-  /* Panel Styles */
-  .industrial-panel {
-    @apply p-4;
-    background: #ffffff;
-    border: 2px solid #000000;
-    position: relative;
-  }
-
-  .industrial-panel-dark {
-    @apply p-4;
-    background: #f3f4f6;
-    border: 2px solid #000000;
-    position: relative;
-  }
-
-  /* Grid Pattern */
-  .grid-pattern {
-    background-image: 
-      linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
-    background-size: 20px 20px;
-  }
-
-  /* Progress Bar */
-  .progress-bar {
-    @apply relative h-6 bg-gray-200 border-2 border-black overflow-hidden;
-  }
-
-  .progress-bar-fill {
-    @apply h-full bg-black;
-    transition: width 0.5s ease;
-  }
-
-  /* Industrial Shadow */
-  .shadow-industrial {
-    box-shadow: 4px 4px 0 #000000;
-  }
-
-  .shadow-industrial-sm {
-    box-shadow: 2px 2px 0 #000000;
-  }
-
-  .shadow-industrial-lg {
-    box-shadow: 6px 6px 0 #000000;
-  }
-
-  /* Hover Effects */
-  .hover-lift {
-    @apply transition-all duration-200;
-  }
-
-  .hover-lift:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 6px 6px 0 #000000;
-  }
+/* Prevent text selection when dragging */
+.react-draggable-dragging {
+  user-select: none !important;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+.react-grid-item {
+  transition: all 200ms ease;
+  transition-property: left, top;
 }
 
-::-webkit-scrollbar-track {
-  background: #f3f4f6;
-  border: 1px solid #000000;
+/* Allow interaction with buttons and inputs */
+.react-grid-item button,
+.react-grid-item input,
+.react-grid-item textarea {
+  pointer-events: auto !important;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #000000;
-  border: 1px solid #000000;
+/* Prevent text selection on widgets during drag */
+.react-draggable-dragging * {
+  user-select: none !important;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #374151;
+.react-grid-item.cssTransforms {
+  transition-property: transform;
 }
 
-::-webkit-scrollbar-corner {
-  background: #f3f4f6;
+.react-grid-item.resizing {
+  z-index: 1;
+  will-change: width, height;
 }
 
-/* Firefox Scrollbar */
-* {
-  scrollbar-width: auto;
-  scrollbar-color: #000000 #f3f4f6;
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 3;
+  will-change: transform;
+  cursor: move;
 }
 
-/* Utility Classes */
-@layer utilities {
-  /* Text styles */
-  .text-industrial {
-    font-family: 'Oswald', sans-serif;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  /* Border styles */
-  .border-industrial {
-    border: 2px solid #000000;
-  }
-
-  .border-industrial-thick {
-    border: 4px solid #000000;
-  }
-
-  /* Transitions */
-  .transition-industrial {
-    transition: all 0.2s ease;
-  }
+.react-grid-item.react-grid-placeholder {
+  background: #3b82f6;
+  opacity: 0.2;
+  transition-duration: 100ms;
+  z-index: 2;
+  user-select: none;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .industrial-container {
-    border-width: 1px;
-    box-shadow: 2px 2px 0 #000000;
-  }
-  
-  .industrial-btn {
-    @apply px-4 py-1 text-sm;
-    box-shadow: 1px 1px 0 #000000;
-  }
-  
-  .industrial-btn:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 2px 2px 0 #000000;
-  }
-  
-  body {
-    @apply text-sm;
-  }
-}
-
-/* Print styles */
-@media print {
-  body {
-    background: white;
-    color: black;
-  }
-  
-  .industrial-container {
-    box-shadow: none;
-    border: 1px solid #000000;
-  }
+/* Handle styles */
+.react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2IDYiIHN0eWxlPSJiYWNrZ3JvdW5kLWNvbG9yOiNmZmZmZmYwMCIgeD0iMHB4IiB5PSIwcHgiIHdpZHRoPSI2cHgiIGhlaWdodD0iNnB4Ij48ZyBvcGFjaXR5PSIwLjMwMiI+PHBhdGggZD0iTSA2IDYgTCAwIDYgTCAwIDQuMiBMIDQgNC4yIEwgNC4yIDQuMiBMIDQuMiAwIEwgNiAwIEwgNiA2IEwgNiA2IFoiIGZpbGw9IiMwMDAwMDAiLz48L2c+PC9zdmc+');
+  background-position: bottom right;
+  background-repeat: no-repeat;
+  background-origin: content-box;
+  box-sizing: border-box;
+  cursor: se-resize;
 }

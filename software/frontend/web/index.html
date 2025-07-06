@@ -1,22 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <script type="module">import { injectIntoGlobalHook } from "/@react-refresh";
+injectIntoGlobalHook(window);
+window.$RefreshReg$ = () => {};
+window.$RefreshSig$ = () => (type) => type;</script>
+
+    <script type="module" src="/@vite/client"></script>
+
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>W.I.T. - Workshop Integrated Terminal</title>
-    <style>
-      /* Prevent FOUC */
-      body {
-        margin: 0;
-        padding: 0;
-        height: 100vh;
-        overflow: hidden;
-        background: #f3f4f6;
-      }
-    </style>
   </head>
-  <body>
+  <body class="m-0 p-0 h-screen overflow-hidden bg-[#f3f4f6]">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
