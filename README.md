@@ -1,78 +1,76 @@
-# W.I.T. (Workspace Integrated Terminal)
-### JARVIS for the Workshop - A Modular AI-Powered Maker Assistant
+# W.I.T. Terminal - Industrial UI
 
-![W.I.T. Logo](resources/logos/wit-logo.png)
+A clean, industrial-style workshop terminal interface built with React, TypeScript, and Tailwind CSS.
 
-## 🎯 Vision
-Create the first truly integrated, voice-controlled, hands-free maker assistant platform that enables makers, engineers, and technical professionals to work hands-free through voice AI, computer vision, and universal device integration.
+## Features
 
-## 🚀 Quick Start
+- **Industrial Design**: Clean black-on-white blocky interface
+- **No Scroll Design**: All content fits within viewport
+- **Responsive Layout**: Adapts to different screen sizes
+- **Voice Control Interface**: Simulated voice command system
+- **Machine & Sensor Management**: Track workshop equipment status
+- **Project Tracking**: Monitor ongoing projects
+
+## Setup
+
+1. Install dependencies:
 ```bash
-# Clone the repository
-git clone https://github.com/[organization]/wit-terminal.git
-cd wit-terminal
-
-# Install development dependencies
-./tools/scripts/setup-dev-environment.sh
-
-# Run tests
-make test
-
-# Build firmware
-cd firmware && make build
-
-# Start backend services
-cd software/backend && docker-compose up
+npm install
 ```
 
-## 📋 Project Structure
-```
-wit-terminal/
-├── hardware/          # Electrical and mechanical design files
-├── firmware/          # Embedded software for W.I.T. Core
-├── software/          # Backend, frontend, and AI software
-├── manufacturing/     # Production and compliance documentation
-├── docs/             # Technical and user documentation
-├── tests/            # Test suites and validation
-└── tools/            # Development utilities and scripts
+2. Start the development server:
+```bash
+npm run dev
 ```
 
-## 🏗️ Architecture Overview
-- **Core Unit**: High-performance computing platform with AI acceleration
-- **Modular System**: Hot-swappable modules for different workshop tools
-- **Voice Interface**: Sub-100ms latency voice processing
-- **Computer Vision**: Real-time workshop monitoring and safety
-- **Universal Integration**: Support for all major maker equipment
+3. Build for production:
+```bash
+npm run build
+```
 
-## 🛠️ Key Features
-- ✅ Hands-free workshop control
-- ✅ Real-time safety monitoring
-- ✅ Equipment integration (3D printers, CNC, laser cutters)
-- ✅ Local AI processing for privacy
-- ✅ Modular expansion system
-- ✅ Professional and maker editions
+## Project Structure
 
-## 📊 Technical Specifications
-- **Processor**: AMD Ryzen 9 9950X / Intel Core i9-13900K
-- **AI Acceleration**: Hailo-8L NPU (13 TOPS)
-- **Memory**: 64GB DDR5 (expandable to 128GB)
-- **Connectivity**: Thunderbolt 5, USB4, CAN bus
-- **Environment**: IP65 rated, -40°C to +85°C operation
+```
+wit/software/frontend/web/
+├── src/
+│   ├── App.tsx          # Main application component
+│   ├── App.css          # App-specific styles (currently empty)
+│   ├── index.css        # Global industrial theme styles
+│   └── main.tsx         # Application entry point
+├── index.html           # HTML template
+├── package.json         # Dependencies and scripts
+├── tailwind.config.js   # Tailwind configuration
+├── postcss.config.js    # PostCSS configuration
+├── vite.config.ts       # Vite configuration
+└── tsconfig.json        # TypeScript configuration
+```
 
-## 🤝 Contributing
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+## Design System
 
-## 📄 License
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
+### Colors
+- Primary: Black (#000000)
+- Background: White (#FFFFFF) and Light Gray (#F3F4F6)
+- Status Colors:
+  - Active/Online: Black
+  - Inactive/Offline: Gray
+  - Busy: Yellow
+  - Error: Red
 
-## 🔗 Links
-- [Documentation](https://docs.wit-terminal.com)
-- [Discord Community](https://discord.gg/wit-makers)
-- [Hardware Files](https://github.com/[organization]/wit-hardware)
-- [Issue Tracker](https://github.com/[organization]/wit-terminal/issues)
+### Typography
+- Headers: Oswald (bold, uppercase)
+- Body: Inter
+- Monospace elements: System monospace
 
-## 📞 Contact
-- Email: team@wit-terminal.com
-- Twitter: [@WITTerminal](https://twitter.com/WITTerminal)
-# wit
-# wit
+### Components
+- Blocky borders (2px solid black)
+- Sharp corners (no border radius)
+- Box shadows for depth (4px offset)
+- Hover effects with transform animations
+
+## Key Features Implemented
+
+1. **Fixed Viewport Layout**: Content is contained within viewport height
+2. **Grid-based Layouts**: Clean, organized component arrangement
+3. **Status Indicators**: Clear visual feedback for equipment states
+4. **Responsive Design**: Adapts to mobile and desktop screens
+5. **Industrial Aesthetic**: Bold, functional design language

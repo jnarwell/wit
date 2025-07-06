@@ -1,102 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    
-    <title>W.I.T. Terminal</title>
-    <meta name="description" content="Workshop Integrated Terminal" />
-    
-    <!-- Prevent overflow immediately -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>W.I.T. - Workshop Integrated Terminal</title>
     <style>
-        /* Critical: Prevent overflow before anything loads */
-        html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            overflow: hidden !important;
-            position: relative !important;
-        }
-        
-        /* Use the strongest overflow prevention */
-        html {
-            overflow: hidden !important;
-            overflow: clip !important;
-        }
-        
-        body {
-            overflow: hidden !important;
-            overflow: clip !important;
-        }
-        
-        /* Hide everything except root */
-        body > *:not(#root):not(script):not(noscript) {
-            display: none !important;
-            position: absolute !important;
-            left: -99999px !important;
-            width: 0 !important;
-            height: 0 !important;
-        }
-        
-        /* Ensure root fills viewport */
-        #root {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            overflow: hidden !important;
-        }
-        
-        /* Loading state */
-        #root:empty {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #ffffff;
-        }
-        
-        #root:empty::after {
-            content: "Loading...";
-            font-family: system-ui, -apple-system, sans-serif;
-            color: #666;
-        }
+      /* Prevent FOUC */
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        overflow: hidden;
+        background: #f3f4f6;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    
-    <!-- Aggressive extension prevention -->
-    <script>
-        // Prevent extensions from breaking layout
-        (function() {
-            const preventOverflow = () => {
-                // Force overflow hidden
-                document.documentElement.style.overflow = 'hidden';
-                document.body.style.overflow = 'hidden';
-                
-                // Hide non-root elements
-                const children = Array.from(document.body.children);
-                children.forEach(child => {
-                    if (child.id !== 'root' && 
-                        child.tagName !== 'SCRIPT' && 
-                        child.tagName !== 'NOSCRIPT') {
-                        child.style.cssText = 'display: none !important; position: absolute !important; left: -99999px !important;';
-                    }
-                });
-            };
-            
-            // Run immediately and on changes
-            preventOverflow();
-            const observer = new MutationObserver(preventOverflow);
-            observer.observe(document.body, { childList: true });
-            
-            // Also run periodically
-            setInterval(preventOverflow, 1000);
-        })();
-    </script>
-</body>
+  </body>
 </html>
