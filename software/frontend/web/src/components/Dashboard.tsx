@@ -1,3 +1,4 @@
+// src/components/Dashboard.tsx
 import React, { useState, useEffect } from 'react';
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
 import { FaPlus } from 'react-icons/fa';
@@ -64,54 +65,12 @@ const Dashboard: React.FC = () => {
     saveLayout(newWidgets);
   };
 
-  // Find next available position for new widget
-  const findAvailablePosition = (width: number, height: number): { x: number; y: number } => {
-    const cols = 12;
-    const occupied = new Set<string>();
-    
-    // Mark all occupied cells
-    widgets.forEach(widget => {
-      for (let x = widget.x; x < widget.x + widget.w; x++) {
-        for (let y = widget.y; y < widget.y + widget.h; y++) {
-          occupied.add(`${x},${y}`);
-        }
-      }
-    });
-
-    // Find first available position that fits the widget
-    for (let y = 0; y < 100; y++) { // Max 100 rows down
-      for (let x = 0; x <= cols - width; x++) {
-        let fits = true;
-        
-        // Check if widget fits at this position
-        for (let wx = x; wx < x + width; wx++) {
-          for (let wy = y; wy < y + height; wy++) {
-            if (occupied.has(`${wx},${wy}`)) {
-              fits = false;
-              break;
-            }
-          }
-          if (!fits) break;
-        }
-        
-        if (fits) {
-          return { x, y };
-        }
-      }
-    }
-    
-    // If no space found, place at bottom
-    const maxY = Math.max(0, ...widgets.map(w => w.y + w.h));
-    return { x: 0, y: maxY };
-  };
-
   const addWidget = (type: string) => {
-    const position = findAvailablePosition(4, 6);
     const newWidget: Widget = {
       i: `${type}-${Date.now()}`,
       type,
-      x: position.x,
-      y: position.y,
+      x: 0,
+      y: 0,
       w: 4,
       h: 6,
     };
@@ -146,50 +105,59 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800">W.I.T. Dashboard</h1>
-        <div className="relative">
-          <button
-            onClick={() => setShowAddMenu(!showAddMenu)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-md"
-          >
-            <FaPlus /> Add Widget
-          </button>
-          {showAddMenu && (
-            <div className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-md shadow-lg p-1 z-50 min-w-[150px]">
-              {widgetTypes.map(({ type, name }) => (
-                <button
-                  key={type}
-                  onClick={() => addWidget(type)}
-                  className="block w-full text-left text-gray-700 hover:bg-blue-50 hover:text-blue-600 px-4 py-2 rounded transition-all duration-150"
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
-          )}
+    <div className="h-full flex flex-col bg-gray-100">
+      {/* Header */}
+      <div className="flex-shrink-0 bg-white shadow-sm px-6 py-4">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-gray-800">W.I.T. Dashboard</h1>
+          <div className="relative">
+            <button
+              onClick={() => setShowAddMenu(!showAddMenu)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-md"
+            >
+              <FaPlus /> Add Widget
+            </button>
+            {showAddMenu && (
+              <div className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-md shadow-lg p-1 z-50 min-w-[150px]">
+                {widgetTypes.map(({ type, name }) => (
+                  <button
+                    key={type}
+                    onClick={() => addWidget(type)}
+                    className="block w-full text-left text-gray-700 hover:bg-blue-50 hover:text-blue-600 px-4 py-2 rounded transition-all duration-150"
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <ResponsiveGridLayout
-        className="layout"
-        layouts={{ lg: widgets }}
-        onLayoutChange={onLayoutChange}
-        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-        cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-        rowHeight={60}
-        isDraggable
-        isResizable
-        compactType={null}
-        preventCollision
-      >
-        {widgets.map(widget => (
-          <div key={widget.i} className="widget-container">
-            {renderWidget(widget)}
-          </div>
-        ))}
-      </ResponsiveGridLayout>
+      {/* Grid Container with proper overflow handling */}
+      <div className="flex-grow overflow-auto p-6">
+        <div style={{ minHeight: '100%' }}>
+          <ResponsiveGridLayout
+            className="layout"
+            layouts={{ lg: widgets }}
+            onLayoutChange={onLayoutChange}
+            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+            cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+            rowHeight={60}
+            isDraggable
+            isResizable
+            compactType={null}
+            preventCollision={false}
+            margin={[16, 16]}
+          >
+            {widgets.map(widget => (
+              <div key={widget.i} className="widget-container">
+                {renderWidget(widget)}
+              </div>
+            ))}
+          </ResponsiveGridLayout>
+        </div>
+      </div>
     </div>
   );
 };

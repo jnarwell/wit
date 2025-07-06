@@ -1,3 +1,4 @@
+// src/App.tsx
 import React, { useState } from 'react';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
@@ -24,9 +25,11 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
       <Navigation currentPage={currentPage} onPageChange={setCurrentPage} />
-      {renderPage()}
+      <div className="flex-grow overflow-hidden">
+        {renderPage()}
+      </div>
     </div>
   );
 }

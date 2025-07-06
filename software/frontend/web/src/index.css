@@ -1,73 +1,144 @@
+/* src/index.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Global styles */
-body {
+/* Ensure full height layout without scrolling */
+html, body {
+  height: 100%;
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
 }
 
-/* Prevent text selection when dragging */
-.react-draggable-dragging {
-  user-select: none !important;
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* React Grid Layout Overrides */
+.react-grid-layout {
+  position: relative;
+  height: 100% !important;
 }
 
 .react-grid-item {
   transition: all 200ms ease;
-  transition-property: left, top;
-}
-
-/* Allow interaction with buttons and inputs */
-.react-grid-item button,
-.react-grid-item input,
-.react-grid-item textarea {
-  pointer-events: auto !important;
-}
-
-/* Prevent text selection on widgets during drag */
-.react-draggable-dragging * {
-  user-select: none !important;
+  transition-property: left, top, width, height;
+  overflow: hidden;
 }
 
 .react-grid-item.cssTransforms {
-  transition-property: transform;
+  transition-property: transform, width, height;
 }
 
 .react-grid-item.resizing {
-  z-index: 1;
+  z-index: 100;
   will-change: width, height;
 }
 
-.react-grid-item.react-draggable-dragging {
-  transition: none;
-  z-index: 3;
+.react-grid-item.dragging {
+  z-index: 100;
   will-change: transform;
   cursor: move;
 }
 
-.react-grid-item.react-grid-placeholder {
-  background: #3b82f6;
-  opacity: 0.2;
+.react-grid-item.dropping {
+  visibility: hidden;
+}
+
+.react-grid-placeholder {
+  background: rgb(59, 130, 246, 0.15);
+  border: 2px dashed #3b82f6;
+  border-radius: 0.5rem;
   transition-duration: 100ms;
   z-index: 2;
   user-select: none;
 }
 
-/* Handle styles */
-.react-resizable-handle {
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2IDYiIHN0eWxlPSJiYWNrZ3JvdW5kLWNvbG9yOiNmZmZmZmYwMCIgeD0iMHB4IiB5PSIwcHgiIHdpZHRoPSI2cHgiIGhlaWdodD0iNnB4Ij48ZyBvcGFjaXR5PSIwLjMwMiI+PHBhdGggZD0iTSA2IDYgTCAwIDYgTCAwIDQuMiBMIDQgNC4yIEwgNC4yIDQuMiBMIDQuMiAwIEwgNiAwIEwgNiA2IEwgNiA2IFoiIGZpbGw9IiMwMDAwMDAiLz48L2c+PC9zdmc+');
-  background-position: bottom right;
-  background-repeat: no-repeat;
-  background-origin: content-box;
-  box-sizing: border-box;
-  cursor: se-resize;
+/* Widget Container Styles */
+.widget-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.widget-container > * {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure widgets don't overflow */
+.widget-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Scrollbar Styles */
+.widget-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.widget-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.widget-content::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.widget-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Page Container for non-dashboard pages */
+.page-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.page-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+/* Responsive Grid for Pages */
+@media (max-width: 768px) {
+  .page-content {
+    padding: 1rem;
+  }
+}
+
+/* Animation Classes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Utility Classes */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
