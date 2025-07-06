@@ -1,788 +1,539 @@
-/* W.I.T. Terminal - Retro 90s Tech CSS */
-/* File: wit/software/frontend/web/src/index.css */
+/* W.I.T. Terminal - Fresh CSS with Overflow Prevention */
 
-/* Import retro fonts */
-@import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+/* ============================================
+   1. CRITICAL OVERFLOW PREVENTION
+   ============================================ */
 
-/* Tailwind CSS Directives */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Base Styles */
-@layer base {
-  * {
-    @apply box-border;
-  }
-  
-  body {
-    @apply m-0 p-0 overflow-x-hidden;
-    font-family: 'Share Tech Mono', monospace;
-    background: #000000;
-    color: #00ff00;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  /* CRT Screen Effect Background */
-  body::before {
-    content: " ";
-    display: block;
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    background: linear-gradient(
-      rgba(18, 16, 16, 0) 50%, 
-      rgba(0, 0, 0, 0.25) 50%
-    );
-    background-size: 100% 2px;
-    z-index: 2;
-    pointer-events: none;
-    animation: scanlines 8s linear infinite;
-  }
-
-  /* CRT Flicker Effect */
-  body::after {
-    content: " ";
-    display: block;
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    background: rgba(18, 16, 16, 0.1);
-    opacity: 0;
-    z-index: 2;
-    pointer-events: none;
-    animation: flicker 0.15s infinite;
-  }
-
-  /* Typography */
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-bold uppercase tracking-wider;
-    font-family: 'Orbitron', monospace;
-    color: #00ff00;
-    text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
-  }
-
-  /* Selection */
-  ::selection {
-    background: #00ff00;
-    color: #000000;
-  }
-
-  ::-moz-selection {
-    background: #00ff00;
-    color: #000000;
-  }
+/* Use clip for strongest overflow prevention */
+html {
+  overflow: hidden !important;
+  overflow: clip !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: relative !important;
 }
 
-/* Component Styles */
-@layer components {
-  /* Terminal Container */
-  .terminal-container {
-    @apply relative overflow-hidden;
-    background: #0a0a0a;
-    border: 2px solid #00ff00;
-    box-shadow: 
-      0 0 20px rgba(0, 255, 0, 0.5),
-      inset 0 0 20px rgba(0, 255, 0, 0.1);
-  }
-
-  /* Terminal Header */
-  .terminal-header {
-    @apply px-4 py-2 flex items-center justify-between;
-    background: #00ff00;
-    color: #000000;
-    border-bottom: 2px solid #00ff00;
-    font-family: 'VT323', monospace;
-    font-size: 16px;
-    letter-spacing: 1px;
-  }
-
-  /* Terminal Window Buttons */
-  .terminal-buttons {
-    @apply flex gap-2;
-  }
-
-  .terminal-button {
-    @apply w-3 h-3 rounded-full;
-    background: #000000;
-    border: 1px solid #000000;
-  }
-
-  /* Retro Input */
-  .retro-input {
-    @apply w-full px-3 py-2;
-    background: #000000;
-    border: 2px solid #00ff00;
-    color: #00ff00;
-    font-family: 'Share Tech Mono', monospace;
-    outline: none;
-    transition: all 0.3s ease;
-  }
-
-  .retro-input:focus {
-    box-shadow: 
-      0 0 10px rgba(0, 255, 0, 0.8),
-      inset 0 0 5px rgba(0, 255, 0, 0.2);
-    border-color: #00ff88;
-  }
-
-  .retro-input::placeholder {
-    color: #008800;
-    opacity: 0.5;
-  }
-
-  /* Retro Button */
-  .retro-btn {
-    @apply px-4 py-2 uppercase font-bold tracking-wider;
-    background: #000000;
-    border: 2px solid #00ff00;
-    color: #00ff00;
-    font-family: 'Share Tech Mono', monospace;
-    cursor: pointer;
-    position: relative;
-    transition: all 0.3s ease;
-    text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
-  }
-
-  .retro-btn:hover {
-    background: #00ff00;
-    color: #000000;
-    box-shadow: 
-      0 0 20px rgba(0, 255, 0, 0.8),
-      inset 0 0 10px rgba(0, 0, 0, 0.3);
-    transform: translateY(-1px);
-  }
-
-  .retro-btn:active {
-    transform: translateY(1px);
-  }
-
-  .retro-btn:disabled {
-    @apply opacity-50 cursor-not-allowed;
-    animation: none;
-  }
-
-  /* Danger Button Variant */
-  .retro-btn-danger {
-    border-color: #ff0000;
-    color: #ff0000;
-    text-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
-  }
-
-  .retro-btn-danger:hover {
-    background: #ff0000;
-    color: #000000;
-    box-shadow: 
-      0 0 20px rgba(255, 0, 0, 0.8),
-      inset 0 0 10px rgba(0, 0, 0, 0.3);
-  }
-
-  /* Secondary Button Variant */
-  .retro-btn-secondary {
-    border-color: #888888;
-    color: #888888;
-    text-shadow: 0 0 5px rgba(136, 136, 136, 0.5);
-  }
-
-  .retro-btn-secondary:hover {
-    background: #888888;
-    color: #000000;
-    box-shadow: 
-      0 0 20px rgba(136, 136, 136, 0.8),
-      inset 0 0 10px rgba(0, 0, 0, 0.3);
-  }
-
-  /* Terminal Text */
-  .terminal-text {
-    font-family: 'VT323', monospace;
-    color: #00ff00;
-    text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
-    letter-spacing: 1px;
-  }
-
-  /* Status Indicators */
-  .status-online {
-    @apply text-green-400 border-green-400;
-    text-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
-  }
-
-  .status-offline {
-    @apply text-gray-600 border-gray-600;
-    text-shadow: 0 0 5px rgba(128, 128, 128, 0.5);
-  }
-
-  .status-busy {
-    @apply text-yellow-400 border-yellow-400;
-    text-shadow: 0 0 10px rgba(255, 255, 0, 0.8);
-  }
-
-  .status-error {
-    @apply text-red-500 border-red-500;
-    text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
-    animation: error-blink 1s infinite;
-  }
-
-  /* Panel Styles */
-  .retro-panel {
-    @apply p-4;
-    background: #0a0a0a;
-    border: 2px solid #00ff00;
-    box-shadow: 
-      0 0 10px rgba(0, 255, 0, 0.3),
-      inset 0 0 10px rgba(0, 255, 0, 0.05);
-    position: relative;
-  }
-
-  .retro-panel::before {
-    content: "";
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(45deg, #00ff00, transparent, #00ff00);
-    opacity: 0;
-    z-index: -1;
-    transition: opacity 0.3s ease;
-  }
-
-  .retro-panel:hover::before {
-    opacity: 0.3;
-  }
-
-  /* Grid Background Pattern */
-  .grid-bg {
-    background-image: 
-      linear-gradient(rgba(0, 255, 0, 0.1) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 255, 0, 0.1) 1px, transparent 1px);
-    background-size: 20px 20px;
-  }
-
-  /* Blink Animation */
-  .blink {
-    animation: blink-animation 1s infinite;
-  }
-
-  /* Cursor */
-  .cursor {
-    display: inline-block;
-    width: 10px;
-    height: 20px;
-    background: #00ff00;
-    animation: cursor-blink 1s infinite;
-  }
-
-  /* Progress Bar */
-  .progress-bar {
-    @apply relative h-4 bg-black border-2 border-green-400 overflow-hidden;
-  }
-
-  .progress-bar-fill {
-    @apply h-full bg-green-400;
-    box-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
-    position: relative;
-  }
-
-  .progress-bar-fill::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.3),
-      transparent
-    );
-    animation: progress-shine 2s linear infinite;
-  }
-
-  /* Tab Navigation */
-  .retro-tab {
-    @apply px-4 py-2 font-mono text-sm uppercase;
-    background: transparent;
-    border: 1px solid transparent;
-    color: #00ff00;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    position: relative;
-  }
-
-  .retro-tab:hover {
-    border-color: #00ff00;
-    text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
-  }
-
-  .retro-tab.active {
-    background: #00ff00;
-    color: #000000;
-    border-color: #00ff00;
-    font-weight: bold;
-  }
-
-  /* Alert Styles */
-  .alert-error {
-    @apply p-3 border-2 border-red-500 bg-black text-red-500 font-mono;
-    animation: error-pulse 2s infinite;
-  }
-
-  .alert-warning {
-    @apply p-3 border-2 border-yellow-400 bg-black text-yellow-400 font-mono;
-  }
-
-  .alert-success {
-    @apply p-3 border-2 border-green-400 bg-black text-green-400 font-mono;
-  }
+body {
+  overflow: hidden !important;
+  overflow: clip !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: relative !important;
 }
 
-/* Utility Classes */
-@layer utilities {
-  /* Text Glow */
-  .text-glow-green {
-    text-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
-  }
+/* ============================================
+   2. CSS RESET
+   ============================================ */
 
-  .text-glow-red {
-    text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
-  }
-
-  .text-glow-yellow {
-    text-shadow: 0 0 10px rgba(255, 255, 0, 0.8);
-  }
-
-  /* Border Glow */
-  .border-glow-green {
-    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
-  }
-
-  .border-glow-red {
-    box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
-  }
-
-  /* Scanline Overlay */
-  .scanlines::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      transparent 50%,
-      rgba(0, 0, 0, 0.25) 50%
-    );
-    background-size: 100% 2px;
-    pointer-events: none;
-    animation: scanlines 8s linear infinite;
-  }
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
 }
 
-/* Animations */
-@keyframes scanlines {
-  0% {
-    background-position: 0 0;
-  }
-  100% {
-    background-position: 0 10px;
-  }
-}
+/* ============================================
+   3. ROOT CONTAINER
+   ============================================ */
 
-@keyframes flicker {
-  0% {
-    opacity: 0.27861;
-  }
-  5% {
-    opacity: 0.34769;
-  }
-  10% {
-    opacity: 0.23604;
-  }
-  15% {
-    opacity: 0.90626;
-  }
-  20% {
-    opacity: 0.18128;
-  }
-  25% {
-    opacity: 0.83891;
-  }
-  30% {
-    opacity: 0.65583;
-  }
-  35% {
-    opacity: 0.67807;
-  }
-  40% {
-    opacity: 0.26559;
-  }
-  45% {
-    opacity: 0.84693;
-  }
-  50% {
-    opacity: 0.96019;
-  }
-  55% {
-    opacity: 0.08594;
-  }
-  60% {
-    opacity: 0.20313;
-  }
-  65% {
-    opacity: 0.71988;
-  }
-  70% {
-    opacity: 0.53455;
-  }
-  75% {
-    opacity: 0.37288;
-  }
-  80% {
-    opacity: 0.71428;
-  }
-  85% {
-    opacity: 0.70419;
-  }
-  90% {
-    opacity: 0.7003;
-  }
-  95% {
-    opacity: 0.36108;
-  }
-  100% {
-    opacity: 0.24387;
-  }
-}
-
-@keyframes blink-animation {
-  0%, 50%, 100% {
-    opacity: 1;
-  }
-  25%, 75% {
-    opacity: 0;
-  }
-}
-
-@keyframes cursor-blink {
-  0%, 50% {
-    opacity: 1;
-  }
-  51%, 100% {
-    opacity: 0;
-  }
-}
-
-@keyframes error-blink {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-@keyframes error-pulse {
-  0%, 100% {
-    border-color: rgba(255, 0, 0, 0.5);
-  }
-  50% {
-    border-color: rgba(255, 0, 0, 1);
-  }
-}
-
-@keyframes progress-shine {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
-}
-
-::-webkit-scrollbar-track {
-  background: #0a0a0a;
-  border: 1px solid #00ff00;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #00ff00;
-  border: 1px solid #00cc00;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #00cc00;
-  box-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
-}
-
-::-webkit-scrollbar-corner {
-  background: #0a0a0a;
-}
-
-/* Firefox Scrollbar */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #00ff00 #0a0a0a;
-}
-
-/* ASCII Art Container */
-.ascii-art {
-  font-family: 'VT323', monospace;
-  white-space: pre;
-  line-height: 1;
-  color: #00ff00;
-  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
-}
-
-/* Loading Animation */
-.loading-text::after {
-  content: '';
-  animation: loading-dots 1.5s infinite;
-}
-
-@keyframes loading-dots {
-  0% { content: ''; }
-  25% { content: '.'; }
-  50% { content: '..'; }
-  75% { content: '...'; }
-  100% { content: ''; }
-}
-
-/* Glitch Effect */
-.glitch {
-  position: relative;
-  animation: glitch 2s infinite;
-}
-
-.glitch::before,
-.glitch::after {
-  content: attr(data-text);
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.glitch::before {
-  animation: glitch-1 0.5s infinite;
-  color: #00ff00;
-  z-index: -1;
-}
-
-.glitch::after {
-  animation: glitch-2 0.5s infinite;
-  color: #00ffff;
-  z-index: -2;
-}
-
-@keyframes glitch {
-  0% {
-    text-shadow: 0.05em 0 0 #00ffff, -0.05em -0.025em 0 #ff00ff,
-      0.025em 0.05em 0 #ffff00;
-  }
-  15% {
-    text-shadow: 0.05em 0 0 #00ffff, -0.05em -0.025em 0 #ff00ff,
-      0.025em 0.05em 0 #ffff00;
-  }
-  16% {
-    text-shadow: -0.05em -0.025em 0 #00ffff, 0.025em 0.025em 0 #ff00ff,
-      -0.05em -0.05em 0 #ffff00;
-  }
-  49% {
-    text-shadow: -0.05em -0.025em 0 #00ffff, 0.025em 0.025em 0 #ff00ff,
-      -0.05em -0.05em 0 #ffff00;
-  }
-  50% {
-    text-shadow: 0.025em 0.05em 0 #00ffff, 0.05em 0 0 #ff00ff,
-      0 -0.05em 0 #ffff00;
-  }
-  99% {
-    text-shadow: 0.025em 0.05em 0 #00ffff, 0.05em 0 0 #ff00ff,
-      0 -0.05em 0 #ffff00;
-  }
-  100% {
-    text-shadow: -0.025em 0 0 #00ffff, -0.025em -0.025em 0 #ff00ff,
-      -0.025em -0.05em 0 #ffff00;
-  }
-}
-
-@keyframes glitch-1 {
-  0% {
-    clip: rect(132px, 350px, 101px, 30px);
-  }
-  5% {
-    clip: rect(17px, 350px, 28px, 30px);
-  }
-  10% {
-    clip: rect(40px, 350px, 66px, 30px);
-  }
-  15% {
-    clip: rect(87px, 350px, 82px, 30px);
-  }
-  20% {
-    clip: rect(137px, 350px, 61px, 30px);
-  }
-  25% {
-    clip: rect(34px, 350px, 14px, 30px);
-  }
-  30% {
-    clip: rect(133px, 350px, 74px, 30px);
-  }
-  35% {
-    clip: rect(76px, 350px, 107px, 30px);
-  }
-  40% {
-    clip: rect(59px, 350px, 130px, 30px);
-  }
-  45% {
-    clip: rect(29px, 350px, 84px, 30px);
-  }
-  50% {
-    clip: rect(22px, 350px, 67px, 30px);
-  }
-  55% {
-    clip: rect(67px, 350px, 62px, 30px);
-  }
-  60% {
-    clip: rect(10px, 350px, 105px, 30px);
-  }
-  65% {
-    clip: rect(78px, 350px, 115px, 30px);
-  }
-  70% {
-    clip: rect(105px, 350px, 13px, 30px);
-  }
-  75% {
-    clip: rect(15px, 350px, 75px, 30px);
-  }
-  80% {
-    clip: rect(66px, 350px, 39px, 30px);
-  }
-  85% {
-    clip: rect(133px, 350px, 73px, 30px);
-  }
-  90% {
-    clip: rect(36px, 350px, 128px, 30px);
-  }
-  95% {
-    clip: rect(68px, 350px, 103px, 30px);
-  }
-  100% {
-    clip: rect(14px, 350px, 100px, 30px);
-  }
-}
-
-@keyframes glitch-2 {
-  0% {
-    clip: rect(129px, 350px, 36px, 30px);
-  }
-  5% {
-    clip: rect(36px, 350px, 4px, 30px);
-  }
-  10% {
-    clip: rect(85px, 350px, 66px, 30px);
-  }
-  15% {
-    clip: rect(91px, 350px, 91px, 30px);
-  }
-  20% {
-    clip: rect(148px, 350px, 138px, 30px);
-  }
-  25% {
-    clip: rect(38px, 350px, 122px, 30px);
-  }
-  30% {
-    clip: rect(69px, 350px, 54px, 30px);
-  }
-  35% {
-    clip: rect(98px, 350px, 71px, 30px);
-  }
-  40% {
-    clip: rect(146px, 350px, 34px, 30px);
-  }
-  45% {
-    clip: rect(134px, 350px, 43px, 30px);
-  }
-  50% {
-    clip: rect(102px, 350px, 80px, 30px);
-  }
-  55% {
-    clip: rect(119px, 350px, 44px, 30px);
-  }
-  60% {
-    clip: rect(106px, 350px, 99px, 30px);
-  }
-  65% {
-    clip: rect(141px, 350px, 74px, 30px);
-  }
-  70% {
-    clip: rect(20px, 350px, 78px, 30px);
-  }
-  75% {
-    clip: rect(133px, 350px, 79px, 30px);
-  }
-  80% {
-    clip: rect(78px, 350px, 52px, 30px);
-  }
-  85% {
-    clip: rect(35px, 350px, 39px, 30px);
-  }
-  90% {
-    clip: rect(67px, 350px, 70px, 30px);
-  }
-  95% {
-    clip: rect(71px, 350px, 103px, 30px);
-  }
-  100% {
-    clip: rect(83px, 350px, 40px, 30px);
-  }
-}
-
-/* Matrix Rain Effect (optional) */
-.matrix-bg {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  opacity: 0.1;
+#root {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  overflow: hidden !important;
+  background: #ffffff;
   z-index: 1;
+  contain: strict; /* CSS containment */
+}
+
+/* ============================================
+   4. EXTENSION PREVENTION
+   ============================================ */
+
+/* Hide all non-root body children */
+body > *:not(#root):not(script):not(noscript) {
+  display: none !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  left: -999999px !important;
+  top: -999999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: -999999 !important;
+}
+
+/* Target specific extensions */
+[data-lastpass-root],
+[id*="lastpass"],
+[id*="chrome-extension"],
+[id*="1password"],
+[id*="bitwarden"],
+[id*="dashlane"],
+div[id^="__lpform_"] {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  left: -999999px !important;
+}
+
+/* ============================================
+   5. TYPOGRAPHY
+   ============================================ */
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #000000;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* ============================================
+   6. APP CONTAINER
+   ============================================ */
+
+.App {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================
+   7. HEADER
+   ============================================ */
+
+.app-header {
+  flex-shrink: 0;
+  width: 100%;
+  background: #ffffff;
+  border-bottom: 2px solid #000000;
+  padding: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-content {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* ============================================
+   8. NAVIGATION
+   ============================================ */
+
+.nav-tabs {
+  display: flex;
+  border: 1px solid #000000;
+  background: #ffffff;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nav-tab {
+  flex-shrink: 0;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: none;
+  border-right: 1px solid #000000;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.nav-tab:last-child {
+  border-right: none;
+}
+
+.nav-tab:hover {
+  background: #f5f5f5;
+}
+
+.nav-tab.active {
+  background: #000000;
+  color: #ffffff;
+}
+
+/* ============================================
+   9. MAIN CONTENT
+   ============================================ */
+
+.main-content {
+  flex: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  overflow-x: hidden;
+}
+
+/* ============================================
+   10. BLOCKS
+   ============================================ */
+
+.block {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #000000;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
   overflow: hidden;
 }
 
-.matrix-bg::before {
-  content: '010101010101010101010101010101010101010101010101';
-  position: absolute;
-  top: -100%;
-  left: 0;
-  width: 100%;
-  height: 200%;
-  color: #00ff00;
-  font-size: 10px;
-  line-height: 10px;
-  font-family: monospace;
-  animation: matrix-rain 20s linear infinite;
+.block-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e5e5;
 }
 
-@keyframes matrix-rain {
-  0% {
-    transform: translateY(0);
+.block-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0;
+}
+
+/* ============================================
+   11. LISTS
+   ============================================ */
+
+.item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e5e5e5;
+  gap: 1rem;
+  min-width: 0; /* Enable text truncation */
+}
+
+.list-item:last-child {
+  border-bottom: none;
+}
+
+.list-item > span:first-child {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status::before { content: '['; }
+.status::after { content: ']'; }
+
+/* ============================================
+   12. FORMS
+   ============================================ */
+
+.input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.625rem 1rem;
+  background: #ffffff;
+  border: 1px solid #000000;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.input:focus {
+  border-width: 2px;
+  padding: calc(0.625rem - 1px) calc(1rem - 1px);
+}
+
+.input::placeholder {
+  color: #666666;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+/* ============================================
+   13. BUTTONS
+   ============================================ */
+
+.btn {
+  display: inline-block;
+  padding: 0.625rem 1.5rem;
+  background: #ffffff;
+  color: #000000;
+  border: 2px solid #000000;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: #000000;
+  color: #ffffff;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.icon-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ============================================
+   14. STATUS GRID
+   ============================================ */
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0;
+  border: 1px solid #000000;
+  margin: 1rem 0;
+  overflow: hidden;
+}
+
+.status-item {
+  padding: 0.75rem 1rem;
+  border-right: 1px solid #000000;
+  border-bottom: 1px solid #000000;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.status-item > span:first-child {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================
+   15. TABLES
+   ============================================ */
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid #000000;
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  width: 100%;
+  min-width: 500px;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+th {
+  background: #f5f5f5;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ============================================
+   16. UTILITIES
+   ============================================ */
+
+.mt-4 { margin-top: 1rem; }
+.text-mono { font-family: 'Courier New', monospace; }
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================
+   17. STATES
+   ============================================ */
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #666666;
+}
+
+.empty-state-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.empty-state-text {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ============================================
+   18. RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    align-items: stretch;
   }
-  100% {
-    transform: translateY(50%);
+  
+  .logo {
+    justify-content: center;
+  }
+  
+  .nav-tabs {
+    width: 100%;
+  }
+  
+  .main-content {
+    padding: 1rem;
+  }
+  
+  .block {
+    padding: 1rem;
+  }
+  
+  .status-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .status-item {
+    border-right: none;
+  }
+  
+  table {
+    min-width: 100%;
+    font-size: 0.875rem;
+  }
+  
+  th, td {
+    padding: 0.5rem;
   }
 }
+
+/* ============================================
+   19. SCROLLBAR HIDING
+   ============================================ */
+
+/* Hide scrollbars but keep functionality */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/* ============================================
+   20. FINAL SAFEGUARDS
+   ============================================ */
+
+/* Ensure nothing can break the layout */
+* {
+  max-width: 100vw !important;
+}
+
+/* Force contain on body */
+body {
+  contain: layout style size;
+}
+
+/* No horizontal scroll ever */
+html, body, #root, .App {
+  overflow-x: hidden !important;
+  overflow-x: clip !important;
+}
+
