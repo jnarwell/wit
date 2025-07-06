@@ -3,12 +3,16 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Ensure full height layout without scrolling */
+/* Global Styles */
+* {
+  box-sizing: border-box;
+}
+
 html, body {
-  height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  height: 100%;
+  overflow: hidden; /* Prevent scrolling */
 }
 
 #root {
@@ -16,129 +20,73 @@ html, body {
   overflow: hidden;
 }
 
-/* React Grid Layout Overrides */
-.react-grid-layout {
-  position: relative;
-  height: 100% !important;
-}
+/* Custom utility classes */
+@layer components {
+  .widget-container {
+    @apply transition-all duration-200;
+  }
 
-.react-grid-item {
-  transition: all 200ms ease;
-  transition-property: left, top, width, height;
-  overflow: hidden;
-}
-
-.react-grid-item.cssTransforms {
-  transition-property: transform, width, height;
-}
-
-.react-grid-item.resizing {
-  z-index: 100;
-  will-change: width, height;
-}
-
-.react-grid-item.dragging {
-  z-index: 100;
-  will-change: transform;
-  cursor: move;
-}
-
-.react-grid-item.dropping {
-  visibility: hidden;
-}
-
-.react-grid-placeholder {
-  background: rgb(59, 130, 246, 0.15);
-  border: 2px dashed #3b82f6;
-  border-radius: 0.5rem;
-  transition-duration: 100ms;
-  z-index: 2;
-  user-select: none;
-}
-
-/* Widget Container Styles */
-.widget-container {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.widget-container > * {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Ensure widgets don't overflow */
-.widget-content {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-/* Scrollbar Styles */
-.widget-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.widget-content::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-.widget-content::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 3px;
-}
-
-.widget-content::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-/* Page Container for non-dashboard pages */
-.page-container {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.page-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1.5rem;
-}
-
-/* Responsive Grid for Pages */
-@media (max-width: 768px) {
-  .page-content {
-    padding: 1rem;
+  .widget-menu-item {
+    @apply w-full text-left text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded transition-colors text-sm;
   }
 }
 
-/* Animation Classes */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
+/* Animations */
+@keyframes pulse {
+  0%, 100% {
     opacity: 1;
-    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.5;
   }
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-out;
+/* Remove any default scrollbars */
+::-webkit-scrollbar {
+  display: none;
 }
 
-/* Utility Classes */
-.no-scrollbar {
+* {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+/* Ensure all containers respect height constraints */
+.h-screen {
+  height: 100vh !important;
+  max-height: 100vh !important;
+}
+
+.h-full {
+  height: 100% !important;
+}
+
+/* Prevent overflow on all flex containers */
+.flex,
+.flex-col,
+.flex-row {
+  min-height: 0;
+  min-width: 0;
+}
+
+/* Widget hover effects */
+.widget-container:hover {
+  z-index: 10;
+}
+
+/* Status indicator animations */
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Voice widget ping animation */
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.animate-ping {
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
 }

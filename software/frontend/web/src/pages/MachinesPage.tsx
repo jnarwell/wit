@@ -1,331 +1,166 @@
 // src/pages/MachinesPage.tsx
-import React from 'react';
-import { FaCog, FaCircle, FaWrench, FaChartBar, FaExclamationTriangle, FaClock } from 'react-icons/fa';
+import React, { useState, useEffect, useRef } from 'react';
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import SpecificWidget from '../components/widgets/SpecificWidget';
 
-// Individual machine status widget
-const MachineStatusWidget: React.FC<{ machine: any }> = ({ machine }) => {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'online': return 'text-green-500';
-      case 'offline': return 'text-gray-400';
-      case 'busy': return 'text-yellow-500';
-      case 'maintenance': return 'text-red-500';
-      default: return 'text-gray-400';
-    }
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow-md p-6 h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-800">{machine.name}</h3>
-        <FaCircle className={`${getStatusColor(machine.status)}`} />
-      </div>
-      
-      <div className="flex-grow">
-        <p className="text-sm text-gray-600 mb-2">{machine.type}</p>
-        <div className="space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Status:</span>
-            <span className={`font-medium ${getStatusColor(machine.status)}`}>
-              {machine.status.toUpperCase()}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">IP:</span>
-            <span className="font-mono">{machine.ip}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Jobs:</span>
-            <span>{machine.totalJobs}</span>
-          </div>
-          
-          {machine.currentJob && (
-            <div className="mt-3 pt-3 border-t">
-              <p className="text-xs text-gray-600 truncate">{machine.currentJob.name}</p>
-              <div className="mt-2">
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-blue-600 h-2 rounded-full transition-all"
-                    style={{ width: `${machine.currentJob.progress}%` }}
-                  />
-                </div>
-                <p className="text-xs text-gray-500 mt-1">{machine.currentJob.progress}% - ETA: {machine.currentJob.estimatedEnd}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-      
-      <button className="mt-4 w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm">
-        Control Panel
-      </button>
-    </div>
-  );
-};
-
-// Overview widget
-const MachineOverviewWidget: React.FC = () => {
-  const stats = {
-    total: 6,
-    online: 3,
-    busy: 2,
-    offline: 1,
-    maintenance: 0
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow-md p-6 h-full">
-      <div className="flex items-center gap-2 mb-4">
-        <FaChartBar className="text-blue-600" />
-        <h3 className="text-lg font-semibold text-gray-800">Overview</h3>
-      </div>
-      
-      <div className="space-y-4">
-        <div className="text-center">
-          <p className="text-3xl font-bold text-gray-800">{stats.total}</p>
-          <p className="text-sm text-gray-600">Total Machines</p>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <div className="text-center p-3 bg-green-50 rounded-lg">
-            <p className="text-xl font-semibold text-green-600">{stats.online}</p>
-            <p className="text-xs text-green-700">Online</p>
-          </div>
-          <div className="text-center p-3 bg-yellow-50 rounded-lg">
-            <p className="text-xl font-semibold text-yellow-600">{stats.busy}</p>
-            <p className="text-xs text-yellow-700">Busy</p>
-          </div>
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <p className="text-xl font-semibold text-gray-600">{stats.offline}</p>
-            <p className="text-xs text-gray-700">Offline</p>
-          </div>
-          <div className="text-center p-3 bg-red-50 rounded-lg">
-            <p className="text-xl font-semibold text-red-600">{stats.maintenance}</p>
-            <p className="text-xs text-red-700">Maintenance</p>
-          </div>
-        </div>
-        
-        <div className="pt-4 border-t">
-          <div className="flex justify-between text-sm mb-2">
-            <span className="text-gray-600">Utilization Rate</span>
-            <span className="font-medium">67%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div className="bg-green-500 h-2 rounded-full" style={{ width: '67%' }} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Maintenance widget
-const MaintenanceWidget: React.FC = () => {
-  const upcoming = [
-    { machine: 'Prusa MK3S+', date: '2024-02-01', type: 'Regular' },
-    { machine: 'Shapeoko 4', date: '2024-02-05', type: 'Belt Check' },
-    { machine: 'Form 3', date: '2024-02-10', type: 'Resin Tank' },
-  ];
-
-  return (
-    <div className="bg-white rounded-lg shadow-md p-6 h-full">
-      <div className="flex items-center gap-2 mb-4">
-        <FaWrench className="text-orange-600" />
-        <h3 className="text-lg font-semibold text-gray-800">Maintenance Schedule</h3>
-      </div>
-      
-      <div className="space-y-3">
-        {upcoming.map((item, index) => (
-          <div key={index} className="p-3 bg-orange-50 rounded-lg">
-            <p className="font-medium text-sm text-gray-800">{item.machine}</p>
-            <div className="flex justify-between text-xs text-gray-600 mt-1">
-              <span>{item.type}</span>
-              <span>{new Date(item.date).toLocaleDateString()}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-      
-      <button className="mt-4 w-full py-2 bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors text-sm">
-        Schedule Maintenance
-      </button>
-    </div>
-  );
-};
-
-// Alerts widget
-const AlertsWidget: React.FC = () => {
-  const alerts = [
-    { id: 1, machine: 'CNC Mill', message: 'High vibration detected', level: 'warning' },
-    { id: 2, machine: 'Laser Cutter', message: 'Filter replacement due', level: 'info' },
-  ];
-
-  return (
-    <div className="bg-white rounded-lg shadow-md p-6 h-full">
-      <div className="flex items-center gap-2 mb-4">
-        <FaExclamationTriangle className="text-yellow-600" />
-        <h3 className="text-lg font-semibold text-gray-800">Active Alerts</h3>
-      </div>
-      
-      <div className="space-y-3">
-        {alerts.map((alert) => (
-          <div key={alert.id} className={`p-3 rounded-lg ${
-            alert.level === 'warning' ? 'bg-yellow-50' : 'bg-blue-50'
-          }`}>
-            <p className="font-medium text-sm text-gray-800">{alert.machine}</p>
-            <p className="text-xs text-gray-600 mt-1">{alert.message}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// Performance widget
-const PerformanceWidget: React.FC = () => {
-  return (
-    <div className="bg-white rounded-lg shadow-md p-6 h-full">
-      <div className="flex items-center gap-2 mb-4">
-        <FaClock className="text-purple-600" />
-        <h3 className="text-lg font-semibold text-gray-800">Today's Performance</h3>
-      </div>
-      
-      <div className="space-y-4">
-        <div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-600">Jobs Completed</span>
-            <span className="font-medium">12 / 15</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div className="bg-purple-600 h-2 rounded-full" style={{ width: '80%' }} />
-          </div>
-        </div>
-        
-        <div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-600">Uptime</span>
-            <span className="font-medium">94%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div className="bg-green-600 h-2 rounded-full" style={{ width: '94%' }} />
-          </div>
-        </div>
-        
-        <div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-600">Efficiency</span>
-            <span className="font-medium">87%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div className="bg-blue-600 h-2 rounded-full" style={{ width: '87%' }} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+interface Machine {
+  id: string;
+  name: string;
+  status: 'green' | 'yellow' | 'red';
+  metrics: { label: string; value: string }[];
+}
 
 const MachinesPage: React.FC = () => {
-  // Mock data
-  const machines = [
-    {
-      id: '1',
-      name: 'Prusa MK3S+',
-      type: '3D Printer',
-      status: 'busy',
-      ip: '192.168.1.101',
-      totalJobs: 342,
-      currentJob: {
-        name: 'Widget Assembly v2',
-        progress: 67,
-        estimatedEnd: '4:12 PM'
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [machines] = useState<Machine[]>([
+    { id: '001', name: 'CNC Mill Alpha', status: 'green', metrics: [{ label: 'Jobs', value: '142' }, { label: 'Uptime', value: '98%' }] },
+    { id: '002', name: '3D Printer Beta', status: 'yellow', metrics: [{ label: 'Jobs', value: '89' }, { label: 'Uptime', value: '92%' }] },
+    { id: '003', name: 'Laser Cutter', status: 'green', metrics: [{ label: 'Jobs', value: '276' }, { label: 'Uptime', value: '99%' }] },
+    { id: '004', name: 'CNC Router', status: 'red', metrics: [{ label: 'Jobs', value: '0' }, { label: 'Status', value: 'Maint.' }] },
+    { id: '005', name: 'Plasma Cutter', status: 'green', metrics: [{ label: 'Jobs', value: '67' }, { label: 'Uptime', value: '95%' }] },
+    { id: '006', name: 'Welding Station', status: 'green', metrics: [{ label: 'Jobs', value: '183' }, { label: 'Uptime', value: '100%' }] },
+    { id: '007', name: 'Drill Press', status: 'yellow', metrics: [{ label: 'Jobs', value: '421' }, { label: 'Uptime', value: '88%' }] },
+    { id: '008', name: 'Band Saw', status: 'green', metrics: [{ label: 'Jobs', value: '312' }, { label: 'Uptime', value: '97%' }] },
+  ]);
+
+  const [widgetsPerPage, setWidgetsPerPage] = useState(9);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [gridSize, setGridSize] = useState({ cellWidth: 0, cellHeight: 0, cols: 3, rows: 3 });
+
+  // Calculate grid dimensions
+  useEffect(() => {
+    const calculateGrid = () => {
+      if (!containerRef.current) return;
+
+      const container = containerRef.current;
+      const padding = 32;
+      const gap = 16;
+      
+      const availableWidth = container.clientWidth - padding;
+      const availableHeight = container.clientHeight - padding;
+
+      // Calculate grid based on widgets per page
+      let cols, rows;
+      if (widgetsPerPage <= 4) {
+        cols = 2;
+        rows = 2;
+      } else if (widgetsPerPage <= 6) {
+        cols = 3;
+        rows = 2;
+      } else if (widgetsPerPage <= 9) {
+        cols = 3;
+        rows = 3;
+      } else if (widgetsPerPage <= 12) {
+        cols = 4;
+        rows = 3;
+      } else {
+        cols = 5;
+        rows = Math.ceil(widgetsPerPage / 5);
       }
-    },
-    {
-      id: '2',
-      name: 'Ender 3 Pro',
-      type: '3D Printer',
-      status: 'online',
-      ip: '192.168.1.102',
-      totalJobs: 128
-    },
-    {
-      id: '3',
-      name: 'Shapeoko 4',
-      type: 'CNC Mill',
-      status: 'offline',
-      ip: '192.168.1.103',
-      totalJobs: 89
-    },
-    {
-      id: '4',
-      name: 'Glowforge Pro',
-      type: 'Laser Cutter',
-      status: 'busy',
-      ip: '192.168.1.104',
-      totalJobs: 567,
-      currentJob: {
-        name: 'Acrylic Panel Cut',
-        progress: 45,
-        estimatedEnd: '3:30 PM'
-      }
-    },
-    {
-      id: '5',
-      name: 'Form 3',
-      type: 'SLA Printer',
-      status: 'online',
-      ip: '192.168.1.105',
-      totalJobs: 234
-    },
-    {
-      id: '6',
-      name: 'Ultimaker S5',
-      type: '3D Printer',
-      status: 'online',
-      ip: '192.168.1.106',
-      totalJobs: 456
-    }
-  ];
+
+      const cellWidth = (availableWidth - (gap * (cols - 1))) / cols;
+      const cellHeight = (availableHeight - (gap * (rows - 1))) / rows;
+
+      setGridSize({ cellWidth, cellHeight, cols, rows });
+    };
+
+    calculateGrid();
+    window.addEventListener('resize', calculateGrid);
+    return () => window.removeEventListener('resize', calculateGrid);
+  }, [widgetsPerPage]);
+
+  const totalPages = Math.ceil(machines.length / widgetsPerPage);
+  const startIndex = (currentPage - 1) * widgetsPerPage;
+  const endIndex = startIndex + widgetsPerPage;
+  const currentMachines = machines.slice(startIndex, endIndex);
+
+  const navigateToMachine = (machineId: string) => {
+    console.log(`Navigate to machine ${machineId}`);
+    // Implement navigation logic
+  };
+
+  const getPosition = (index: number) => {
+    const row = Math.floor(index / gridSize.cols);
+    const col = index % gridSize.cols;
+    return {
+      x: col * (gridSize.cellWidth + 16),
+      y: row * (gridSize.cellHeight + 16)
+    };
+  };
 
   return (
-    <div className="h-full bg-gray-100 overflow-auto">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-          <FaCog className="text-blue-600" />
-          Workshop Machines
-        </h1>
-
-        {/* Widget Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
-          {/* Overview spans 2 columns on larger screens */}
-          <div className="md:col-span-2 lg:col-span-1">
-            <MachineOverviewWidget />
-          </div>
-          
-          {/* Performance widget */}
-          <div>
-            <PerformanceWidget />
-          </div>
-          
-          {/* Maintenance widget */}
-          <div>
-            <MaintenanceWidget />
-          </div>
-          
-          {/* Alerts widget */}
-          <div>
-            <AlertsWidget />
-          </div>
-          
-          {/* Individual machine widgets */}
-          {machines.map((machine) => (
-            <div key={machine.id}>
-              <MachineStatusWidget machine={machine} />
+    <div className="h-full flex flex-col bg-gray-900">
+      {/* Header */}
+      <div className="bg-gray-800 p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-white">Machines</h1>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-gray-400 text-sm">Per page:</label>
+              <select
+                value={widgetsPerPage}
+                onChange={(e) => {
+                  setWidgetsPerPage(parseInt(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-gray-700 text-white rounded px-2 py-1 text-sm"
+              >
+                <option value="4">4</option>
+                <option value="6">6</option>
+                <option value="9">9</option>
+                <option value="12">12</option>
+                <option value="16">16</option>
+              </select>
             </div>
-          ))}
+          </div>
         </div>
       </div>
+
+      {/* Grid Container */}
+      <div ref={containerRef} className="flex-1 relative p-4">
+        {currentMachines.map((machine, index) => {
+          const position = getPosition(index);
+          return (
+            <SpecificWidget
+              key={machine.id}
+              type="machine"
+              data={machine}
+              onRemove={() => {}} // No remove on pages
+              onNavigate={() => navigateToMachine(machine.id)}
+              style={{
+                position: 'absolute',
+                left: position.x,
+                top: position.y,
+                width: gridSize.cellWidth,
+                height: gridSize.cellHeight
+              }}
+            />
+          );
+        })}
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-gray-800 rounded-lg px-4 py-2 shadow-lg">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className="text-white disabled:text-gray-500 hover:text-blue-400 transition-colors"
+          >
+            <FaChevronLeft />
+          </button>
+          <span className="text-white text-sm">
+            {currentPage} / {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+            className="text-white disabled:text-gray-500 hover:text-blue-400 transition-colors"
+          >
+            <FaChevronRight />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
