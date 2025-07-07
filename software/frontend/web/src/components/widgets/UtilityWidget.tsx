@@ -15,7 +15,7 @@ const UtilityWidget: React.FC<UtilityWidgetProps> = ({ subType, onRemove, style 
   // Simulate real-time updates
   useEffect(() => {
     const updateValue = () => {
-      const baseValues = {
+      const baseValues: Record<string, number> = {
         cpu: 45,
         ram: 60,
         disk: 75,
@@ -24,7 +24,8 @@ const UtilityWidget: React.FC<UtilityWidgetProps> = ({ subType, onRemove, style 
       };
 
       const variance = 15;
-      const newValue = baseValues[subType] + (Math.random() * variance - variance / 2);
+      const baseValue = baseValues[subType] || 45; // Default to CPU value if invalid
+      const newValue = baseValue + (Math.random() * variance - variance / 2);
       const clampedValue = Math.max(0, Math.min(100, newValue));
       
       setValue(prev => {
@@ -82,6 +83,15 @@ const UtilityWidget: React.FC<UtilityWidgetProps> = ({ subType, onRemove, style 
           unit: '°C',
           color: 'from-red-600 to-red-700',
           bgColor: 'bg-red-600'
+        };
+      default:
+        // Default to CPU if invalid subType
+        return {
+          icon: <FaMicrochip size={24} />,
+          label: 'CPU Usage',
+          unit: '%',
+          color: 'from-cyan-600 to-cyan-700',
+          bgColor: 'bg-cyan-600'
         };
     }
   };

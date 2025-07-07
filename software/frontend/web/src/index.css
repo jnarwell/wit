@@ -3,90 +3,105 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global Styles */
-* {
-  box-sizing: border-box;
+/* Widget menu items */
+.widget-menu-item {
+  @apply w-full text-left px-3 py-2 rounded text-gray-300 hover:bg-gray-700 hover:text-white transition-colors text-sm;
 }
 
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  overflow: hidden; /* Prevent scrolling */
+/* Widget container styles */
+.widget-container {
+  @apply bg-gray-800 rounded-lg shadow-lg overflow-hidden;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
-#root {
-  height: 100%;
-  overflow: hidden;
-}
-
-/* Custom utility classes */
-@layer components {
-  .widget-container {
-    @apply transition-all duration-200;
-  }
-
-  .widget-menu-item {
-    @apply w-full text-left text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded transition-colors text-sm;
-  }
-}
-
-/* Animations */
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-/* Remove any default scrollbars */
-::-webkit-scrollbar {
-  display: none;
-}
-
-* {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* Ensure all containers respect height constraints */
-.h-screen {
-  height: 100vh !important;
-  max-height: 100vh !important;
-}
-
-.h-full {
-  height: 100% !important;
-}
-
-/* Prevent overflow on all flex containers */
-.flex,
-.flex-col,
-.flex-row {
-  min-height: 0;
-  min-width: 0;
-}
-
-/* Widget hover effects */
 .widget-container:hover {
-  z-index: 10;
+  @apply shadow-xl;
 }
 
-/* Status indicator animations */
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+/* Prevent text selection during drag */
+.dragging {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
-/* Voice widget ping animation */
-@keyframes ping {
-  75%, 100% {
-    transform: scale(2);
-    opacity: 0;
-  }
+/* Drag handle styles */
+.drag-handle {
+  cursor: grab;
 }
 
-.animate-ping {
-  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Widget content styles */
+.widget-content {
+  @apply p-4 h-full overflow-auto;
+}
+
+/* Grid overlay for visualization during drag */
+.grid-overlay {
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* Smooth transitions for widgets */
+.widget-transition {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Remove button styles */
+.widget-remove-btn {
+  @apply absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors opacity-0;
+}
+
+.widget-container:hover .widget-remove-btn {
+  @apply opacity-100;
+}
+
+/* Utility widget specific styles */
+.utility-value {
+  @apply text-2xl font-bold;
+}
+
+.utility-label {
+  @apply text-sm text-gray-400;
+}
+
+/* List widget styles */
+.list-item {
+  @apply py-2 px-3 hover:bg-gray-700 rounded cursor-pointer transition-colors;
+}
+
+/* Status indicator styles */
+.status-indicator {
+  @apply inline-block w-2 h-2 rounded-full;
+}
+
+.status-online { @apply bg-green-500; }
+.status-offline { @apply bg-gray-500; }
+.status-busy { @apply bg-yellow-500; }
+.status-error { @apply bg-red-500; }
+
+/* Scrollbar styles for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-600 rounded;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
 }
