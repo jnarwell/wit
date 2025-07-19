@@ -1,17 +1,23 @@
 // src/components/widgets/ListWidget.tsx
-import React, { useState, useMemo } from 'react';
-import { FiArrowRight, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { FiChevronLeft, FiChevronRight, FiArrowRight, FiX } from 'react-icons/fi';
 
 interface ListWidgetProps {
   type: 'projects' | 'machines' | 'sensors';
+  height: number; // Grid units
+  pixelHeight?: number; // Actual pixel height
   onRemove?: () => void;
-  onNavigate?: (page: string) => void;
-  height?: number; // Height in grid units
 }
 
-const ListWidget: React.FC<ListWidgetProps> = ({ type, onRemove, onNavigate, height = 1 }) => {
+const ListWidget: React.FC<ListWidgetProps> = ({ type, height, pixelHeight, onRemove }) => {
   const [currentPage, setCurrentPage] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const itemsContainerRef = useRef<HTMLDivElement>(null);
+  // Start with a reasonable estimate based on grid height
+  const [itemsPerPage, setItemsPerPage] = useState(Math.max(2, height * 3));
+  const [isCalculating, setIsCalculating] = useState(true);
   
+  // Sample data configurations
   const configs = {
     projects: {
       title: 'Projects',
@@ -22,8 +28,10 @@ const ListWidget: React.FC<ListWidgetProps> = ({ type, onRemove, onNavigate, hei
         { id: 'P004', name: 'Research Phase 2', status: 'On Hold' },
         { id: 'P005', name: 'Manufacturing Line', status: 'Active' },
         { id: 'P006', name: 'Quality Control', status: 'Review' },
-        { id: 'P007', name: 'Customer Portal', status: 'Active' },
-        { id: 'P008', name: 'Data Migration', status: 'Planning' }
+        { id: 'P007', name: 'Beta Testing', status: 'In Progress' },
+        { id: 'P008', name: 'Documentation', status: 'Planning' },
+        { id: 'P009', name: 'Integration Tests', status: 'Active' },
+        { id: 'P010', name: 'Deployment Phase', status: 'On Hold' }
       ],
       page: 'projects'
     },
@@ -33,13 +41,13 @@ const ListWidget: React.FC<ListWidgetProps> = ({ type, onRemove, onNavigate, hei
         { id: 'M001', name: '3D Printer #1', status: 'Online' },
         { id: 'M002', name: 'CNC Mill', status: 'Busy' },
         { id: 'M003', name: 'Laser Cutter', status: 'Offline' },
-        { id: 'M004', name: '3D Printer #2', status: 'Online' },
-        { id: 'M005', name: 'CNC Router', status: 'Maintenance' },
-        { id: 'M006', name: 'Plasma Cutter', status: 'Online' },
-        { id: 'M007', name: 'Welding Station', status: 'Online' },
-        { id: 'M008', name: 'Drill Press', status: 'Busy' },
-        { id: 'M009', name: 'Band Saw', status: 'Online' },
-        { id: 'M010', name: 'Lathe', status: 'Offline' },
+        { id: 'M004', name: '3D Printer #2', status: 'Maintenance' },
+        { id: 'M005', name: 'Vinyl Cutter', status: 'Online' },
+        { id: 'M006', name: 'Soldering Station', status: 'Available' },
+        { id: 'M007', name: 'Reflow Oven', status: 'Busy' },
+        { id: 'M008', name: 'Oscilloscope', status: 'Online' },
+        { id: 'M009', name: 'PCB Mill', status: 'Offline' },
+        { id: 'M010', name: 'Injection Molder', status: 'Maintenance' },
         { id: 'M011', name: 'Grinding Machine', status: 'Online' },
         { id: 'M012', name: 'Heat Press', status: 'Online' }
       ],
@@ -65,11 +73,73 @@ const ListWidget: React.FC<ListWidgetProps> = ({ type, onRemove, onNavigate, hei
 
   const config = configs[type];
   
-  // Calculate items per page based on widget height
-  const itemsPerPage = useMemo(() => {
-    // Each grid unit shows exactly 3 items
-    return height * 3;
-  }, [height]);
+  // Calculate items per page based on actual available height
+  useEffect(() => {
+    const calculateItemsPerPage = () => {
+      if (!containerRef.current || !itemsContainerRef.current) return;
+      
+      // Get the actual height of the container
+      const containerHeight = pixelHeight || containerRef.current.offsetHeight;
+      
+      // Calculate used space based on widget size
+      const isCompact = height <= 1;
+      const padding = isCompact ? 24 : 32; // 12px * 2 or 16px * 2
+      const headerHeight = isCompact ? 32 : 40; // Smaller header for compact
+      const footerHeight = isCompact ? 32 : 40; // Smaller footer for compact
+      const itemSpacing = 4; // Space between items (from space-y-1)
+      
+      // Calculate available height for items
+      const availableHeight = containerHeight - padding - headerHeight - footerHeight;
+      
+      // Calculate item height based on actual item sizing
+      // Item has p-2 (8px * 2 = 16px) + text (~20px) + margin-bottom (4px from space-y-1) = ~40px per item
+      const itemHeight = 40; // Height including margin
+      
+      // Calculate how many items can fit
+      // We need to account for the spacing between items
+      let calculatedItems = 1; // At least one item
+      if (availableHeight > itemHeight) {
+        // First item takes itemHeight, each additional item takes itemHeight + spacing
+        calculatedItems = 1 + Math.floor((availableHeight - itemHeight) / (itemHeight + itemSpacing));
+      }
+      
+      // For very small widgets (1x1), ensure we show at least 2 items if possible
+      // This prevents awkward single-item displays
+      if (height === 1 && calculatedItems < 2 && config.items.length >= 2) {
+        calculatedItems = 2;
+      }
+      
+      // Set items per page (minimum 1, maximum all items)
+      const newItemsPerPage = Math.max(1, Math.min(calculatedItems, config.items.length));
+      
+      // Only update if changed to avoid infinite loops
+      if (newItemsPerPage !== itemsPerPage) {
+        setItemsPerPage(newItemsPerPage);
+        // Reset to first page if current page is now out of bounds
+        const newTotalPages = Math.ceil(config.items.length / newItemsPerPage);
+        if (currentPage >= newTotalPages) {
+          setCurrentPage(0);
+        }
+      }
+      setIsCalculating(false);
+    };
+    
+    // Calculate on mount and when dependencies change
+    // Small delay to ensure container is rendered
+    const timeoutId = setTimeout(calculateItemsPerPage, 50);
+    calculateItemsPerPage();
+    
+    // Recalculate on window resize
+    const resizeObserver = new ResizeObserver(calculateItemsPerPage);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    
+    return () => {
+      clearTimeout(timeoutId);
+      resizeObserver.disconnect();
+    };
+  }, [config.items.length, currentPage, itemsPerPage, height, pixelHeight]);
   
   const totalPages = Math.ceil(config.items.length / itemsPerPage);
   const showPagination = totalPages > 1;
@@ -101,28 +171,60 @@ const ListWidget: React.FC<ListWidgetProps> = ({ type, onRemove, onNavigate, hei
   };
 
   return (
-    <div className="h-full flex flex-col p-4 bg-gray-800 text-gray-100">
+    <div ref={containerRef} className={`h-full flex flex-col ${height <= 1 ? 'p-3' : 'p-4'} bg-gray-800 text-gray-100 relative group`}>
       {/* Header */}
       <div 
-        className="flex justify-between items-center mb-3 cursor-pointer hover:text-blue-400 transition-colors"
-        onClick={handleClick}
+        className={`flex justify-between items-center ${height <= 1 ? 'mb-2' : 'mb-3'} flex-shrink-0`}
       >
-        <h3 className="text-lg font-bold">{config.title}</h3>
-        <FiArrowRight className="text-blue-400" />
+        <div 
+          className="flex items-center gap-2 cursor-pointer hover:text-blue-400 transition-colors flex-1"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleClick();
+          }}
+        >
+          <h3 className={`${height <= 1 ? 'text-base' : 'text-lg'} font-bold`}>
+            {config.title} 
+            {!showPagination && config.items.length > currentItems.length && 
+              <span className="text-sm font-normal text-gray-400 ml-2">
+                ({currentItems.length}/{config.items.length})
+              </span>
+            }
+          </h3>
+          <FiArrowRight className="text-blue-400" />
+        </div>
+        {onRemove && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="p-1 text-gray-400 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 ml-2"
+          >
+            <FiX size={height <= 1 ? 16 : 18} />
+          </button>
+        )}
       </div>
       
-      {/* Items List */}
-      <div className="flex-1 space-y-1 overflow-hidden">
-        {currentItems.map(item => (
-          <div key={item.id} className="flex justify-between items-center p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors">
-            <span className="text-sm font-medium truncate">{item.name}</span>
-            <span className={`text-xs ${getStatusColor(item.status)}`}>{item.status}</span>
+      {/* Items List - flex-1 to take all available space */}
+      <div ref={itemsContainerRef} className="flex-1 space-y-1 overflow-hidden min-h-0">
+        {isCalculating ? (
+          <div className="flex items-center justify-center h-full text-gray-500">
+            <span className="text-sm">Loading...</span>
           </div>
-        ))}
+        ) : (
+          currentItems.map(item => (
+            <div key={item.id} className="flex justify-between items-center p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors">
+              <span className="text-sm font-medium truncate flex-1 mr-2">{item.name}</span>
+              <span className={`text-xs ${getStatusColor(item.status)} whitespace-nowrap`}>{item.status}</span>
+            </div>
+          ))
+        )}
       </div>
       
       {/* Footer */}
-      <div className="mt-3 flex items-center justify-between">
+      <div className={`${height <= 1 ? 'mt-2' : 'mt-3'} flex items-center justify-between flex-shrink-0`}>
         {showPagination ? (
           <>
             <button
@@ -131,6 +233,7 @@ const ListWidget: React.FC<ListWidgetProps> = ({ type, onRemove, onNavigate, hei
                 e.stopPropagation();
                 setCurrentPage(Math.max(0, currentPage - 1));
               }}
+              onMouseDown={(e) => e.stopPropagation()}
               disabled={currentPage === 0}
             >
               <FiChevronLeft />
@@ -144,6 +247,7 @@ const ListWidget: React.FC<ListWidgetProps> = ({ type, onRemove, onNavigate, hei
                 e.stopPropagation();
                 setCurrentPage(Math.min(totalPages - 1, currentPage + 1));
               }}
+              onMouseDown={(e) => e.stopPropagation()}
               disabled={currentPage === totalPages - 1}
             >
               <FiChevronRight />
@@ -152,7 +256,11 @@ const ListWidget: React.FC<ListWidgetProps> = ({ type, onRemove, onNavigate, hei
         ) : (
           <span 
             className="text-xs text-blue-400 hover:underline cursor-pointer mx-auto"
-            onClick={handleClick}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClick();
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
           >
             View all {config.items.length} {config.title.toLowerCase()} →
           </span>

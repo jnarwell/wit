@@ -12,10 +12,14 @@
   @apply leading-tight;
 }
 
-/* Widget container styles */
+/* Widget container styles - ensure full height usage */
 .widget-container {
-  @apply bg-gray-800 rounded-lg shadow-lg overflow-hidden relative;
+  @apply bg-gray-800 rounded-lg shadow-lg overflow-hidden relative h-full;
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.widget-container > * {
+  @apply h-full;
 }
 
 .widget-container:hover {
@@ -59,7 +63,7 @@
 
 /* Widget content styles */
 .widget-content {
-  @apply p-4 h-full overflow-auto;
+  @apply h-full overflow-auto;
 }
 
 /* Grid overlay for visualization during drag */
@@ -77,13 +81,9 @@
   transition: all 0.2s ease-in-out;
 }
 
-/* Remove button styles */
+/* Remove old widget remove button styles */
 .widget-remove-btn {
-  @apply absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors opacity-0;
-}
-
-.widget-container:hover .widget-remove-btn {
-  @apply opacity-100;
+  display: none;
 }
 
 /* Utility widget specific styles */
@@ -93,6 +93,14 @@
 
 .utility-label {
   @apply text-sm text-gray-400;
+}
+
+.widget-container.utility-widget {
+  @apply h-full;
+}
+
+.widget-container.utility-widget .widget-content {
+  @apply flex flex-col h-full;
 }
 
 /* List widget styles */
@@ -105,12 +113,17 @@
 }
 
 .list-widget-items {
-  @apply flex-1 overflow-y-auto;
+  @apply flex-1 overflow-y-auto min-h-0;
 }
 
 /* Compact list items for better density */
 .list-widget-item {
   @apply py-1.5 px-2 text-sm;
+}
+
+/* Ensure list widgets handle overflow properly */
+.widget-container .list-widget {
+  @apply h-full overflow-hidden;
 }
 
 /* Status indicator styles */
@@ -139,4 +152,63 @@
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-500;
+}
+
+/* Utility widget specific overrides */
+/* Compact mode for small widgets */
+.utility-widget-compact {
+  @apply text-sm;
+}
+
+.utility-widget-large {
+  @apply text-base;
+}
+
+/* Progress bar animations */
+.utility-progress-bar {
+  @apply transition-all duration-500 ease-out;
+}
+
+/* Trend indicators */
+.utility-trend-up {
+  @apply text-red-400;
+}
+
+.utility-trend-down {
+  @apply text-green-400;
+}
+
+.utility-trend-stable {
+  @apply text-gray-400;
+}
+
+/* Compact mode for small widgets */
+.widget-container.compact .list-header {
+  @apply text-base mb-2;
+}
+
+.widget-container.compact .list-footer {
+  @apply mt-2;
+}
+
+.widget-container.compact .list-item {
+  @apply py-1.5 text-sm;
+}
+
+/* Prevent drag on interactive elements */
+.widget-container button,
+.widget-container a,
+.widget-container input,
+.widget-container select,
+.widget-container textarea,
+.widget-container [role="button"] {
+  pointer-events: auto;
+  position: relative;
+  z-index: 10;
+}
+
+/* Ensure interactive elements are clickable */
+.widget-container.dragging button,
+.widget-container.dragging a {
+  pointer-events: none;
 }

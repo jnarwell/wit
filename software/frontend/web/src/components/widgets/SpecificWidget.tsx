@@ -12,11 +12,10 @@ interface SpecificWidgetProps {
     image?: string;
   };
   onRemove: () => void;
-  onNavigate: () => void;
-  style: React.CSSProperties;
+  onNavigate?: () => void;
 }
 
-const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, onNavigate, style }) => {
+const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, onNavigate }) => {
   // Default data if none provided
   const widgetData = data || {
     id: '001',
@@ -53,8 +52,17 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
   };
 
   return (
-    <div style={style} className="widget-container group">
-      <div className="h-full bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden hover:border-gray-600 transition-all cursor-pointer" onClick={onNavigate}>
+    <div className="widget-container group h-full">
+      <div 
+        className="h-full bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden hover:border-gray-600 transition-all cursor-pointer" 
+        onClick={(e) => {
+          // Don't navigate if clicking on a button
+          const target = e.target as HTMLElement;
+          if (!target.closest('button')) {
+            onNavigate?.();
+          }
+        }}
+      >
         {/* Header */}
         <div className={`bg-gradient-to-r ${getTypeColor()} p-3 relative`}>
           <div className="flex items-center justify-between">
@@ -63,7 +71,11 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
               <span className="font-semibold text-sm capitalize">{type}</span>
             </div>
             <button
-              onClick={(e) => { e.stopPropagation(); onRemove(); }}
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                onRemove(); 
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
               className="opacity-0 group-hover:opacity-100 text-white hover:text-red-300 transition-opacity"
             >
               <FaTimes size={16} />
@@ -82,20 +94,20 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
           {/* Image or Icon */}
           <div className="flex justify-center mb-3">
             {widgetData.image ? (
-              <img src={widgetData.image} alt={widgetData.name} className="w-16 h-16 object-contain" />
+              <img src={widgetData.image} alt={widgetData.name} className="w-24 h-24 object-cover rounded" />
             ) : (
-              <div className="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center">
+              <div className="w-24 h-24 bg-gray-700 rounded flex items-center justify-center">
                 {getIcon()}
               </div>
             )}
           </div>
 
           {/* Metrics */}
-          {widgetData.metrics && widgetData.metrics.length > 0 && (
-            <div className="space-y-1">
-              {widgetData.metrics.slice(0, 2).map((metric, index) => (
-                <div key={index} className="flex justify-between text-sm">
-                  <span className="text-gray-400">{metric.label}:</span>
+          {widgetData.metrics && (
+            <div className="space-y-2">
+              {widgetData.metrics.map((metric, index) => (
+                <div key={index} className="flex justify-between items-center">
+                  <span className="text-gray-400 text-sm">{metric.label}:</span>
                   <span className="text-white font-medium">{metric.value}</span>
                 </div>
               ))}

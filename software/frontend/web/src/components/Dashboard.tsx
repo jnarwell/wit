@@ -1,6 +1,6 @@
 // src/components/Dashboard.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaPlus, FaTimes } from 'react-icons/fa';
+import { FaPlus, FaTimes, FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import SpecificWidget from './widgets/SpecificWidget';
 import ListWidget from './widgets/ListWidget';
 import WITsWidget from './widgets/WITsWidget';
@@ -29,9 +29,15 @@ const Dashboard: React.FC = () => {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [gridSize, setGridSize] = useState<GridSize>({ cellWidth: 0, cellHeight: 0, cols: 5, rows: 2 });
-  const [widgetsPerPage, setWidgetsPerPage] = useState(10);
+  const [gridCols, setGridCols] = useState(3);
+  const [gridRows, setGridRows] = useState(3);
   const [isGridReady, setIsGridReady] = useState(false);
   const [hasLoadedLayout, setHasLoadedLayout] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<{ [key: string]: boolean }>({
+    lists: true,
+    utilities: false,
+    special: false
+  });
   
   // Drag state using refs to avoid stale closures
   const isDraggingRef = useRef(false);
@@ -70,35 +76,17 @@ const Dashboard: React.FC = () => {
       const availableWidth = container.clientWidth - padding;
       const availableHeight = container.clientHeight - padding;
 
-      let cols, rows;
-      if (widgetsPerPage <= 4) {
-        cols = 2;
-        rows = 2;
-      } else if (widgetsPerPage <= 6) {
-        cols = 3;
-        rows = 2;
-      } else if (widgetsPerPage <= 9) {
-        cols = 3;
-        rows = 3;
-      } else if (widgetsPerPage <= 12) {
-        cols = 4;
-        rows = 3;
-      } else {
-        cols = 5;
-        rows = Math.ceil(widgetsPerPage / 5);
-      }
+      const cellWidth = (availableWidth - (gap * (gridCols - 1))) / gridCols;
+      const cellHeight = (availableHeight - (gap * (gridRows - 1))) / gridRows;
 
-      const cellWidth = (availableWidth - (gap * (cols - 1))) / cols;
-      const cellHeight = (availableHeight - (gap * (rows - 1))) / rows;
-
-      setGridSize({ cellWidth, cellHeight, cols, rows });
+      setGridSize({ cellWidth, cellHeight, cols: gridCols, rows: gridRows });
       setIsGridReady(true);
     };
 
     calculateGrid();
     window.addEventListener('resize', calculateGrid);
     return () => window.removeEventListener('resize', calculateGrid);
-  }, [widgetsPerPage]);
+  }, [gridCols, gridRows]);
 
   const setDefaultLayout = () => {
     const defaultWidgets = [
@@ -131,8 +119,12 @@ const Dashboard: React.FC = () => {
       index === self.findIndex((w) => w.id === widget.id)
     );
     const layoutData = {
-      version: 4, // Increment to force migration
-      widgets: uniqueWidgets
+      version: 4,
+      widgets: uniqueWidgets,
+      gridConfig: {
+        cols: gridCols,
+        rows: gridRows
+      }
     };
     localStorage.setItem('dashboardLayout', JSON.stringify(layoutData));
   };
@@ -157,6 +149,12 @@ const Dashboard: React.FC = () => {
           // New format
           layoutVersion = parsed.version;
           widgets = parsed.widgets;
+          
+          // Load grid configuration if available
+          if (parsed.gridConfig) {
+            setGridCols(parsed.gridConfig.cols || 3);
+            setGridRows(parsed.gridConfig.rows || 3);
+          }
         }
         
         const validatedWidgets = widgets.map((widget: Widget) => {
@@ -185,12 +183,23 @@ const Dashboard: React.FC = () => {
     }
   }, [isGridReady, hasLoadedLayout]);
 
-  // Save layout when widgets change
+  // Save layout when widgets or grid changes
   useEffect(() => {
     if (hasLoadedLayout && widgets.length > 0) {
-      saveLayout(widgets);
+      const uniqueWidgets = widgets.filter((widget, index, self) =>
+        index === self.findIndex((w) => w.id === widget.id)
+      );
+      const layoutData = {
+        version: 4,
+        widgets: uniqueWidgets,
+        gridConfig: {
+          cols: gridCols,
+          rows: gridRows
+        }
+      };
+      localStorage.setItem('dashboardLayout', JSON.stringify(layoutData));
     }
-  }, [widgets, hasLoadedLayout]);
+  }, [widgets, hasLoadedLayout, gridCols, gridRows]);
 
   const isPositionOccupied = (x: number, y: number, width: number, height: number, excludeId?: string): boolean => {
     return widgets.some(widget => {
@@ -230,10 +239,15 @@ const Dashboard: React.FC = () => {
     const newWidget: Widget = {
       id: `${type}-${Date.now()}`,
       type,
-      subType,
       position,
-      size
+      size,
+      data: {} // Initialize with empty data
     };
+
+    // Ensure subType is set for utility widgets
+    if (type === 'utility' && subType) {
+      newWidget.subType = subType;
+    }
 
     setWidgets([...widgets, newWidget]);
     setShowAddMenu(false);
@@ -241,6 +255,13 @@ const Dashboard: React.FC = () => {
 
   const removeWidget = (id: string) => {
     setWidgets(widgets.filter(w => w.id !== id));
+  };
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
   };
 
   // Check if cursor is near edge of widget
@@ -276,23 +297,37 @@ const Dashboard: React.FC = () => {
       'e': 'ew-resize',
       'w': 'ew-resize',
       'ne': 'nesw-resize',
-      'nw': 'nwse-resize',
       'se': 'nwse-resize',
+      'nw': 'nwse-resize',
       'sw': 'nesw-resize'
     };
     return cursorMap[direction];
   };
 
-  // Drag handlers
-  const handleMouseDown = useCallback((e: React.MouseEvent, widget: Widget) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleMouseMove = useCallback((e: React.MouseEvent, widget: Widget) => {
+    if (isDraggingRef.current || isResizingRef.current) return;
     
+    const element = e.currentTarget as HTMLElement;
+    const direction = getResizeDirection(e, element);
+    element.style.cursor = getCursorStyle(direction);
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent, widget: Widget) => {
+    // Check if the click is on an interactive element
+    const target = e.target as HTMLElement;
+    const isInteractive = target.closest('button, a, input, select, textarea, [role="button"]');
+    
+    // If clicking on an interactive element, don't start drag/resize
+    if (isInteractive) {
+      return;
+    }
+    
+    e.preventDefault();
     const element = e.currentTarget as HTMLElement;
     const direction = getResizeDirection(e, element);
     
     if (direction) {
-      // Start resize
+      // Start resizing
       isResizingRef.current = true;
       resizedWidgetRef.current = widget;
       resizeDirectionRef.current = direction;
@@ -304,35 +339,34 @@ const Dashboard: React.FC = () => {
         posX: widget.position.x,
         posY: widget.position.y
       };
-      setResizePreview({ 
-        width: widget.size.width, 
-        height: widget.size.height,
-        x: widget.position.x,
-        y: widget.position.y
-      });
+      element.style.cursor = getCursorStyle(direction);
     } else {
-      // Start drag
-      if (!containerRef.current) return;
-      
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const containerPadding = 16;
-      const widgetElement = element.closest('.widget-container') as HTMLElement;
-      if (!widgetElement) return;
-      
-      const widgetRect = widgetElement.getBoundingClientRect();
-      
-      isDraggingRef.current = true;
-      draggedWidgetRef.current = widget;
-      dragOffsetRef.current = {
-        x: e.clientX - widgetRect.left,
-        y: e.clientY - widgetRect.top
-      };
-      
-      setDragPosition({
-        x: widgetRect.left - containerRect.left - containerPadding,
-        y: widgetRect.top - containerRect.top - containerPadding
-      });
+      // Start dragging
+      handleDragStart(e, widget);
     }
+  }, []);
+
+  const handleDragStart = useCallback((e: React.MouseEvent, widget: Widget) => {
+    if (!containerRef.current) return;
+    
+    isDraggingRef.current = true;
+    draggedWidgetRef.current = widget;
+    
+    // Calculate offset from cursor to widget top-left
+    const widgetElement = e.currentTarget as HTMLElement;
+    const widgetRect = widgetElement.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const containerPadding = 16; // p-4 = 16px
+    
+    dragOffsetRef.current = {
+      x: e.clientX - widgetRect.left,
+      y: e.clientY - widgetRect.top
+    };
+    
+    setDragPosition({
+      x: widgetRect.left - containerRect.left - containerPadding,
+      y: widgetRect.top - containerRect.top - containerPadding
+    });
   }, []);
 
   const handleDragMove = useCallback((e: MouseEvent) => {
@@ -479,93 +513,161 @@ const Dashboard: React.FC = () => {
     setResizePreview(null);
   }, [resizePreview]);
 
-  // Add global mouse event listeners
+  // Global mouse event handlers
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDraggingRef.current) {
-        handleDragMove(e);
-      } else if (isResizingRef.current) {
-        handleResizeMove(e);
-      }
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      handleDragMove(e);
+      handleResizeMove(e);
     };
     
-    const handleMouseUp = () => {
+    const handleGlobalMouseUp = () => {
       if (isDraggingRef.current) {
         handleDragEnd();
-      } else if (isResizingRef.current) {
+      }
+      if (isResizingRef.current) {
         handleResizeEnd();
       }
     };
     
-    if (isDraggingRef.current || isResizingRef.current) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.userSelect = 'none';
-      
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-        document.body.style.userSelect = '';
-      };
-    }
-  }, [handleDragMove, handleDragEnd, handleResizeMove, handleResizeEnd, dragPosition, resizePreview]);
-
-  // Handle cursor style on mouse move
-  const handleMouseMove = useCallback((e: React.MouseEvent, widget: Widget) => {
-    if (isDraggingRef.current || isResizingRef.current) return;
+    document.addEventListener('mousemove', handleGlobalMouseMove);
+    document.addEventListener('mouseup', handleGlobalMouseUp);
     
-    const element = e.currentTarget as HTMLElement;
-    const direction = getResizeDirection(e, element);
-    element.style.cursor = getCursorStyle(direction);
-  }, []);
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [handleDragMove, handleDragEnd, handleResizeMove, handleResizeEnd]);
 
   return (
-    <div className="h-full flex bg-gray-800">
+    <div className="h-full flex">
       {/* Sidebar */}
-      <div className="w-64 bg-gray-900 p-4 border-r border-gray-700">
-        <button
-          onClick={() => setShowAddMenu(!showAddMenu)}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors"
-        >
-          <FaPlus /> Add Widget
-        </button>
-        
-        {showAddMenu && (
-          <div className="mt-4 bg-gray-800 rounded-lg p-4">
-            <h3 className="text-white font-semibold mb-3">Select Widget Type</h3>
-            <div className="space-y-2">
-              <h4 className="text-gray-400 text-sm font-medium">Lists</h4>
-              <button onClick={() => addWidget('projects-list')} className="widget-menu-item">Projects List</button>
-              <button onClick={() => addWidget('machines-list')} className="widget-menu-item">Machines List</button>
-              <button onClick={() => addWidget('sensors-list')} className="widget-menu-item">Sensors List</button>
+      <div className="bg-gray-800 w-64 flex flex-col h-full">
+        <div className="p-4 flex-1 flex flex-col overflow-hidden">
+          <button
+            onClick={() => setShowAddMenu(!showAddMenu)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors mb-4 flex-shrink-0"
+          >
+            <FaPlus />
+            Add Widget
+          </button>
+
+          {showAddMenu && (
+            <div className="flex-1 bg-gray-700 rounded-lg p-4 overflow-y-auto mb-4">
+              <div className="space-y-2">
+              {/* Lists Category */}
+              <div>
+                <button
+                  onClick={() => toggleCategory('lists')}
+                  className="w-full flex items-center justify-between text-gray-300 hover:text-white transition-colors p-2 rounded hover:bg-gray-600"
+                >
+                  <span className="font-medium">Lists</span>
+                  {expandedCategories.lists ? <FaChevronDown size={12} /> : <FaChevronRight size={12} />}
+                </button>
+                {expandedCategories.lists && (
+                  <div className="ml-4 mt-1 space-y-1">
+                    <button onClick={() => addWidget('projects-list')} className="widget-menu-item">Projects List</button>
+                    <button onClick={() => addWidget('machines-list')} className="widget-menu-item">Machines List</button>
+                    <button onClick={() => addWidget('sensors-list')} className="widget-menu-item">Sensors List</button>
+                  </div>
+                )}
+              </div>
               
-              <h4 className="text-gray-400 text-sm font-medium mt-4">Utilities</h4>
-              <button onClick={() => addWidget('utility', 'cpu')} className="widget-menu-item">CPU Usage</button>
-              <button onClick={() => addWidget('utility', 'ram')} className="widget-menu-item">Memory</button>
-              <button onClick={() => addWidget('utility', 'disk')} className="widget-menu-item">Disk Space</button>
-              <button onClick={() => addWidget('utility', 'network')} className="widget-menu-item">Network</button>
-              <button onClick={() => addWidget('utility', 'temp')} className="widget-menu-item">Temperature</button>
+              {/* Utilities Category */}
+              <div>
+                <button
+                  onClick={() => toggleCategory('utilities')}
+                  className="w-full flex items-center justify-between text-gray-300 hover:text-white transition-colors p-2 rounded hover:bg-gray-600"
+                >
+                  <span className="font-medium">Utilities</span>
+                  {expandedCategories.utilities ? <FaChevronDown size={12} /> : <FaChevronRight size={12} />}
+                </button>
+                {expandedCategories.utilities && (
+                  <div className="ml-4 mt-1 space-y-1">
+                    <button onClick={() => addWidget('utility', 'cpu')} className="widget-menu-item">CPU Usage</button>
+                    <button onClick={() => addWidget('utility', 'ram')} className="widget-menu-item">Memory</button>
+                    <button onClick={() => addWidget('utility', 'disk')} className="widget-menu-item">Disk Space</button>
+                    <button onClick={() => addWidget('utility', 'network')} className="widget-menu-item">Network</button>
+                    <button onClick={() => addWidget('utility', 'temp')} className="widget-menu-item">Temperature</button>
+                  </div>
+                )}
+              </div>
               
-              <h4 className="text-gray-400 text-sm font-medium mt-4">Special</h4>
-              <button onClick={() => addWidget('wits')} className="widget-menu-item">WITs Assistant</button>
+              {/* Special Category */}
+              <div>
+                <button
+                  onClick={() => toggleCategory('special')}
+                  className="w-full flex items-center justify-between text-gray-300 hover:text-white transition-colors p-2 rounded hover:bg-gray-600"
+                >
+                  <span className="font-medium">Special</span>
+                  {expandedCategories.special ? <FaChevronDown size={12} /> : <FaChevronRight size={12} />}
+                </button>
+                {expandedCategories.special && (
+                  <div className="ml-4 mt-1 space-y-1">
+                    <button onClick={() => addWidget('wits')} className="widget-menu-item">WITs Assistant</button>
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="mt-4 pt-4 border-t border-gray-700">
-              <p className="text-gray-400 text-xs mb-2">
+              <p className="text-gray-400 text-xs">
                 Click & hold to move. Drag edges to resize.
               </p>
-              <label className="text-gray-400 text-sm">Widgets per page</label>
-              <input
-                type="number"
-                min="4"
-                max="20"
-                value={widgetsPerPage}
-                onChange={(e) => setWidgetsPerPage(parseInt(e.target.value) || 10)}
-                className="w-full mt-1 bg-gray-700 text-white rounded px-3 py-1"
-              />
             </div>
           </div>
         )}
+
+        {/* Grid Control - Always visible at bottom */}
+        <div className="bg-gray-700 rounded-lg p-4 flex-shrink-0">
+          <h4 className="text-gray-300 text-sm font-medium mb-3">Grid Size</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-gray-400 text-xs block mb-1">Columns</label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={gridCols}
+                onChange={(e) => setGridCols(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
+                className="w-full bg-gray-600 text-white rounded px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs block mb-1">Rows</label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={gridRows}
+                onChange={(e) => setGridRows(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
+                className="w-full bg-gray-600 text-white rounded px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="text-center mb-2">
+              <span className="text-gray-400 text-xs">
+                {gridCols} × {gridRows} Grid
+              </span>
+            </div>
+            {/* Grid Preview */}
+            <div className="flex justify-center">
+              <div 
+                className="grid gap-0.5 p-2 bg-gray-800 rounded"
+                style={{
+                  gridTemplateColumns: `repeat(${Math.min(gridCols, 10)}, 1fr)`,
+                  gridTemplateRows: `repeat(${Math.min(gridRows, 10)}, 1fr)`,
+                  width: `${Math.min(gridCols, 10) * 12 + 16}px`,
+                  height: `${Math.min(gridRows, 10) * 12 + 16}px`
+                }}
+              >
+                {Array.from({ length: Math.min(gridCols * gridRows, 100) }, (_, i) => (
+                  <div key={i} className="bg-gray-600 rounded-sm" style={{ width: '10px', height: '10px' }} />
+                ))}
+            </div>
+          </div>
+        </div>
+        </div>
       </div>
 
       {/* Widget Grid Container */}
@@ -609,83 +711,67 @@ const Dashboard: React.FC = () => {
             <div
               key={widget.id}
               style={style}
-              className={`widget-container group relative ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''}`}
+              className={`widget-container group relative ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''} h-full`}
               onMouseDown={(e) => handleMouseDown(e, widget)}
               onMouseMove={(e) => handleMouseMove(e, widget)}
             >
-              {/* Title Bar */}
-              <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-2 py-1 bg-gray-900 bg-opacity-50 rounded-t-lg">
-                <span className="text-xs text-gray-400 select-none truncate flex-1">
-                  {widget.type === 'wits' ? 'WITs Assistant' : 
-                   widget.type.charAt(0).toUpperCase() + widget.type.slice(1).replace('-', ' ')}
-                  {size.width > 1 || size.height > 1 ? ` (${size.width}x${size.height})` : ''}
-                </span>
-                <button
-                  className="text-gray-400 hover:text-red-400 p-0.5 transition-colors opacity-0 group-hover:opacity-100"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeWidget(widget.id);
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  <FaTimes className="text-xs" />
-                </button>
-              </div>
-              
-              {/* Widget Content */}
-              <div className="pt-6 h-full">
-                {widget.type === 'project' && (
-                  <SpecificWidget 
-                    type="project" 
-                    data={widget.data} 
-                    {...commonProps}
-                  />
-                )}
-                {widget.type === 'machine' && (
-                  <SpecificWidget 
-                    type="machine" 
-                    data={widget.data} 
-                    {...commonProps}
-                  />
-                )}
-                {widget.type === 'sensor' && (
-                  <SpecificWidget 
-                    type="sensor" 
-                    data={widget.data} 
-                    {...commonProps}
-                  />
-                )}
-                {widget.type === 'projects-list' && (
-                  <ListWidget 
-                    type="projects" 
-                    height={size.height}
-                    {...commonProps}
-                  />
-                )}
-                {widget.type === 'machines-list' && (
-                  <ListWidget 
-                    type="machines" 
-                    height={size.height}
-                    {...commonProps}
-                  />
-                )}
-                {widget.type === 'sensors-list' && (
-                  <ListWidget 
-                    type="sensors" 
-                    height={size.height}
-                    {...commonProps}
-                  />
-                )}
-                {widget.type === 'wits' && (
-                  <WITsWidget {...commonProps} />
-                )}
-                {widget.type === 'utility' && widget.subType && (
-                  <UtilityWidget 
-                    type={widget.subType as any} 
-                    {...commonProps}
-                  />
-                )}
-              </div>
+              {/* Direct widget content - no wrapper, no title bar */}
+              {widget.type === 'project' && (
+                <SpecificWidget 
+                  type="project" 
+                  data={widget.data} 
+                  {...commonProps}
+                />
+              )}
+              {widget.type === 'machine' && (
+                <SpecificWidget 
+                  type="machine" 
+                  data={widget.data} 
+                  {...commonProps}
+                />
+              )}
+              {widget.type === 'sensor' && (
+                <SpecificWidget 
+                  type="sensor" 
+                  data={widget.data} 
+                  {...commonProps}
+                />
+              )}
+              {widget.type === 'projects-list' && (
+                <ListWidget 
+                  type="projects" 
+                  height={size.height}
+                  pixelHeight={size.height * gridSize.cellHeight + (size.height - 1) * 16}
+                  {...commonProps}
+                />
+              )}
+              {widget.type === 'machines-list' && (
+                <ListWidget 
+                  type="machines" 
+                  height={size.height}
+                  pixelHeight={size.height * gridSize.cellHeight + (size.height - 1) * 16}
+                  {...commonProps}
+                />
+              )}
+              {widget.type === 'sensors-list' && (
+                <ListWidget 
+                  type="sensors" 
+                  height={size.height}
+                  pixelHeight={size.height * gridSize.cellHeight + (size.height - 1) * 16}
+                  {...commonProps}
+                />
+              )}
+              {widget.type === 'wits' && (
+                <WITsWidget {...commonProps} />
+              )}
+              {widget.type === 'utility' && widget.subType && (
+                <UtilityWidget 
+                  type={widget.subType as 'cpu' | 'ram' | 'disk' | 'network' | 'temp'} 
+                  width={size.width}
+                  height={size.height}
+                  {...commonProps}
+                />
+              )}
             </div>
           );
         })}

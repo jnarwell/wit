@@ -3,12 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { FaTimes, FaMicrochip, FaMemory, FaHdd, FaNetworkWired, FaThermometerHalf } from 'react-icons/fa';
 
 interface UtilityWidgetProps {
-  subType: 'cpu' | 'ram' | 'disk' | 'network' | 'temp';
+  type: 'cpu' | 'ram' | 'disk' | 'network' | 'temp';
   onRemove: () => void;
-  style: React.CSSProperties;
+  width?: number; // Grid units
+  height?: number; // Grid units
 }
 
-const UtilityWidget: React.FC<UtilityWidgetProps> = ({ subType, onRemove, style }) => {
+const UtilityWidget: React.FC<UtilityWidgetProps> = ({ type, onRemove, width = 1, height = 1 }) => {
   const [value, setValue] = useState(0);
   const [trend, setTrend] = useState<'up' | 'down' | 'stable'>('stable');
 
@@ -24,7 +25,7 @@ const UtilityWidget: React.FC<UtilityWidgetProps> = ({ subType, onRemove, style 
       };
 
       const variance = 15;
-      const baseValue = baseValues[subType] || 45; // Default to CPU value if invalid
+      const baseValue = baseValues[type] || 45;
       const newValue = baseValue + (Math.random() * variance - variance / 2);
       const clampedValue = Math.max(0, Math.min(100, newValue));
       
@@ -40,13 +41,13 @@ const UtilityWidget: React.FC<UtilityWidgetProps> = ({ subType, onRemove, style 
     updateValue();
     const interval = setInterval(updateValue, 3000);
     return () => clearInterval(interval);
-  }, [subType]);
+  }, [type]);
 
   const getConfig = () => {
-    switch (subType) {
+    switch (type) {
       case 'cpu':
         return {
-          icon: <FaMicrochip size={24} />,
+          icon: FaMicrochip,
           label: 'CPU Usage',
           unit: '%',
           color: 'from-cyan-600 to-cyan-700',
@@ -54,7 +55,7 @@ const UtilityWidget: React.FC<UtilityWidgetProps> = ({ subType, onRemove, style 
         };
       case 'ram':
         return {
-          icon: <FaMemory size={24} />,
+          icon: FaMemory,
           label: 'RAM Usage',
           unit: '%',
           color: 'from-pink-600 to-pink-700',
@@ -62,7 +63,7 @@ const UtilityWidget: React.FC<UtilityWidgetProps> = ({ subType, onRemove, style 
         };
       case 'disk':
         return {
-          icon: <FaHdd size={24} />,
+          icon: FaHdd,
           label: 'Disk Space',
           unit: '%',
           color: 'from-amber-600 to-amber-700',
@@ -70,7 +71,7 @@ const UtilityWidget: React.FC<UtilityWidgetProps> = ({ subType, onRemove, style 
         };
       case 'network':
         return {
-          icon: <FaNetworkWired size={24} />,
+          icon: FaNetworkWired,
           label: 'Network',
           unit: 'Mbps',
           color: 'from-green-600 to-green-700',
@@ -78,29 +79,33 @@ const UtilityWidget: React.FC<UtilityWidgetProps> = ({ subType, onRemove, style 
         };
       case 'temp':
         return {
-          icon: <FaThermometerHalf size={24} />,
+          icon: FaThermometerHalf,
           label: 'Temperature',
           unit: '°C',
           color: 'from-red-600 to-red-700',
           bgColor: 'bg-red-600'
         };
       default:
-        // Default to CPU if invalid subType
         return {
-          icon: <FaMicrochip size={24} />,
-          label: 'CPU Usage',
+          icon: FaMicrochip,
+          label: 'Unknown',
           unit: '%',
-          color: 'from-cyan-600 to-cyan-700',
-          bgColor: 'bg-cyan-600'
+          color: 'from-gray-600 to-gray-700',
+          bgColor: 'bg-gray-600'
         };
     }
   };
 
   const config = getConfig();
-  const displayValue = subType === 'network' ? value.toFixed(0) : subType === 'temp' ? (value * 0.8 + 20).toFixed(1) : value.toFixed(0);
+  const displayValue = type === 'network' ? value.toFixed(0) : type === 'temp' ? (value * 0.8 + 20).toFixed(1) : value.toFixed(0);
+  
+  // Determine if widget is compact
+  const isCompact = width <= 1 && height <= 1;
+  const isMedium = width === 2 || height === 2;
+  const isLarge = width >= 3 || height >= 3;
 
   const getStatusColor = () => {
-    if (subType === 'temp') {
+    if (type === 'temp') {
       const temp = parseFloat(displayValue);
       if (temp > 80) return 'text-red-400';
       if (temp > 70) return 'text-yellow-400';
@@ -120,59 +125,104 @@ const UtilityWidget: React.FC<UtilityWidgetProps> = ({ subType, onRemove, style 
     }
   };
 
+  // Dynamic sizing based on widget dimensions
+  const iconSize = isCompact ? 20 : isMedium ? 24 : 32;
+  const headerPadding = isCompact ? 'p-2' : 'p-3';
+  const contentPadding = isCompact ? 'p-3' : isMedium ? 'p-4' : 'p-5';
+  const labelSize = isCompact ? 'text-xs' : 'text-sm';
+  const valueSize = isCompact ? 'text-2xl' : isMedium ? 'text-3xl' : 'text-4xl';
+  const unitSize = isCompact ? 'text-xs' : 'text-sm';
+  const progressHeight = isCompact ? 'h-1.5' : 'h-2';
+  const additionalInfoSize = 'text-xs';
+  const Icon = config.icon;
+
   return (
-    <div style={style} className="widget-container group">
-      <div className="h-full bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden hover:border-gray-600 transition-all">
+    <div className="widget-container group h-full">{/* Removed style prop */}
+      <div className="h-full bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden hover:border-gray-600 transition-all flex flex-col">
         {/* Header */}
-        <div className={`bg-gradient-to-r ${config.color} p-3 relative`}>
+        <div className={`bg-gradient-to-r ${config.color} ${headerPadding} relative flex-shrink-0`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-white">
-              {config.icon}
+              <Icon size={iconSize} />
+              {!isCompact && <span className={`font-medium ${labelSize}`}>{config.label}</span>}
             </div>
             <button
-              onClick={onRemove}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
               className="opacity-0 group-hover:opacity-100 text-white hover:text-red-300 transition-opacity"
             >
-              <FaTimes size={16} />
+              <FaTimes size={isCompact ? 14 : 16} />
             </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-4">
-          {/* Label */}
-          <h3 className="text-gray-400 text-sm mb-2">{config.label}</h3>
-
+        <div className={`${contentPadding} flex-1 flex flex-col justify-between`}>
+          {/* Label (for compact mode since it's not in header) */}
+          {isCompact && <h3 className={`text-gray-400 ${labelSize} mb-2`}>{config.label}</h3>}
+          
           {/* Value Display */}
           <div className="flex items-baseline justify-between mb-3">
             <div className="flex items-baseline gap-1">
-              <span className={`text-3xl font-bold ${getStatusColor()}`}>
+              <span className={`${valueSize} font-bold ${getStatusColor()}`}>
                 {displayValue}
               </span>
-              <span className="text-gray-400 text-sm">{config.unit}</span>
+              <span className={`text-gray-400 ${unitSize}`}>{config.unit}</span>
             </div>
-            <span className={`text-lg ${trend === 'up' ? 'text-red-400' : trend === 'down' ? 'text-green-400' : 'text-gray-400'}`}>
-              {getTrendIcon()}
-            </span>
+            {!isCompact && (
+              <span className={`text-lg ${trend === 'up' ? 'text-red-400' : trend === 'down' ? 'text-green-400' : 'text-gray-400'}`}>
+                {getTrendIcon()}
+              </span>
+            )}
           </div>
 
           {/* Progress Bar */}
-          <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+          <div className={`w-full bg-gray-700 rounded-full ${progressHeight} overflow-hidden`}>
             <div 
               className={`h-full ${config.bgColor} transition-all duration-500 ease-out`}
-              style={{ width: `${subType === 'network' ? Math.min(value, 100) : value}%` }}
+              style={{ width: `${type === 'network' ? Math.min(value, 100) : value}%` }}
             />
           </div>
 
           {/* Additional Info */}
-          <div className="mt-2 flex justify-between text-xs text-gray-500">
-            <span>Min: 0</span>
-            <span>Max: {subType === 'network' ? '100' : subType === 'temp' ? '100°C' : '100%'}</span>
-          </div>
+          {!isCompact && (
+            <div className={`mt-2 flex justify-between ${additionalInfoSize} text-gray-500`}>
+              <span>Min: 0</span>
+              <span>Max: {type === 'network' ? '100' : type === 'temp' ? '100°C' : '100%'}</span>
+            </div>
+          )}
+
+          {/* Extra stats for large widgets */}
+          {isLarge && (
+            <div className="mt-4 pt-4 border-t border-gray-700">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-gray-500">Average:</span>
+                  <span className="text-gray-300 ml-1">{(baseValues[type] || 50).toFixed(0)}{config.unit}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Peak:</span>
+                  <span className="text-gray-300 ml-1">{Math.min(100, (baseValues[type] || 50) + 15).toFixed(0)}{config.unit}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
+};
+
+// Helper to get base values - moved inside component to avoid reference error
+const baseValues: Record<string, number> = {
+  cpu: 45,
+  ram: 60,
+  disk: 75,
+  network: 30,
+  temp: 65
 };
 
 export default UtilityWidget;
