@@ -75,21 +75,24 @@ const MachinesPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [gridSize, setGridSize] = useState({ cellWidth: 0, cellHeight: 0 });
   const [filterStatus, setFilterStatus] = useState<'all' | 'green' | 'yellow' | 'red'>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'status' | 'date'>('name');
-  
-  // Grid configuration
-  const [gridCols, setGridCols] = useState(4);
+  const [sortBy, setSortBy] = useState<'name' | 'status' | 'date'>('date');
+  const [gridCols, setGridCols] = useState(3);
   const [gridRows, setGridRows] = useState(3);
-  const [gridColsInput, setGridColsInput] = useState('4');
-  const [gridRowsInput, setGridRowsInput] = useState('3');
+  const [newMachine, setNewMachine] = useState({
+    type: '3d-printer',
+    name: '',
+    connectionType: 'usb' as 'usb' | 'network' | 'serial' | 'bluetooth',
+    connectionDetails: '',
+    manufacturer: '',
+    model: '',
+    notes: ''
+  });
 
   // Drag state
   const isDraggingRef = useRef(false);
   const draggedMachineRef = useRef<Machine | null>(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
-  const hasDraggedRef = useRef(false);
-  const preventNavigationRef = useRef(false);
   
   // Resize state
   const isResizingRef = useRef(false);
@@ -107,53 +110,40 @@ const MachinesPage: React.FC = () => {
     width: number; 
     height: number;
     x?: number;
-    y?: number;
+    y?: number 
   } | null>(null);
 
-  // Add machine form state
-  const [newMachine, setNewMachine] = useState({
-    type: '3d-printer',
-    name: '',
-    connectionType: 'usb' as 'usb' | 'network' | 'serial' | 'bluetooth',
-    connectionDetails: '',
-    manufacturer: '',
-    model: '',
-    notes: ''
-  });
+  // Track if an interaction happened
+  const interactionStartPosRef = useRef({ x: 0, y: 0 });
+  const [canNavigate, setCanNavigate] = useState(true);
 
-  // Load machines from localStorage on mount
+  // Load saved machines on mount
   useEffect(() => {
-    const savedMachines = localStorage.getItem('wit-machines');
-    if (savedMachines) {
+    const saved = localStorage.getItem('wit-machines');
+    if (saved) {
       try {
-        const parsed = JSON.parse(savedMachines);
-        // Ensure all machines have position and size
-        const machinesWithLayout = parsed.map((m: Machine) => ({
-          ...m,
-          position: m.position || { x: 0, y: 0 },
-          size: m.size || { width: 1, height: 1 }
-        }));
-        setMachines(machinesWithLayout);
-      } catch (e) {
-        console.error('Failed to load machines:', e);
+        const parsedMachines = JSON.parse(saved);
+        setMachines(parsedMachines);
+      } catch (error) {
+        console.error('Failed to parse saved machines:', error);
+        localStorage.removeItem('wit-machines');
       }
     }
   }, []);
 
   // Save machines to localStorage whenever they change
   useEffect(() => {
-    if (machines.length > 0 || localStorage.getItem('wit-machines')) {
-      localStorage.setItem('wit-machines', JSON.stringify(machines));
-    }
+    // Always save the current state, even if empty
+    localStorage.setItem('wit-machines', JSON.stringify(machines));
   }, [machines]);
 
-  // Update form defaults when machine type changes
+  // Update machine details when type changes
   useEffect(() => {
     const typeConfig = MACHINE_TYPES[newMachine.type];
     if (typeConfig) {
       setNewMachine(prev => ({
         ...prev,
-        name: typeConfig.defaultName, // Always use default name
+        name: typeConfig.defaultName,
         connectionType: typeConfig.defaultConnection,
         manufacturer: prev.manufacturer || typeConfig.manufacturers[0]
       }));
@@ -186,7 +176,7 @@ const MachinesPage: React.FC = () => {
     return () => window.removeEventListener('resize', calculateGrid);
   }, [gridCols, gridRows]);
 
-  // Filter and sort machines (ignore position for display order)
+  // Filter and sort machines
   const filteredAndSortedMachines = React.useMemo(() => {
     let filtered = machines;
     
@@ -200,7 +190,7 @@ const MachinesPage: React.FC = () => {
       } else if (sortBy === 'status') {
         const statusOrder = { 'red': 0, 'yellow': 1, 'green': 2 };
         return statusOrder[a.status] - statusOrder[b.status];
-      } else { // date
+      } else {
         return new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime();
       }
     });
@@ -213,7 +203,302 @@ const MachinesPage: React.FC = () => {
   const endIndex = startIndex + itemsPerPage;
   const currentMachines = filteredAndSortedMachines.slice(startIndex, endIndex);
 
-  // Position and collision detection
+  // Check if cursor is near edge of widget
+  const getResizeDirection = (e: React.MouseEvent, element: HTMLElement): ResizeDirection | null => {
+    const rect = element.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const edgeSize = 10;
+    
+    const nearTop = y < edgeSize;
+    const nearBottom = y > rect.height - edgeSize;
+    const nearLeft = x < edgeSize;
+    const nearRight = x > rect.width - edgeSize;
+    
+    if (nearTop && nearLeft) return 'nw';
+    if (nearTop && nearRight) return 'ne';
+    if (nearBottom && nearLeft) return 'sw';
+    if (nearBottom && nearRight) return 'se';
+    if (nearTop) return 'n';
+    if (nearBottom) return 's';
+    if (nearLeft) return 'w';
+    if (nearRight) return 'e';
+    
+    return null;
+  };
+
+  const getCursorStyle = (direction: ResizeDirection | null): string => {
+    if (!direction) return 'move';
+    const cursorMap: Record<ResizeDirection, string> = {
+      'n': 'ns-resize',
+      's': 'ns-resize',
+      'e': 'ew-resize',
+      'w': 'ew-resize',
+      'ne': 'nesw-resize',
+      'se': 'nwse-resize',
+      'nw': 'nwse-resize',
+      'sw': 'nesw-resize'
+    };
+    return cursorMap[direction];
+  };
+
+  const handleMouseMove = useCallback((e: React.MouseEvent, machine: Machine) => {
+    if (isDraggingRef.current || isResizingRef.current) return;
+    
+    const element = e.currentTarget as HTMLElement;
+    const direction = getResizeDirection(e, element);
+    element.style.cursor = getCursorStyle(direction);
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent, machine: Machine) => {
+    // Check if clicking on interactive element
+    const target = e.target as HTMLElement;
+    const isInteractive = target.closest('button, a, input, select, textarea, [role="button"]');
+    
+    if (isInteractive) {
+      return;
+    }
+    
+    e.preventDefault();
+    const element = e.currentTarget as HTMLElement;
+    const direction = getResizeDirection(e, element);
+    
+    // Store initial position to detect movement
+    interactionStartPosRef.current = { x: e.clientX, y: e.clientY };
+    setCanNavigate(true);
+    
+    if (direction) {
+      // Start resizing
+      isResizingRef.current = true;
+      resizedMachineRef.current = machine;
+      resizeDirectionRef.current = direction;
+      resizeStartRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        width: machine.size?.width || 1,
+        height: machine.size?.height || 1,
+        posX: machine.position?.x || 0,
+        posY: machine.position?.y || 0
+      };
+      element.style.cursor = getCursorStyle(direction);
+    } else {
+      // Start dragging
+      handleDragStart(e, machine);
+    }
+  }, []);
+
+  const handleDragStart = useCallback((e: React.MouseEvent, machine: Machine) => {
+    if (!containerRef.current) return;
+    
+    isDraggingRef.current = true;
+    draggedMachineRef.current = machine;
+    
+    const widgetElement = e.currentTarget as HTMLElement;
+    const widgetRect = widgetElement.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const containerPadding = 32;
+    
+    dragOffsetRef.current = {
+      x: e.clientX - widgetRect.left,
+      y: e.clientY - widgetRect.top
+    };
+    
+    setDragPosition({
+      x: widgetRect.left - containerRect.left - containerPadding,
+      y: widgetRect.top - containerRect.top - containerPadding
+    });
+  }, []);
+
+  const handleDragMove = useCallback((e: MouseEvent) => {
+    if (!isDraggingRef.current || !draggedMachineRef.current || !containerRef.current) return;
+    
+    // Check if we've moved enough to disable navigation
+    const deltaX = Math.abs(e.clientX - interactionStartPosRef.current.x);
+    const deltaY = Math.abs(e.clientY - interactionStartPosRef.current.y);
+    if (deltaX > 5 || deltaY > 5) {
+      setCanNavigate(false);
+    }
+    
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const containerPadding = 32;
+    
+    setDragPosition({
+      x: e.clientX - containerRect.left - dragOffsetRef.current.x - containerPadding,
+      y: e.clientY - containerRect.top - dragOffsetRef.current.y - containerPadding
+    });
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    if (!isDraggingRef.current || !draggedMachineRef.current || !containerRef.current || !dragPosition) return;
+    
+    const draggedMachine = draggedMachineRef.current;
+    const gap = 16;
+    
+    // Calculate grid position
+    const gridX = Math.max(0, Math.round(dragPosition.x / (gridSize.cellWidth + gap)));
+    const gridY = Math.max(0, Math.round(dragPosition.y / (gridSize.cellHeight + gap)));
+    
+    const newX = Math.min(gridX, Math.max(0, gridCols - (draggedMachine.size?.width || 1)));
+    const newY = Math.min(gridY, Math.max(0, gridRows - (draggedMachine.size?.height || 1)));
+    
+    // Update position
+    setMachines(prevMachines => 
+      prevMachines.map(m => 
+        m.id === draggedMachine.id 
+          ? { ...m, position: { x: newX, y: newY } }
+          : m
+      )
+    );
+    
+    isDraggingRef.current = false;
+    draggedMachineRef.current = null;
+    setDragPosition(null);
+    
+    // Delay to prevent navigation on mouse up
+    setTimeout(() => {
+      setCanNavigate(true);
+    }, 100);
+  }, [dragPosition, gridSize, gridCols, gridRows]);
+
+  // Resize handlers
+  const handleResizeMove = useCallback((e: MouseEvent) => {
+    if (!isResizingRef.current || !resizedMachineRef.current || !containerRef.current) return;
+    
+    // Check if we've moved enough to disable navigation
+    const deltaX = Math.abs(e.clientX - interactionStartPosRef.current.x);
+    const deltaY = Math.abs(e.clientY - interactionStartPosRef.current.y);
+    if (deltaX > 5 || deltaY > 5) {
+      setCanNavigate(false);
+    }
+    
+    const gap = 16;
+    const cellWithGap = gridSize.cellWidth + gap;
+    const cellHeightWithGap = gridSize.cellHeight + gap;
+    
+    const deltaX2 = e.clientX - resizeStartRef.current.x;
+    const deltaY2 = e.clientY - resizeStartRef.current.y;
+    
+    const deltaGridX = Math.round(deltaX2 / cellWithGap);
+    const deltaGridY = Math.round(deltaY2 / cellHeightWithGap);
+    
+    const machine = resizedMachineRef.current;
+    const direction = resizeDirectionRef.current;
+    
+    let newWidth = resizeStartRef.current.width;
+    let newHeight = resizeStartRef.current.height;
+    let newX = resizeStartRef.current.posX;
+    let newY = resizeStartRef.current.posY;
+    
+    // Calculate new size and position based on resize direction
+    switch (direction) {
+      case 'e':
+        newWidth = Math.max(1, resizeStartRef.current.width + deltaGridX);
+        break;
+      case 'w':
+        newWidth = Math.max(1, resizeStartRef.current.width - deltaGridX);
+        newX = Math.max(0, resizeStartRef.current.posX + deltaGridX);
+        break;
+      case 's':
+        newHeight = Math.max(1, resizeStartRef.current.height + deltaGridY);
+        break;
+      case 'n':
+        newHeight = Math.max(1, resizeStartRef.current.height - deltaGridY);
+        newY = Math.max(0, resizeStartRef.current.posY + deltaGridY);
+        break;
+      case 'se':
+        newWidth = Math.max(1, resizeStartRef.current.width + deltaGridX);
+        newHeight = Math.max(1, resizeStartRef.current.height + deltaGridY);
+        break;
+      case 'sw':
+        newWidth = Math.max(1, resizeStartRef.current.width - deltaGridX);
+        newHeight = Math.max(1, resizeStartRef.current.height + deltaGridY);
+        newX = Math.max(0, resizeStartRef.current.posX + deltaGridX);
+        break;
+      case 'ne':
+        newWidth = Math.max(1, resizeStartRef.current.width + deltaGridX);
+        newHeight = Math.max(1, resizeStartRef.current.height - deltaGridY);
+        newY = Math.max(0, resizeStartRef.current.posY + deltaGridY);
+        break;
+      case 'nw':
+        newWidth = Math.max(1, resizeStartRef.current.width - deltaGridX);
+        newHeight = Math.max(1, resizeStartRef.current.height - deltaGridY);
+        newX = Math.max(0, resizeStartRef.current.posX + deltaGridX);
+        newY = Math.max(0, resizeStartRef.current.posY + deltaGridY);
+        break;
+    }
+    
+    // Ensure resize doesn't go out of bounds
+    if (newX + newWidth > gridCols) {
+      newWidth = gridCols - newX;
+    }
+    if (newY + newHeight > gridRows) {
+      newHeight = gridRows - newY;
+    }
+    
+    // Check for collisions
+    const wouldCollide = isPositionOccupied(newX, newY, newWidth, newHeight, machine.id);
+    
+    if (!wouldCollide) {
+      setResizePreview({ width: newWidth, height: newHeight, x: newX, y: newY });
+    }
+  }, [gridSize, gridCols, gridRows]);
+
+  const handleResizeEnd = useCallback(() => {
+    if (!isResizingRef.current || !resizedMachineRef.current || !resizePreview) return;
+    
+    const resizedMachine = resizedMachineRef.current;
+    
+    // Update widget size and position
+    setMachines(prevMachines =>
+      prevMachines.map(m =>
+        m.id === resizedMachine.id
+          ? { 
+              ...m, 
+              size: { width: resizePreview.width, height: resizePreview.height },
+              position: { 
+                x: resizePreview.x !== undefined ? resizePreview.x : m.position!.x,
+                y: resizePreview.y !== undefined ? resizePreview.y : m.position!.y
+              }
+            }
+          : m
+      )
+    );
+    
+    isResizingRef.current = false;
+    resizedMachineRef.current = null;
+    setResizePreview(null);
+    
+    // Delay to prevent navigation
+    setTimeout(() => {
+      setCanNavigate(true);
+    }, 100);
+  }, [resizePreview]);
+
+  // Global mouse event handlers
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      handleDragMove(e);
+      handleResizeMove(e);
+    };
+    
+    const handleGlobalMouseUp = () => {
+      if (isDraggingRef.current) {
+        handleDragEnd();
+      }
+      if (isResizingRef.current) {
+        handleResizeEnd();
+      }
+    };
+    
+    document.addEventListener('mousemove', handleGlobalMouseMove);
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [handleDragMove, handleDragEnd, handleResizeMove, handleResizeEnd]);
+
   const isPositionOccupied = (x: number, y: number, width: number, height: number, excludeId?: string): boolean => {
     return currentMachines.some(machine => {
       if (machine.id === excludeId) return false;
@@ -243,301 +528,23 @@ const MachinesPage: React.FC = () => {
     return null;
   };
 
-  // Get cursor style based on resize direction
-  const getCursorStyle = (direction: ResizeDirection | null): string => {
-    if (!direction) return 'move';
-    const cursorMap: Record<ResizeDirection, string> = {
-      'n': 'ns-resize',
-      's': 'ns-resize',
-      'e': 'ew-resize',
-      'w': 'ew-resize',
-      'ne': 'nesw-resize',
-      'nw': 'nwse-resize',
-      'se': 'nwse-resize',
-      'sw': 'nesw-resize'
-    };
-    return cursorMap[direction];
-  };
-
-  // Check if cursor is near edge of widget
-  const getResizeDirection = (e: React.MouseEvent, element: HTMLElement): ResizeDirection | null => {
-    const rect = element.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const edgeSize = 10;
-    
-    const nearTop = y < edgeSize;
-    const nearBottom = y > rect.height - edgeSize;
-    const nearLeft = x < edgeSize;
-    const nearRight = x > rect.width - edgeSize;
-    
-    if (nearTop && nearLeft) return 'nw';
-    if (nearTop && nearRight) return 'ne';
-    if (nearBottom && nearLeft) return 'sw';
-    if (nearBottom && nearRight) return 'se';
-    if (nearTop) return 'n';
-    if (nearBottom) return 's';
-    if (nearLeft) return 'w';
-    if (nearRight) return 'e';
-    
-    return null;
-  };
-
-  // Mouse handlers
-  const handleMouseDown = (e: React.MouseEvent, machine: Machine) => {
-    // Check if the click is on an interactive element
-    const target = e.target as HTMLElement;
-    const isInteractive = target.closest('button, a, input, select, textarea, [role="button"]');
-    
-    // Reset flags
-    hasDraggedRef.current = false;
-    preventNavigationRef.current = false;
-    
-    // If clicking on an interactive element, don't start drag/resize
-    if (isInteractive) {
-      return;
-    }
-    
-    e.preventDefault();
-    const element = e.currentTarget as HTMLElement;
-    const direction = getResizeDirection(e, element);
-    
-    if (direction) {
-      // Start resizing
-      isResizingRef.current = true;
-      resizedMachineRef.current = machine;
-      resizeDirectionRef.current = direction;
-      
-      const mPos = machine.position || { x: 0, y: 0 };
-      const mSize = machine.size || { width: 1, height: 1 };
-      
-      resizeStartRef.current = {
-        x: e.clientX,
-        y: e.clientY,
-        width: mSize.width,
-        height: mSize.height,
-        posX: mPos.x,
-        posY: mPos.y
-      };
-      
-      element.style.cursor = getCursorStyle(direction);
-      setResizePreview({ width: mSize.width, height: mSize.height });
-    } else {
-      // Start dragging
-      e.preventDefault();
-      
-      isDraggingRef.current = true;
-      draggedMachineRef.current = machine;
-      
-      const rect = element.getBoundingClientRect();
-      const containerRect = containerRef.current!.getBoundingClientRect();
-      
-      dragOffsetRef.current = {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-      };
-      
-      setDragPosition({
-        x: rect.left - containerRect.left - 32,
-        y: rect.top - containerRect.top - 24
-      });
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent, machine: Machine) => {
-    if (isDraggingRef.current || isResizingRef.current) return;
-    
-    const element = e.currentTarget as HTMLElement;
-    const direction = getResizeDirection(e, element);
-    element.style.cursor = getCursorStyle(direction);
-  };
-
-  const handleDragMove = useCallback((e: MouseEvent) => {
-    if (!isDraggingRef.current || !draggedMachineRef.current || !containerRef.current) return;
-    
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const newX = e.clientX - containerRect.left - dragOffsetRef.current.x - 32;
-    const newY = e.clientY - containerRect.top - dragOffsetRef.current.y - 24;
-    
-    // Mark that actual dragging has occurred
-    hasDraggedRef.current = true;
-    
-    setDragPosition({ x: newX, y: newY });
-  }, []);
-
-  const handleDragEnd = useCallback(() => {
-    if (!isDraggingRef.current || !draggedMachineRef.current || !dragPosition || !containerRef.current) return;
-    
-    const gap = 16;
-    const gridX = Math.round(dragPosition.x / (gridSize.cellWidth + gap));
-    const gridY = Math.round(dragPosition.y / (gridSize.cellHeight + gap));
-    
-    const mSize = draggedMachineRef.current.size || { width: 1, height: 1 };
-    const clampedX = Math.max(0, Math.min(gridCols - mSize.width, gridX));
-    const clampedY = Math.max(0, Math.min(gridRows - mSize.height, gridY));
-    
-    if (!isPositionOccupied(clampedX, clampedY, mSize.width, mSize.height, draggedMachineRef.current.id)) {
-      setMachines(prev =>
-        prev.map(m =>
-          m.id === draggedMachineRef.current!.id
-            ? { ...m, position: { x: clampedX, y: clampedY } }
-            : m
-        )
-      );
-    }
-    
-    isDraggingRef.current = false;
-    draggedMachineRef.current = null;
-    
-    // Prevent navigation after drag
-    if (hasDraggedRef.current) {
-      preventNavigationRef.current = true;
-      setTimeout(() => {
-        preventNavigationRef.current = false;
-      }, 100);
-    }
-    
-    hasDraggedRef.current = false;
-    setDragPosition(null);
-  }, [dragPosition, gridSize, gridCols, gridRows]);
-
-  const handleResizeMove = useCallback((e: MouseEvent) => {
-    if (!isResizingRef.current || !resizedMachineRef.current) return;
-    
-    // Mark that interaction has occurred
-    hasDraggedRef.current = true;
-    
-    const deltaX = e.clientX - resizeStartRef.current.x;
-    const deltaY = e.clientY - resizeStartRef.current.y;
-    const gap = 16;
-    
-    const cellsX = Math.round(deltaX / (gridSize.cellWidth + gap));
-    const cellsY = Math.round(deltaY / (gridSize.cellHeight + gap));
-    
-    let newWidth = resizeStartRef.current.width;
-    let newHeight = resizeStartRef.current.height;
-    let newX = resizeStartRef.current.posX;
-    let newY = resizeStartRef.current.posY;
-    
-    const dir = resizeDirectionRef.current;
-    
-    // Handle width changes
-    if (dir.includes('e')) {
-      newWidth = Math.max(1, Math.min(gridCols - newX, resizeStartRef.current.width + cellsX));
-    } else if (dir.includes('w')) {
-      const potentialWidth = resizeStartRef.current.width - cellsX;
-      const potentialX = resizeStartRef.current.posX + cellsX;
-      if (potentialWidth >= 1 && potentialX >= 0) {
-        newWidth = potentialWidth;
-        newX = potentialX;
-      }
-    }
-    
-    // Handle height changes
-    if (dir.includes('s')) {
-      newHeight = Math.max(1, Math.min(gridRows - newY, resizeStartRef.current.height + cellsY));
-    } else if (dir.includes('n')) {
-      const potentialHeight = resizeStartRef.current.height - cellsY;
-      const potentialY = resizeStartRef.current.posY + cellsY;
-      if (potentialHeight >= 1 && potentialY >= 0) {
-        newHeight = potentialHeight;
-        newY = potentialY;
-      }
-    }
-    
-    // Check if new size/position is valid
-    const isValid = !isPositionOccupied(newX, newY, newWidth, newHeight, resizedMachineRef.current.id);
-    
-    if (isValid) {
-      setResizePreview({ 
-        width: newWidth, 
-        height: newHeight,
-        x: newX,
-        y: newY
-      });
-    }
-  }, [gridSize, gridCols, gridRows]);
-
-  const handleResizeEnd = useCallback(() => {
-    if (!isResizingRef.current || !resizedMachineRef.current || !resizePreview) return;
-    
-    setMachines(prev =>
-      prev.map(m =>
-        m.id === resizedMachineRef.current!.id
-          ? { 
-              ...m, 
-              size: { width: resizePreview.width, height: resizePreview.height },
-              position: { 
-                x: resizePreview.x !== undefined ? resizePreview.x : m.position!.x,
-                y: resizePreview.y !== undefined ? resizePreview.y : m.position!.y
-              }
-            }
-          : m
-      )
-    );
-    
-    isResizingRef.current = false;
-    resizedMachineRef.current = null;
-    
-    // Prevent navigation after resize
-    if (hasDraggedRef.current) {
-      preventNavigationRef.current = true;
-      setTimeout(() => {
-        preventNavigationRef.current = false;
-      }, 100);
-    }
-    
-    hasDraggedRef.current = false;
-    setResizePreview(null);
-  }, [resizePreview]);
-
-  // Global mouse event handlers
-  useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      handleDragMove(e);
-      handleResizeMove(e);
-    };
-    
-    const handleGlobalMouseUp = () => {
-      if (isDraggingRef.current) {
-        handleDragEnd();
-      }
-      if (isResizingRef.current) {
-        handleResizeEnd();
-      }
-    };
-    
-    document.addEventListener('mousemove', handleGlobalMouseMove);
-    document.addEventListener('mouseup', handleGlobalMouseUp);
-    
-    return () => {
-      document.removeEventListener('mousemove', handleGlobalMouseMove);
-      document.removeEventListener('mouseup', handleGlobalMouseUp);
-    };
-  }, [handleDragMove, handleDragEnd, handleResizeMove, handleResizeEnd]);
-
   const handleAddMachine = () => {
     const machineId = `M${Date.now()}`;
     const typeConfig = MACHINE_TYPES[newMachine.type];
     
-    // Find available position
     const position = findAvailablePosition(1, 1);
     if (!position) {
       alert('No space available! Please remove machines or increase grid size.');
       return;
     }
     
-    // Determine initial status based on connection
-    let status: 'green' | 'yellow' | 'red' = 'yellow';
-    let statusText = 'Configuring';
-    
     const newMachineData: Machine = {
       id: machineId,
       name: newMachine.name || typeConfig.defaultName,
       type: newMachine.type,
-      status: status,
+      status: 'yellow',
       metrics: [
-        { label: 'Status', value: statusText },
+        { label: 'Status', value: 'Configuring' },
         { label: 'Connection', value: 'Pending' }
       ],
       connectionType: newMachine.connectionType,
@@ -567,7 +574,12 @@ const MachinesPage: React.FC = () => {
   };
 
   const handleDeleteMachine = (machineId: string) => {
-    setMachines(machines.filter(m => m.id !== machineId));
+    setMachines(prevMachines => {
+      const newMachines = prevMachines.filter(m => m.id !== machineId);
+      // Force immediate localStorage update
+      localStorage.setItem('wit-machines', JSON.stringify(newMachines));
+      return newMachines;
+    });
   };
 
   const navigateToMachine = (machineId: string) => {
@@ -575,250 +587,150 @@ const MachinesPage: React.FC = () => {
     // Implement navigation logic
   };
 
-  const getPosition = (machine: Machine, index: number) => {
-    // Use stored position if available, otherwise calculate based on index
-    if (machine.position) {
-      return machine.position;
-    }
-    const row = Math.floor(index / gridCols);
-    const col = index % gridCols;
-    return { x: col, y: row };
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'green': return 'text-green-400';
-      case 'yellow': return 'text-yellow-400';
-      case 'red': return 'text-red-400';
-      default: return 'text-gray-400';
-    }
-  };
-
   const getConnectionPlaceholder = () => {
     switch (newMachine.connectionType) {
       case 'usb': return '/dev/ttyUSB0 or COM3';
       case 'network': return '192.168.1.100 or printer.local';
       case 'serial': return '/dev/ttyS0 or COM1';
-      case 'bluetooth': return 'AA:BB:CC:DD:EE:FF';
-      default: return 'Enter connection details';
+      case 'bluetooth': return 'HC-05 or 00:11:22:33:44:55';
     }
   };
 
   return (
-    <div className="h-full flex bg-gray-900">
+    <div className="h-full bg-gray-900 flex">
       {/* Sidebar */}
-      <div className="bg-gray-800 w-64 flex flex-col h-full border-r border-gray-700">
-        <div className="p-4 flex-1 flex flex-col overflow-hidden gap-4">
-          <h1 className="text-2xl font-bold text-white mb-2">Machines</h1>
-          
-          {/* Add Machine Button */}
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors"
-          >
-            <FaPlus />
-            Add Machine
-          </button>
+      <div className="bg-gray-800 w-64 p-4 flex flex-col gap-4 border-r border-gray-700">
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors"
+        >
+          <FaPlus />
+          Add Machine
+        </button>
 
-          {/* Status Filter */}
-          <div className="bg-gray-700 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <FaFilter className="text-gray-400" />
-              <span className="text-gray-300 font-medium">Filter by Status</span>
-            </div>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="status"
-                  value="all"
-                  checked={filterStatus === 'all'}
-                  onChange={(e) => setFilterStatus(e.target.value as any)}
-                  className="text-blue-600"
-                />
-                <span className="text-gray-300">All Machines</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="status"
-                  value="green"
-                  checked={filterStatus === 'green'}
-                  onChange={(e) => setFilterStatus(e.target.value as any)}
-                  className="text-green-400"
-                />
-                <span className={getStatusColor('green')}>Online</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="status"
-                  value="yellow"
-                  checked={filterStatus === 'yellow'}
-                  onChange={(e) => setFilterStatus(e.target.value as any)}
-                  className="text-yellow-400"
-                />
-                <span className={getStatusColor('yellow')}>Warning</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="status"
-                  value="red"
-                  checked={filterStatus === 'red'}
-                  onChange={(e) => setFilterStatus(e.target.value as any)}
-                  className="text-red-400"
-                />
-                <span className={getStatusColor('red')}>Offline</span>
-              </label>
-            </div>
+        {/* Filter & Sort */}
+        <div className="bg-gray-700 rounded-lg p-4 space-y-3">
+          <div className="flex items-center gap-2 text-gray-300">
+            <FaFilter className="w-4 h-4" />
+            <span className="font-medium">Filter & Sort</span>
           </div>
-
-          {/* Sort Options */}
-          <div className="bg-gray-700 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <FaSortAmountDown className="text-gray-400" />
-              <span className="text-gray-300 font-medium">Sort By</span>
-            </div>
+          
+          {/* Status Filter */}
+          <div>
+            <label className="text-sm text-gray-400">Status</label>
             <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'name' | 'status' | 'date')}
-              className="w-full bg-gray-600 text-white rounded px-3 py-2 text-sm"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as any)}
+              className="w-full mt-1 bg-gray-600 text-white rounded px-2 py-1 text-sm"
             >
-              <option value="name">Name</option>
-              <option value="status">Status</option>
-              <option value="date">Date Added</option>
+              <option value="all">All</option>
+              <option value="green">Online</option>
+              <option value="yellow">Warning</option>
+              <option value="red">Offline</option>
             </select>
           </div>
+          
+          {/* Sort */}
+          <div>
+            <label className="text-sm text-gray-400">Sort By</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="w-full mt-1 bg-gray-600 text-white rounded px-2 py-1 text-sm"
+            >
+              <option value="date">Date Added</option>
+              <option value="name">Name</option>
+              <option value="status">Status</option>
+            </select>
+          </div>
+        </div>
 
-          {/* Machine Stats */}
-          <div className="bg-gray-700 rounded-lg p-4 mt-auto">
-            <h3 className="text-gray-300 font-medium mb-3">Statistics</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Total:</span>
-                <span className="text-white">{filteredAndSortedMachines.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className={getStatusColor('green')}>Online:</span>
-                <span className="text-white">{machines.filter(m => m.status === 'green').length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className={getStatusColor('yellow')}>Warning:</span>
-                <span className="text-white">{machines.filter(m => m.status === 'yellow').length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className={getStatusColor('red')}>Offline:</span>
-                <span className="text-white">{machines.filter(m => m.status === 'red').length}</span>
-              </div>
+        {/* Grid Controls */}
+        <div className="bg-gray-700 rounded-lg p-4 space-y-3">
+          <div className="text-gray-300 font-medium">Grid Layout</div>
+          <div className="space-y-2">
+            <div>
+              <label className="text-sm text-gray-400">Columns</label>
+              <input
+                type="number"
+                min="1"
+                max="6"
+                value={gridCols}
+                onChange={(e) => setGridCols(Number(e.target.value))}
+                className="w-full mt-1 bg-gray-600 text-white rounded px-2 py-1 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-gray-400">Rows</label>
+              <input
+                type="number"
+                min="1"
+                max="6"
+                value={gridRows}
+                onChange={(e) => setGridRows(Number(e.target.value))}
+                className="w-full mt-1 bg-gray-600 text-white rounded px-2 py-1 text-sm"
+              />
             </div>
           </div>
+        </div>
 
-          {/* Grid Controls */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-gray-400 text-xs block mb-1">Columns</label>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={gridColsInput}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setGridColsInput(value);
-                  
-                  if (value !== '') {
-                    const numValue = parseInt(value);
-                    if (!isNaN(numValue) && numValue >= 1 && numValue <= 10) {
-                      setGridCols(numValue);
-                    }
-                  }
-                }}
-                onBlur={(e) => {
-                  if (e.target.value === '' || parseInt(e.target.value) < 1) {
-                    setGridColsInput('1');
-                    setGridCols(1);
-                  }
-                }}
-                className="w-full bg-gray-600 text-white rounded px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+        {/* Stats */}
+        <div className="bg-gray-700 rounded-lg p-4">
+          <div className="text-gray-300 font-medium mb-2">Statistics</div>
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-400">Total:</span>
+              <span className="text-white">{machines.length}</span>
             </div>
-            <div>
-              <label className="text-gray-400 text-xs block mb-1">Rows</label>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={gridRowsInput}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setGridRowsInput(value);
-                  
-                  if (value !== '') {
-                    const numValue = parseInt(value);
-                    if (!isNaN(numValue) && numValue >= 1 && numValue <= 10) {
-                      setGridRows(numValue);
-                    }
-                  }
-                }}
-                onBlur={(e) => {
-                  if (e.target.value === '' || parseInt(e.target.value) < 1) {
-                    setGridRowsInput('1');
-                    setGridRows(1);
-                  }
-                }}
-                className="w-full bg-gray-600 text-white rounded px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            <div className="flex justify-between">
+              <span className="text-gray-400">Online:</span>
+              <span className="text-green-400">{machines.filter(m => m.status === 'green').length}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Warning:</span>
+              <span className="text-yellow-400">{machines.filter(m => m.status === 'yellow').length}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Offline:</span>
+              <span className="text-red-400">{machines.filter(m => m.status === 'red').length}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Grid Container */}
-        <div ref={containerRef} className="flex-1 relative pl-8 pr-6 py-6 bg-gray-700 overflow-hidden">
-          {machines.length === 0 && !showAddModal && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-gray-400 mb-4">No machines configured yet</p>
-                <button
-                  onClick={() => setShowAddModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded flex items-center gap-2 mx-auto transition-colors"
-                >
-                  <FaPlus />
-                  Add Your First Machine
-                </button>
-              </div>
-            </div>
-          )}
-          
+      {/* Main Content */}
+      <div className="flex-1 p-6 overflow-auto relative">
+        <div
+          ref={containerRef}
+          className="relative h-full"
+          style={{ minHeight: '400px' }}
+        >
+          {/* Machine Grid */}
           {currentMachines.map((machine, index) => {
-            const isResizing = isResizingRef.current && resizedMachineRef.current?.id === machine.id;
-            const position = (isResizing && resizePreview?.x !== undefined && resizePreview?.y !== undefined)
-              ? { x: resizePreview.x, y: resizePreview.y }
-              : getPosition(machine, index);
-            const size = (isResizing && resizePreview) 
-              ? { width: resizePreview.width, height: resizePreview.height }
-              : (machine.size || { width: 1, height: 1 });
-            
-            if (gridSize.cellWidth === 0 || gridSize.cellHeight === 0) {
-              return null;
-            }
-
-            const isDragging = isDraggingRef.current && draggedMachineRef.current?.id === machine.id;
+            const position = machine.position || { x: index % gridCols, y: Math.floor(index / gridCols) };
+            const size = machine.size || { width: 1, height: 1 };
             const gap = 16;
+            
+            const isDragging = isDraggingRef.current && draggedMachineRef.current?.id === machine.id;
+            const isResizing = isResizingRef.current && resizedMachineRef.current?.id === machine.id;
+            
+            const displayPosition = (isDragging && dragPosition) 
+              ? dragPosition 
+              : (isResizing && resizePreview && (resizePreview.x !== undefined || resizePreview.y !== undefined))
+              ? { x: (resizePreview.x !== undefined ? resizePreview.x : position.x) * (gridSize.cellWidth + gap), 
+                  y: (resizePreview.y !== undefined ? resizePreview.y : position.y) * (gridSize.cellHeight + gap) }
+              : { x: position.x * (gridSize.cellWidth + gap), y: position.y * (gridSize.cellHeight + gap) };
+            
+            const displaySize = (isResizing && resizePreview) 
+              ? { width: resizePreview.width, height: resizePreview.height }
+              : size;
             
             const style = {
               position: 'absolute' as const,
-              left: isDragging && dragPosition
-                ? `${dragPosition.x}px`
-                : `${position.x * (gridSize.cellWidth + gap)}px`,
-              top: isDragging && dragPosition
-                ? `${dragPosition.y}px`
-                : `${position.y * (gridSize.cellHeight + gap)}px`,
-              width: `${size.width * gridSize.cellWidth + (size.width - 1) * gap}px`,
-              height: `${size.height * gridSize.cellHeight + (size.height - 1) * gap}px`,
+              left: `${displayPosition.x}px`,
+              top: `${displayPosition.y}px`,
+              width: `${displaySize.width * gridSize.cellWidth + (displaySize.width - 1) * gap}px`,
+              height: `${displaySize.height * gridSize.cellHeight + (displaySize.height - 1) * gap}px`,
               transition: isDragging || isResizing ? 'none' : 'all 0.2s ease-in-out',
               zIndex: isDragging || isResizing ? 1000 : 1,
               opacity: isDragging ? 0.8 : 1,
@@ -832,20 +744,17 @@ const MachinesPage: React.FC = () => {
                 onMouseDown={(e) => handleMouseDown(e, machine)}
                 onMouseMove={(e) => handleMouseMove(e, machine)}
                 onMouseLeave={(e) => {
-                  // Reset cursor when leaving widget
                   if (!isDraggingRef.current && !isResizingRef.current) {
                     (e.currentTarget as HTMLElement).style.cursor = 'default';
                   }
                 }}
               >
-                {/* Widget content - let it handle its own delete button and navigation */}
                 <SpecificWidget
                   type="machine"
                   data={machine}
                   onRemove={() => handleDeleteMachine(machine.id)}
                   onNavigate={() => {
-                    // Only navigate if navigation is not prevented
-                    if (!preventNavigationRef.current && !isDraggingRef.current && !isResizingRef.current) {
+                    if (canNavigate && !isDraggingRef.current && !isResizingRef.current) {
                       navigateToMachine(machine.id);
                     }
                   }}
@@ -854,7 +763,7 @@ const MachinesPage: React.FC = () => {
             );
           })}
           
-          {/* Grid overlay (optional - helps visualize grid) */}
+          {/* Grid overlay */}
           {(isDraggingRef.current || isResizingRef.current) && (
             <div className="absolute inset-0 pointer-events-none">
               {Array.from({ length: gridRows * gridCols }, (_, index) => {
@@ -935,9 +844,9 @@ const MachinesPage: React.FC = () => {
                 </select>
               </div>
 
-              {/* Machine Name */}
+              {/* Name */}
               <div>
-                <label className="block text-gray-300 mb-1">Machine Name</label>
+                <label className="block text-gray-300 mb-1">Name</label>
                 <input
                   type="text"
                   value={newMachine.name}
@@ -957,7 +866,7 @@ const MachinesPage: React.FC = () => {
                 >
                   {MACHINE_TYPES[newMachine.type].connectionTypes.map(type => (
                     <option key={type} value={type}>
-                      {type.toUpperCase()}
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
                     </option>
                   ))}
                 </select>

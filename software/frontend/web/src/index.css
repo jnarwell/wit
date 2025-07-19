@@ -212,3 +212,71 @@
 .widget-container.dragging a {
   pointer-events: none;
 }
+
+.group:hover .group-hover\:opacity-100 {
+  opacity: 1 !important;
+}
+
+/* Widget container specific styles */
+.widget-container {
+  position: relative;
+}
+
+/* Ensure delete button is above everything */
+.widget-container button[aria-label="Delete widget"] {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 50;
+  opacity: 0;
+  transition: opacity 200ms ease-in-out;
+}
+
+.widget-container:hover button[aria-label="Delete widget"] {
+  opacity: 1;
+}
+
+/* Prevent button from interfering with drag */
+.widget-container button {
+  pointer-events: auto;
+}
+
+/* Cursor styles for resize */
+.widget-container:not(.dragging):hover {
+  cursor: move;
+}
+
+/* Edge detection for resize */
+.widget-container:not(.dragging):hover {
+  position: relative;
+}
+
+/* Resize cursor zones */
+.widget-container:not(.dragging) {
+  cursor: default;
+}
+
+/* Visual feedback during interactions */
+.widget-container.dragging {
+  opacity: 0.8;
+  cursor: grabbing !important;
+}
+
+.widget-container.resizing {
+  ring: 2px solid rgb(59, 130, 246);
+  cursor: inherit;
+}
+
+/* Fix for navigation prevention */
+.widget-container > div {
+  pointer-events: auto;
+}
+
+/* Ensure interactive elements work */
+.widget-container button,
+.widget-container a,
+.widget-container input,
+.widget-container select,
+.widget-container textarea {
+  pointer-events: auto;
+}

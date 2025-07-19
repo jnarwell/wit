@@ -52,20 +52,26 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
     }
   };
 
+  const handleContentClick = (e: React.MouseEvent) => {
+    // Check if clicking on interactive element
+    const target = e.target as HTMLElement;
+    const isInteractive = target.closest('button, a, input, select, textarea, [role="button"]');
+    
+    if (!isInteractive && onNavigate) {
+      onNavigate();
+    }
+  };
+
   return (
-    <div className="h-full relative group" style={style}>
+    <div className="h-full relative group" style={{ position: 'relative', ...style }}>
+      {/* Main content */}
       <div 
         className="h-full bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden hover:border-gray-600 transition-all cursor-pointer select-none"
-        onClick={onNavigate ? (e) => {
-          const target = e.target as HTMLElement;
-          if (!target.closest('button')) {
-            onNavigate();
-          }
-        } : undefined}
+        onClick={handleContentClick}
       >
         {/* Widget header */}
         <div className={`bg-gradient-to-r ${getTypeColor()} p-3`}>
-          <div className="flex items-center justify-between pr-8">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="text-white opacity-90">
                 {getIcon()}
@@ -106,13 +112,23 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
         </div>
       </div>
       
-      {/* Delete button - absolute positioned at top right */}
+      {/* Delete button - absolute positioned overlay */}
       <button
         onClick={(e) => {
           e.stopPropagation();
+          e.preventDefault();
           onRemove();
         }}
-        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 hover:bg-red-700 text-white rounded p-1.5 z-10"
+        onMouseDown={(e) => {
+          // Prevent drag from starting on button
+          e.stopPropagation();
+        }}
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-red-600 hover:bg-red-700 text-white rounded p-1.5 shadow-lg"
+        style={{
+          zIndex: 50,
+          // Force visibility for debugging - remove the line below when confirmed working
+          // opacity: 1,
+        }}
         aria-label="Delete widget"
       >
         <FaTimes className="w-3 h-3" />
