@@ -13,9 +13,10 @@ interface SpecificWidgetProps {
   };
   onRemove: () => void;
   onNavigate?: () => void;
+  style?: React.CSSProperties;
 }
 
-const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, onNavigate }) => {
+const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, onNavigate, style }) => {
   // Default data if none provided
   const widgetData = data || {
     id: '001',
@@ -29,9 +30,9 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
 
   const getIcon = () => {
     switch (type) {
-      case 'project': return <FaProjectDiagram size={24} />;
-      case 'machine': return <FaCog size={24} />;
-      case 'sensor': return <FaMicrochip size={24} />;
+      case 'project': return <FaProjectDiagram className="w-6 h-6" />;
+      case 'machine': return <FaCog className="w-6 h-6" />;
+      case 'sensor': return <FaMicrochip className="w-6 h-6" />;
     }
   };
 
@@ -52,69 +53,70 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
   };
 
   return (
-    <div className="widget-container group h-full">
+    <div className="h-full relative group" style={style}>
       <div 
-        className="h-full bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden hover:border-gray-600 transition-all cursor-pointer" 
-        onClick={(e) => {
-          // Don't navigate if clicking on a button
+        className="h-full bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden hover:border-gray-600 transition-all cursor-pointer select-none"
+        onClick={onNavigate ? (e) => {
           const target = e.target as HTMLElement;
           if (!target.closest('button')) {
-            onNavigate?.();
+            onNavigate();
           }
-        }}
+        } : undefined}
       >
-        {/* Header */}
-        <div className={`bg-gradient-to-r ${getTypeColor()} p-3 relative`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-white">
-              {getIcon()}
-              <span className="font-semibold text-sm capitalize">{type}</span>
-            </div>
-            <button
-              onClick={(e) => { 
-                e.stopPropagation(); 
-                onRemove(); 
-              }}
-              onMouseDown={(e) => e.stopPropagation()}
-              className="opacity-0 group-hover:opacity-100 text-white hover:text-red-300 transition-opacity"
-            >
-              <FaTimes size={16} />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-4">
-          {/* Name and Status */}
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-white font-semibold text-lg truncate flex-1">{widgetData.name}</h3>
-            <div className={`w-3 h-3 rounded-full ${getStatusColor()} animate-pulse`} />
-          </div>
-
-          {/* Image or Icon */}
-          <div className="flex justify-center mb-3">
-            {widgetData.image ? (
-              <img src={widgetData.image} alt={widgetData.name} className="w-24 h-24 object-cover rounded" />
-            ) : (
-              <div className="w-24 h-24 bg-gray-700 rounded flex items-center justify-center">
+        {/* Widget header */}
+        <div className={`bg-gradient-to-r ${getTypeColor()} p-3`}>
+          <div className="flex items-center justify-between pr-8">
+            <div className="flex items-center gap-2">
+              <div className="text-white opacity-90">
                 {getIcon()}
               </div>
-            )}
+              <h3 className="text-white font-medium truncate">
+                {widgetData.name}
+              </h3>
+            </div>
+            <div className={`w-3 h-3 rounded-full ${getStatusColor()}`} />
           </div>
-
-          {/* Metrics */}
-          {widgetData.metrics && (
+        </div>
+        
+        {/* Widget body */}
+        <div className="p-4">
+          {widgetData.metrics && widgetData.metrics.length > 0 && (
             <div className="space-y-2">
               {widgetData.metrics.map((metric, index) => (
                 <div key={index} className="flex justify-between items-center">
                   <span className="text-gray-400 text-sm">{metric.label}:</span>
-                  <span className="text-white font-medium">{metric.value}</span>
+                  <span className="text-white text-sm font-medium">{metric.value}</span>
                 </div>
               ))}
             </div>
           )}
+          
+          {(!widgetData.metrics || widgetData.metrics.length === 0) && (
+            <div className="text-center text-gray-500">
+              No data available
+            </div>
+          )}
+          
+          {/* Widget ID */}
+          <div className="mt-3 pt-3 border-t border-gray-700">
+            <div className="text-center text-gray-500 text-xs">
+              ID: {widgetData.id}
+            </div>
+          </div>
         </div>
       </div>
+      
+      {/* Delete button - absolute positioned at top right */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 hover:bg-red-700 text-white rounded p-1.5 z-10"
+        aria-label="Delete widget"
+      >
+        <FaTimes className="w-3 h-3" />
+      </button>
     </div>
   );
 };
