@@ -28,6 +28,10 @@ interface SensorTypeConfig {
   defaultMetrics: { label: string; value: string }[];
 }
 
+interface SensorsPageProps {
+  onNavigateToDetail?: (id: string) => void;
+}
+
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
 const SENSOR_TYPES: Record<string, SensorTypeConfig> = {
@@ -103,7 +107,7 @@ const SENSOR_TYPES: Record<string, SensorTypeConfig> = {
   }
 };
 
-const SensorsPage: React.FC = () => {
+const SensorsPage: React.FC<SensorsPageProps> = ({ onNavigateToDetail }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [sensors, setSensors] = useState<Sensor[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -211,31 +215,30 @@ const SensorsPage: React.FC = () => {
   }, [gridCols, gridRows]);
 
   // Filter and sort sensors
-  const filteredAndSortedSensors = React.useMemo(() => {
-    let filtered = sensors;
-    
-    if (filterStatus !== 'all') {
-      filtered = sensors.filter(s => s.status === filterStatus);
-    }
-    
-    return filtered.sort((a, b) => {
-      if (sortBy === 'name') {
+  const filteredSensors = sensors.filter(sensor => {
+    if (filterStatus === 'all') return true;
+    return sensor.status === filterStatus;
+  });
+
+  const sortedSensors = [...filteredSensors].sort((a, b) => {
+    switch (sortBy) {
+      case 'name':
         return a.name.localeCompare(b.name);
-      } else if (sortBy === 'status') {
-        const statusOrder = { 'red': 0, 'yellow': 1, 'green': 2 };
+      case 'status':
+        const statusOrder = { red: 0, yellow: 1, green: 2 };
         return statusOrder[a.status] - statusOrder[b.status];
-      } else {
+      case 'date':
         return new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime();
-      }
-    });
-  }, [sensors, filterStatus, sortBy]);
+      default:
+        return 0;
+    }
+  });
 
   // Pagination
-  const itemsPerPage = gridCols * gridRows;
-  const totalPages = Math.ceil(filteredAndSortedSensors.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentSensors = filteredAndSortedSensors.slice(startIndex, endIndex);
+  const sensorsPerPage = gridCols * gridRows;
+  const totalPages = Math.ceil(sortedSensors.length / sensorsPerPage);
+  const startIndex = (currentPage - 1) * sensorsPerPage;
+  const currentSensors = sortedSensors.slice(startIndex, startIndex + sensorsPerPage);
 
   // Check if cursor is near edge of widget
   const getResizeDirection = (e: React.MouseEvent, element: HTMLElement): ResizeDirection | null => {
@@ -261,6 +264,7 @@ const SensorsPage: React.FC = () => {
     return null;
   };
 
+  // Get cursor style based on resize direction
   const getCursorStyle = (direction: ResizeDirection | null): string => {
     if (!direction) return 'move';
     const cursorMap: Record<ResizeDirection, string> = {
@@ -269,253 +273,189 @@ const SensorsPage: React.FC = () => {
       'e': 'ew-resize',
       'w': 'ew-resize',
       'ne': 'nesw-resize',
-      'se': 'nwse-resize',
       'nw': 'nwse-resize',
+      'se': 'nwse-resize',
       'sw': 'nesw-resize'
     };
     return cursorMap[direction];
   };
 
-  const handleMouseMove = useCallback((e: React.MouseEvent, sensor: Sensor) => {
-    if (isDraggingRef.current || isResizingRef.current) return;
-    
-    const element = e.currentTarget as HTMLElement;
-    const direction = getResizeDirection(e, element);
-    element.style.cursor = getCursorStyle(direction);
-  }, []);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent, sensor: Sensor) => {
-    const target = e.target as HTMLElement;
-    const isInteractive = target.closest('button, a, input, select, textarea, [role="button"]');
-    
-    if (isInteractive) {
+  const handleMouseDown = (e: React.MouseEvent, sensor: Sensor) => {
+    if ((e.target as HTMLElement).closest('button')) {
       return;
     }
-    
-    e.preventDefault();
+
     const element = e.currentTarget as HTMLElement;
     const direction = getResizeDirection(e, element);
     
+    // Store initial position for navigation detection
     interactionStartPosRef.current = { x: e.clientX, y: e.clientY };
     setCanNavigate(true);
     
     if (direction) {
+      // Start resizing
       isResizingRef.current = true;
       resizedSensorRef.current = sensor;
       resizeDirectionRef.current = direction;
+      const size = sensor.size || { width: 1, height: 1 };
+      const position = sensor.position || { x: 0, y: 0 };
       resizeStartRef.current = {
         x: e.clientX,
         y: e.clientY,
-        width: sensor.size?.width || 1,
-        height: sensor.size?.height || 1,
-        posX: sensor.position?.x || 0,
-        posY: sensor.position?.y || 0
+        width: size.width,
+        height: size.height,
+        posX: position.x,
+        posY: position.y
       };
-      element.style.cursor = getCursorStyle(direction);
+      e.preventDefault();
     } else {
-      handleDragStart(e, sensor);
+      // Start dragging
+      isDraggingRef.current = true;
+      draggedSensorRef.current = sensor;
+      const rect = element.getBoundingClientRect();
+      dragOffsetRef.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+      e.preventDefault();
     }
-  }, []);
+  };
 
-  const handleDragStart = useCallback((e: React.MouseEvent, sensor: Sensor) => {
-    if (!containerRef.current) return;
-    
-    isDraggingRef.current = true;
-    draggedSensorRef.current = sensor;
-    
-    const widgetElement = e.currentTarget as HTMLElement;
-    const widgetRect = widgetElement.getBoundingClientRect();
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const containerPadding = 32;
-    
-    dragOffsetRef.current = {
-      x: e.clientX - widgetRect.left,
-      y: e.clientY - widgetRect.top
-    };
-    
-    setDragPosition({
-      x: widgetRect.left - containerRect.left - containerPadding,
-      y: widgetRect.top - containerRect.top - containerPadding
-    });
-  }, []);
-
-  const handleDragMove = useCallback((e: MouseEvent) => {
-    if (!isDraggingRef.current || !draggedSensorRef.current || !containerRef.current) return;
-    
-    const deltaX = Math.abs(e.clientX - interactionStartPosRef.current.x);
-    const deltaY = Math.abs(e.clientY - interactionStartPosRef.current.y);
-    if (deltaX > 5 || deltaY > 5) {
-      setCanNavigate(false);
-    }
-    
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const containerPadding = 32;
-    
-    setDragPosition({
-      x: e.clientX - containerRect.left - dragOffsetRef.current.x - containerPadding,
-      y: e.clientY - containerRect.top - dragOffsetRef.current.y - containerPadding
-    });
-  }, []);
-
-  const handleDragEnd = useCallback(() => {
-    if (!isDraggingRef.current || !draggedSensorRef.current || !containerRef.current || !dragPosition) return;
-    
-    const draggedSensor = draggedSensorRef.current;
-    const gap = 16;
-    
-    const gridX = Math.max(0, Math.round(dragPosition.x / (gridSize.cellWidth + gap)));
-    const gridY = Math.max(0, Math.round(dragPosition.y / (gridSize.cellHeight + gap)));
-    
-    const newX = Math.min(gridX, Math.max(0, gridCols - (draggedSensor.size?.width || 1)));
-    const newY = Math.min(gridY, Math.max(0, gridRows - (draggedSensor.size?.height || 1)));
-    
-    setSensors(prevSensors => 
-      prevSensors.map(s => 
-        s.id === draggedSensor.id 
-          ? { ...s, position: { x: newX, y: newY } }
-          : s
-      )
-    );
-    
-    isDraggingRef.current = false;
-    draggedSensorRef.current = null;
-    setDragPosition(null);
-    
-    setTimeout(() => {
-      setCanNavigate(true);
-    }, 100);
-  }, [dragPosition, gridSize, gridCols, gridRows]);
-
-  const handleResizeMove = useCallback((e: MouseEvent) => {
-    if (!isResizingRef.current || !resizedSensorRef.current || !containerRef.current) return;
-    
-    const deltaX = Math.abs(e.clientX - interactionStartPosRef.current.x);
-    const deltaY = Math.abs(e.clientY - interactionStartPosRef.current.y);
-    if (deltaX > 5 || deltaY > 5) {
-      setCanNavigate(false);
-    }
-    
-    const gap = 16;
-    const cellWithGap = gridSize.cellWidth + gap;
-    const cellHeightWithGap = gridSize.cellHeight + gap;
-    
-    const deltaX2 = e.clientX - resizeStartRef.current.x;
-    const deltaY2 = e.clientY - resizeStartRef.current.y;
-    
-    const deltaGridX = Math.round(deltaX2 / cellWithGap);
-    const deltaGridY = Math.round(deltaY2 / cellHeightWithGap);
-    
-    const sensor = resizedSensorRef.current;
-    const direction = resizeDirectionRef.current;
-    
-    let newWidth = resizeStartRef.current.width;
-    let newHeight = resizeStartRef.current.height;
-    let newX = resizeStartRef.current.posX;
-    let newY = resizeStartRef.current.posY;
-    
-    switch (direction) {
-      case 'e':
-        newWidth = Math.max(1, resizeStartRef.current.width + deltaGridX);
-        break;
-      case 'w':
-        newWidth = Math.max(1, resizeStartRef.current.width - deltaGridX);
-        newX = Math.max(0, resizeStartRef.current.posX + deltaGridX);
-        break;
-      case 's':
-        newHeight = Math.max(1, resizeStartRef.current.height + deltaGridY);
-        break;
-      case 'n':
-        newHeight = Math.max(1, resizeStartRef.current.height - deltaGridY);
-        newY = Math.max(0, resizeStartRef.current.posY + deltaGridY);
-        break;
-      case 'se':
-        newWidth = Math.max(1, resizeStartRef.current.width + deltaGridX);
-        newHeight = Math.max(1, resizeStartRef.current.height + deltaGridY);
-        break;
-      case 'sw':
-        newWidth = Math.max(1, resizeStartRef.current.width - deltaGridX);
-        newHeight = Math.max(1, resizeStartRef.current.height + deltaGridY);
-        newX = Math.max(0, resizeStartRef.current.posX + deltaGridX);
-        break;
-      case 'ne':
-        newWidth = Math.max(1, resizeStartRef.current.width + deltaGridX);
-        newHeight = Math.max(1, resizeStartRef.current.height - deltaGridY);
-        newY = Math.max(0, resizeStartRef.current.posY + deltaGridY);
-        break;
-      case 'nw':
-        newWidth = Math.max(1, resizeStartRef.current.width - deltaGridX);
-        newHeight = Math.max(1, resizeStartRef.current.height - deltaGridY);
-        newX = Math.max(0, resizeStartRef.current.posX + deltaGridX);
-        newY = Math.max(0, resizeStartRef.current.posY + deltaGridY);
-        break;
-    }
-    
-    if (newX + newWidth > gridCols) {
-      newWidth = gridCols - newX;
-    }
-    if (newY + newHeight > gridRows) {
-      newHeight = gridRows - newY;
-    }
-    
-    const wouldCollide = isPositionOccupied(newX, newY, newWidth, newHeight, sensor.id);
-    
-    if (!wouldCollide) {
-      setResizePreview({ width: newWidth, height: newHeight, x: newX, y: newY });
-    }
-  }, [gridSize, gridCols, gridRows]);
-
-  const handleResizeEnd = useCallback(() => {
-    if (!isResizingRef.current || !resizedSensorRef.current || !resizePreview) return;
-    
-    const resizedSensor = resizedSensorRef.current;
-    
-    setSensors(prevSensors =>
-      prevSensors.map(s =>
-        s.id === resizedSensor.id
-          ? { 
-              ...s, 
-              size: { width: resizePreview.width, height: resizePreview.height },
-              position: { 
-                x: resizePreview.x !== undefined ? resizePreview.x : s.position!.x,
-                y: resizePreview.y !== undefined ? resizePreview.y : s.position!.y
-              }
-            }
-          : s
-      )
-    );
-    
-    isResizingRef.current = false;
-    resizedSensorRef.current = null;
-    setResizePreview(null);
-    
-    setTimeout(() => {
-      setCanNavigate(true);
-    }, 100);
-  }, [resizePreview]);
+  const handleMouseMove = (e: React.MouseEvent, sensor: Sensor) => {
+    const element = e.currentTarget as HTMLElement;
+    const direction = getResizeDirection(e, element);
+    element.style.cursor = getCursorStyle(direction);
+  };
 
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
-      handleDragMove(e);
-      handleResizeMove(e);
+      // Check if we've moved enough to cancel navigation
+      const deltaX = Math.abs(e.clientX - interactionStartPosRef.current.x);
+      const deltaY = Math.abs(e.clientY - interactionStartPosRef.current.y);
+      if (deltaX > 5 || deltaY > 5) {
+        setCanNavigate(false);
+      }
+      
+      if (isDraggingRef.current && draggedSensorRef.current) {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const rect = container.getBoundingClientRect();
+        const gap = 16;
+        
+        // Calculate new position relative to the container
+        const newX = e.clientX - rect.left - dragOffsetRef.current.x;
+        const newY = e.clientY - rect.top - dragOffsetRef.current.y;
+
+        setDragPosition({ x: newX, y: newY });
+      } else if (isResizingRef.current && resizedSensorRef.current) {
+        const deltaX = e.clientX - resizeStartRef.current.x;
+        const deltaY = e.clientY - resizeStartRef.current.y;
+        const gap = 16;
+        const dir = resizeDirectionRef.current;
+        
+        let newWidth = resizeStartRef.current.width;
+        let newHeight = resizeStartRef.current.height;
+        let newX = resizeStartRef.current.posX;
+        let newY = resizeStartRef.current.posY;
+        
+        const cellsX = Math.round(deltaX / (gridSize.cellWidth + gap));
+        const cellsY = Math.round(deltaY / (gridSize.cellHeight + gap));
+        
+        // Handle resize based on direction
+        if (dir.includes('e')) {
+          newWidth = Math.max(1, resizeStartRef.current.width + cellsX);
+        }
+        if (dir.includes('w')) {
+          const widthChange = Math.min(resizeStartRef.current.width - 1, cellsX);
+          newWidth = resizeStartRef.current.width - widthChange;
+          newX = resizeStartRef.current.posX + widthChange;
+        }
+        if (dir.includes('s')) {
+          newHeight = Math.max(1, resizeStartRef.current.height + cellsY);
+        }
+        if (dir.includes('n')) {
+          const heightChange = Math.min(resizeStartRef.current.height - 1, cellsY);
+          newHeight = resizeStartRef.current.height - heightChange;
+          newY = resizeStartRef.current.posY + heightChange;
+        }
+        
+        // Ensure within bounds
+        newWidth = Math.min(newWidth, gridCols - (dir.includes('w') ? newX : resizeStartRef.current.posX));
+        newHeight = Math.min(newHeight, gridRows - (dir.includes('n') ? newY : resizeStartRef.current.posY));
+        newX = Math.max(0, newX);
+        newY = Math.max(0, newY);
+        
+        setResizePreview({ width: newWidth, height: newHeight, x: newX, y: newY });
+      }
     };
-    
+
     const handleGlobalMouseUp = () => {
-      if (isDraggingRef.current) {
-        handleDragEnd();
+      if (isDraggingRef.current && draggedSensorRef.current && dragPosition) {
+        const gap = 16;
+        const cellWidth = gridSize.cellWidth + gap;
+        const cellHeight = gridSize.cellHeight + gap;
+
+        const gridX = Math.round(dragPosition.x / cellWidth);
+        const gridY = Math.round(dragPosition.y / cellHeight);
+
+        const sensor = draggedSensorRef.current;
+        const size = sensor.size || { width: 1, height: 1 };
+
+        const finalX = Math.max(0, Math.min(gridCols - size.width, gridX));
+        const finalY = Math.max(0, Math.min(gridRows - size.height, gridY));
+
+        if (!isPositionOccupied(finalX, finalY, size.width, size.height, sensor.id)) {
+          setSensors(prevSensors =>
+            prevSensors.map(s =>
+              s.id === sensor.id
+                ? { ...s, position: { x: finalX, y: finalY } }
+                : s
+            )
+          );
+        }
+      } else if (isResizingRef.current && resizedSensorRef.current && resizePreview) {
+        const sensor = resizedSensorRef.current;
+        const newX = resizePreview.x !== undefined ? resizePreview.x : (sensor.position?.x || 0);
+        const newY = resizePreview.y !== undefined ? resizePreview.y : (sensor.position?.y || 0);
+
+        if (!isPositionOccupied(newX, newY, resizePreview.width, resizePreview.height, sensor.id)) {
+          setSensors(prevSensors =>
+            prevSensors.map(s =>
+              s.id === sensor.id
+                ? { 
+                    ...s, 
+                    size: { width: resizePreview.width, height: resizePreview.height },
+                    position: { x: newX, y: newY }
+                  }
+                : s
+            )
+          );
+        }
       }
-      if (isResizingRef.current) {
-        handleResizeEnd();
-      }
+
+      // Reset states
+      isDraggingRef.current = false;
+      draggedSensorRef.current = null;
+      setDragPosition(null);
+      isResizingRef.current = false;
+      resizedSensorRef.current = null;
+      setResizePreview(null);
+      
+      // Small delay to ensure click event doesn't fire on drag end
+      setTimeout(() => {
+        setCanNavigate(true);
+      }, 100);
     };
-    
+
     document.addEventListener('mousemove', handleGlobalMouseMove);
     document.addEventListener('mouseup', handleGlobalMouseUp);
-    
+
     return () => {
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [handleDragMove, handleDragEnd, handleResizeMove, handleResizeEnd]);
+  }, [dragPosition, gridSize, gridCols, gridRows, resizePreview, sensors]);
 
   const isPositionOccupied = (x: number, y: number, width: number, height: number, excludeId?: string): boolean => {
     return currentSensors.some(sensor => {
@@ -596,8 +536,11 @@ const SensorsPage: React.FC = () => {
   };
 
   const navigateToSensor = (sensorId: string) => {
-    console.log(`Navigate to sensor ${sensorId}`);
-    // Implement navigation logic
+    if (onNavigateToDetail) {
+      onNavigateToDetail(sensorId);
+    } else {
+      console.log(`Navigate to sensor ${sensorId}`);
+    }
   };
 
   const getConnectionPlaceholder = () => {
@@ -614,98 +557,111 @@ const SensorsPage: React.FC = () => {
   return (
     <div className="h-full bg-gray-900 flex">
       {/* Sidebar */}
-      <div className="bg-gray-800 w-64 p-4 flex flex-col gap-4 border-r border-gray-700">
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors"
-        >
-          <FaPlus />
-          Add Sensor
-        </button>
+      <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-700">
+          <h1 className="text-2xl font-bold text-white mb-4">Sensors</h1>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors"
+          >
+            <FaPlus />
+            Add Sensor
+          </button>
+        </div>
 
-        {/* Filter & Sort */}
-        <div className="bg-gray-700 rounded-lg p-4 space-y-3">
-          <div className="flex items-center gap-2 text-gray-300">
-            <FaFilter className="w-4 h-4" />
-            <span className="font-medium">Filter & Sort</span>
-          </div>
-          
+        {/* Controls */}
+        <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+          {/* Filter */}
           <div>
-            <label className="text-sm text-gray-400">Status</label>
+            <div className="flex items-center gap-2 text-gray-300 mb-3">
+              <FaFilter className="w-4 h-4" />
+              <span className="font-medium">Filter by Status</span>
+            </div>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value as any)}
-              className="w-full mt-1 bg-gray-600 text-white rounded px-2 py-1 text-sm"
+              className="w-full bg-gray-700 text-white rounded px-3 py-2"
             >
-              <option value="all">All</option>
+              <option value="all">All Sensors</option>
               <option value="green">Active</option>
               <option value="yellow">Warning</option>
               <option value="red">Error</option>
             </select>
           </div>
-          
+
+          {/* Sort */}
           <div>
-            <label className="text-sm text-gray-400">Sort By</label>
+            <div className="flex items-center gap-2 text-gray-300 mb-3">
+              <FaSortAmountDown className="w-4 h-4" />
+              <span className="font-medium">Sort by</span>
+            </div>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full mt-1 bg-gray-600 text-white rounded px-2 py-1 text-sm"
+              className="w-full bg-gray-700 text-white rounded px-3 py-2"
             >
               <option value="date">Date Added</option>
               <option value="name">Name</option>
               <option value="status">Status</option>
             </select>
           </div>
-        </div>
 
-        {/* Grid Controls */}
-        <div className="bg-gray-700 rounded-lg p-4 space-y-3">
-          <div className="text-gray-300 font-medium">Grid Layout</div>
-          <div className="space-y-2">
-            <div>
-              <label className="text-sm text-gray-400">Columns</label>
-              <input
-                type="number"
-                min="1"
-                max="8"
-                value={gridCols}
-                onChange={(e) => setGridCols(Number(e.target.value))}
-                className="w-full mt-1 bg-gray-600 text-white rounded px-2 py-1 text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-gray-400">Rows</label>
-              <input
-                type="number"
-                min="1"
-                max="6"
-                value={gridRows}
-                onChange={(e) => setGridRows(Number(e.target.value))}
-                className="w-full mt-1 bg-gray-600 text-white rounded px-2 py-1 text-sm"
-              />
+          {/* Grid Size */}
+          <div>
+            <label className="block text-gray-300 mb-3 font-medium">Grid Size</label>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Columns</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="8"
+                  value={gridCols}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 1;
+                    setGridCols(Math.max(1, Math.min(8, val)));
+                  }}
+                  className="w-full bg-gray-700 text-white rounded px-3 py-1"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Rows</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="8"
+                  value={gridRows}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 1;
+                    setGridRows(Math.max(1, Math.min(8, val)));
+                  }}
+                  className="w-full bg-gray-700 text-white rounded px-3 py-1"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Stats */}
-        <div className="bg-gray-700 rounded-lg p-4">
-          <div className="text-gray-300 font-medium mb-2">Statistics</div>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Total:</span>
-              <span className="text-white">{sensors.length}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Active:</span>
-              <span className="text-green-400">{sensors.filter(s => s.status === 'green').length}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Warning:</span>
-              <span className="text-yellow-400">{sensors.filter(s => s.status === 'yellow').length}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Error:</span>
-              <span className="text-red-400">{sensors.filter(s => s.status === 'red').length}</span>
+          {/* Stats */}
+          <div className="bg-gray-700 rounded p-4">
+            <h3 className="text-white font-medium mb-3">Statistics</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Total:</span>
+                <span className="text-white">{sensors.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Active:</span>
+                <span className="text-green-400">{sensors.filter(s => s.status === 'green').length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Warning:</span>
+                <span className="text-yellow-400">{sensors.filter(s => s.status === 'yellow').length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Error:</span>
+                <span className="text-red-400">{sensors.filter(s => s.status === 'red').length}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -803,23 +759,23 @@ const SensorsPage: React.FC = () => {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-gray-800 rounded-lg px-4 py-2 shadow-lg">
+          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-gray-800 px-3 py-2 rounded shadow-lg">
             <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
-              className="text-white disabled:text-gray-500 hover:text-blue-400 transition-colors"
+              className="p-1 hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <FaChevronLeft />
+              <FaChevronLeft className="text-white" />
             </button>
-            <span className="text-white text-sm">
+            <span className="text-white px-2">
               {currentPage} / {totalPages}
             </span>
             <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
-              className="text-white disabled:text-gray-500 hover:text-blue-400 transition-colors"
+              className="p-1 hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <FaChevronRight />
+              <FaChevronRight className="text-white" />
             </button>
           </div>
         )}
@@ -828,14 +784,14 @@ const SensorsPage: React.FC = () => {
       {/* Add Sensor Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">Add New Sensor</h2>
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Add New Sensor</h2>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-gray-400 hover:text-white"
+                className="text-gray-400 hover:text-white transition-colors"
               >
-                <FaTimes />
+                <FaTimes className="w-5 h-5" />
               </button>
             </div>
 
@@ -848,19 +804,15 @@ const SensorsPage: React.FC = () => {
                   onChange={(e) => setNewSensor({ ...newSensor, type: e.target.value })}
                   className="w-full bg-gray-700 text-white rounded px-3 py-2"
                 >
-                  <option value="temperature">Temperature</option>
-                  <option value="humidity">Humidity</option>
-                  <option value="pressure">Pressure</option>
-                  <option value="motion">Motion</option>
-                  <option value="light">Light</option>
-                  <option value="air-quality">Air Quality</option>
-                  <option value="custom">Custom Sensor</option>
+                  {Object.entries(SENSOR_TYPES).map(([value, config]) => (
+                    <option key={value} value={value}>{config.defaultName}</option>
+                  ))}
                 </select>
               </div>
 
-              {/* Name */}
+              {/* Sensor Name */}
               <div>
-                <label className="block text-gray-300 mb-1">Name</label>
+                <label className="block text-gray-300 mb-1">Sensor Name</label>
                 <input
                   type="text"
                   value={newSensor.name}
@@ -880,7 +832,12 @@ const SensorsPage: React.FC = () => {
                 >
                   {SENSOR_TYPES[newSensor.type].connectionTypes.map(type => (
                     <option key={type} value={type}>
-                      {type.toUpperCase()}
+                      {type === 'i2c' ? 'I²C' :
+                       type === 'spi' ? 'SPI' :
+                       type === 'analog' ? 'Analog' :
+                       type === 'digital' ? 'Digital' :
+                       type === 'uart' ? 'UART' :
+                       'Wireless'}
                     </option>
                   ))}
                 </select>
@@ -889,7 +846,7 @@ const SensorsPage: React.FC = () => {
               {/* Connection Details */}
               <div>
                 <label className="block text-gray-300 mb-1">
-                  {newSensor.connectionType === 'i2c' ? 'I2C Address' : 
+                  {newSensor.connectionType === 'i2c' ? 'I²C Address' : 
                    newSensor.connectionType === 'spi' ? 'SPI Bus/CS' :
                    newSensor.connectionType === 'analog' ? 'Analog Pin' :
                    newSensor.connectionType === 'digital' ? 'Digital Pin' :

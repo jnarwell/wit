@@ -27,6 +27,10 @@ interface ProjectTypeConfig {
   defaultMetrics: { label: string; value: string }[];
 }
 
+interface ProjectsPageProps {
+  onNavigateToDetail?: (id: string) => void;
+}
+
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
 const PROJECT_TYPES: Record<string, ProjectTypeConfig> = {
@@ -57,34 +61,34 @@ const PROJECT_TYPES: Record<string, ProjectTypeConfig> = {
     teams: ['Research', 'Data Science', 'Academic', 'Lab'],
     defaultMetrics: [
       { label: 'Progress', value: '0%' },
-      { label: 'Status', value: 'Active' }
+      { label: 'Experiments', value: '0/0' }
     ]
   },
-  'marketing': {
-    defaultName: 'Marketing Campaign',
+  'design': {
+    defaultName: 'Design Project',
     priorities: ['low', 'medium', 'high'],
     defaultPriority: 'medium',
-    teams: ['Marketing', 'Creative', 'Social Media', 'Analytics'],
+    teams: ['Design', 'UX', 'Creative', 'Marketing'],
     defaultMetrics: [
       { label: 'Progress', value: '0%' },
-      { label: 'Reach', value: '0' }
+      { label: 'Deliverables', value: '0/0' }
     ]
   },
-  'operations': {
-    defaultName: 'Operations Project',
+  'manufacturing': {
+    defaultName: 'Manufacturing Project',
     priorities: ['low', 'medium', 'high', 'critical'],
     defaultPriority: 'high',
-    teams: ['Operations', 'Logistics', 'Finance', 'HR'],
+    teams: ['Manufacturing', 'Operations', 'Quality', 'Supply Chain'],
     defaultMetrics: [
       { label: 'Progress', value: '0%' },
-      { label: 'Efficiency', value: '0%' }
+      { label: 'Units', value: '0/0' }
     ]
   },
-  'custom': {
-    defaultName: 'Custom Project',
+  'other': {
+    defaultName: 'Other Project',
     priorities: ['low', 'medium', 'high', 'critical'],
     defaultPriority: 'medium',
-    teams: ['Custom', 'Cross-functional', 'Other'],
+    teams: ['General', 'Cross-functional', 'Other'],
     defaultMetrics: [
       { label: 'Progress', value: '0%' },
       { label: 'Status', value: 'Planning' }
@@ -92,7 +96,7 @@ const PROJECT_TYPES: Record<string, ProjectTypeConfig> = {
   }
 };
 
-const ProjectsPage: React.FC = () => {
+const ProjectsPage: React.FC<ProjectsPageProps> = ({ onNavigateToDetail }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -100,9 +104,9 @@ const ProjectsPage: React.FC = () => {
   const [gridSize, setGridSize] = useState({ cellWidth: 0, cellHeight: 0 });
   const [filterStatus, setFilterStatus] = useState<'all' | 'green' | 'yellow' | 'red'>('all');
   const [filterPriority, setFilterPriority] = useState<'all' | 'low' | 'medium' | 'high' | 'critical'>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'status' | 'date' | 'priority'>('date');
+  const [sortBy, setSortBy] = useState<'name' | 'priority' | 'deadline' | 'date'>('date');
   const [gridCols, setGridCols] = useState(3);
-  const [gridRows, setGridRows] = useState(3);
+  const [gridRows, setGridRows] = useState(2);
   const [newProject, setNewProject] = useState({
     type: 'software',
     name: '',
@@ -200,38 +204,36 @@ const ProjectsPage: React.FC = () => {
   }, [gridCols, gridRows]);
 
   // Filter and sort projects
-  const filteredAndSortedProjects = React.useMemo(() => {
-    let filtered = projects;
-    
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter(p => p.status === filterStatus);
-    }
-    
-    if (filterPriority !== 'all') {
-      filtered = filtered.filter(p => p.priority === filterPriority);
-    }
-    
-    return filtered.sort((a, b) => {
-      if (sortBy === 'name') {
+  const filteredProjects = projects.filter(project => {
+    if (filterStatus !== 'all' && project.status !== filterStatus) return false;
+    if (filterPriority !== 'all' && project.priority !== filterPriority) return false;
+    return true;
+  });
+
+  const sortedProjects = [...filteredProjects].sort((a, b) => {
+    switch (sortBy) {
+      case 'name':
         return a.name.localeCompare(b.name);
-      } else if (sortBy === 'status') {
-        const statusOrder = { 'red': 0, 'yellow': 1, 'green': 2 };
-        return statusOrder[a.status] - statusOrder[b.status];
-      } else if (sortBy === 'priority') {
-        const priorityOrder = { 'low': 0, 'medium': 1, 'high': 2, 'critical': 3 };
-        return priorityOrder[b.priority] - priorityOrder[a.priority];
-      } else {
+      case 'priority':
+        const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      case 'deadline':
+        if (!a.deadline && !b.deadline) return 0;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+      case 'date':
         return new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime();
-      }
-    });
-  }, [projects, filterStatus, filterPriority, sortBy]);
+      default:
+        return 0;
+    }
+  });
 
   // Pagination
-  const itemsPerPage = gridCols * gridRows;
-  const totalPages = Math.ceil(filteredAndSortedProjects.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentProjects = filteredAndSortedProjects.slice(startIndex, endIndex);
+  const projectsPerPage = gridCols * gridRows;
+  const totalPages = Math.ceil(sortedProjects.length / projectsPerPage);
+  const startIndex = (currentPage - 1) * projectsPerPage;
+  const currentProjects = sortedProjects.slice(startIndex, startIndex + projectsPerPage);
 
   // Check if cursor is near edge of widget
   const getResizeDirection = (e: React.MouseEvent, element: HTMLElement): ResizeDirection | null => {
@@ -257,6 +259,7 @@ const ProjectsPage: React.FC = () => {
     return null;
   };
 
+  // Get cursor style based on resize direction
   const getCursorStyle = (direction: ResizeDirection | null): string => {
     if (!direction) return 'move';
     const cursorMap: Record<ResizeDirection, string> = {
@@ -265,253 +268,189 @@ const ProjectsPage: React.FC = () => {
       'e': 'ew-resize',
       'w': 'ew-resize',
       'ne': 'nesw-resize',
-      'se': 'nwse-resize',
       'nw': 'nwse-resize',
+      'se': 'nwse-resize',
       'sw': 'nesw-resize'
     };
     return cursorMap[direction];
   };
 
-  const handleMouseMove = useCallback((e: React.MouseEvent, project: Project) => {
-    if (isDraggingRef.current || isResizingRef.current) return;
-    
-    const element = e.currentTarget as HTMLElement;
-    const direction = getResizeDirection(e, element);
-    element.style.cursor = getCursorStyle(direction);
-  }, []);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent, project: Project) => {
-    const target = e.target as HTMLElement;
-    const isInteractive = target.closest('button, a, input, select, textarea, [role="button"]');
-    
-    if (isInteractive) {
+  const handleMouseDown = (e: React.MouseEvent, project: Project) => {
+    if ((e.target as HTMLElement).closest('button')) {
       return;
     }
-    
-    e.preventDefault();
+
     const element = e.currentTarget as HTMLElement;
     const direction = getResizeDirection(e, element);
     
+    // Store initial position for navigation detection
     interactionStartPosRef.current = { x: e.clientX, y: e.clientY };
     setCanNavigate(true);
     
     if (direction) {
+      // Start resizing
       isResizingRef.current = true;
       resizedProjectRef.current = project;
       resizeDirectionRef.current = direction;
+      const size = project.size || { width: 1, height: 1 };
+      const position = project.position || { x: 0, y: 0 };
       resizeStartRef.current = {
         x: e.clientX,
         y: e.clientY,
-        width: project.size?.width || 1,
-        height: project.size?.height || 1,
-        posX: project.position?.x || 0,
-        posY: project.position?.y || 0
+        width: size.width,
+        height: size.height,
+        posX: position.x,
+        posY: position.y
       };
-      element.style.cursor = getCursorStyle(direction);
+      e.preventDefault();
     } else {
-      handleDragStart(e, project);
+      // Start dragging
+      isDraggingRef.current = true;
+      draggedProjectRef.current = project;
+      const rect = element.getBoundingClientRect();
+      dragOffsetRef.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+      e.preventDefault();
     }
-  }, []);
+  };
 
-  const handleDragStart = useCallback((e: React.MouseEvent, project: Project) => {
-    if (!containerRef.current) return;
-    
-    isDraggingRef.current = true;
-    draggedProjectRef.current = project;
-    
-    const widgetElement = e.currentTarget as HTMLElement;
-    const widgetRect = widgetElement.getBoundingClientRect();
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const containerPadding = 32;
-    
-    dragOffsetRef.current = {
-      x: e.clientX - widgetRect.left,
-      y: e.clientY - widgetRect.top
-    };
-    
-    setDragPosition({
-      x: widgetRect.left - containerRect.left - containerPadding,
-      y: widgetRect.top - containerRect.top - containerPadding
-    });
-  }, []);
-
-  const handleDragMove = useCallback((e: MouseEvent) => {
-    if (!isDraggingRef.current || !draggedProjectRef.current || !containerRef.current) return;
-    
-    const deltaX = Math.abs(e.clientX - interactionStartPosRef.current.x);
-    const deltaY = Math.abs(e.clientY - interactionStartPosRef.current.y);
-    if (deltaX > 5 || deltaY > 5) {
-      setCanNavigate(false);
-    }
-    
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const containerPadding = 32;
-    
-    setDragPosition({
-      x: e.clientX - containerRect.left - dragOffsetRef.current.x - containerPadding,
-      y: e.clientY - containerRect.top - dragOffsetRef.current.y - containerPadding
-    });
-  }, []);
-
-  const handleDragEnd = useCallback(() => {
-    if (!isDraggingRef.current || !draggedProjectRef.current || !containerRef.current || !dragPosition) return;
-    
-    const draggedProject = draggedProjectRef.current;
-    const gap = 16;
-    
-    const gridX = Math.max(0, Math.round(dragPosition.x / (gridSize.cellWidth + gap)));
-    const gridY = Math.max(0, Math.round(dragPosition.y / (gridSize.cellHeight + gap)));
-    
-    const newX = Math.min(gridX, Math.max(0, gridCols - (draggedProject.size?.width || 1)));
-    const newY = Math.min(gridY, Math.max(0, gridRows - (draggedProject.size?.height || 1)));
-    
-    setProjects(prevProjects => 
-      prevProjects.map(p => 
-        p.id === draggedProject.id 
-          ? { ...p, position: { x: newX, y: newY } }
-          : p
-      )
-    );
-    
-    isDraggingRef.current = false;
-    draggedProjectRef.current = null;
-    setDragPosition(null);
-    
-    setTimeout(() => {
-      setCanNavigate(true);
-    }, 100);
-  }, [dragPosition, gridSize, gridCols, gridRows]);
-
-  const handleResizeMove = useCallback((e: MouseEvent) => {
-    if (!isResizingRef.current || !resizedProjectRef.current || !containerRef.current) return;
-    
-    const deltaX = Math.abs(e.clientX - interactionStartPosRef.current.x);
-    const deltaY = Math.abs(e.clientY - interactionStartPosRef.current.y);
-    if (deltaX > 5 || deltaY > 5) {
-      setCanNavigate(false);
-    }
-    
-    const gap = 16;
-    const cellWithGap = gridSize.cellWidth + gap;
-    const cellHeightWithGap = gridSize.cellHeight + gap;
-    
-    const deltaX2 = e.clientX - resizeStartRef.current.x;
-    const deltaY2 = e.clientY - resizeStartRef.current.y;
-    
-    const deltaGridX = Math.round(deltaX2 / cellWithGap);
-    const deltaGridY = Math.round(deltaY2 / cellHeightWithGap);
-    
-    const project = resizedProjectRef.current;
-    const direction = resizeDirectionRef.current;
-    
-    let newWidth = resizeStartRef.current.width;
-    let newHeight = resizeStartRef.current.height;
-    let newX = resizeStartRef.current.posX;
-    let newY = resizeStartRef.current.posY;
-    
-    switch (direction) {
-      case 'e':
-        newWidth = Math.max(1, resizeStartRef.current.width + deltaGridX);
-        break;
-      case 'w':
-        newWidth = Math.max(1, resizeStartRef.current.width - deltaGridX);
-        newX = Math.max(0, resizeStartRef.current.posX + deltaGridX);
-        break;
-      case 's':
-        newHeight = Math.max(1, resizeStartRef.current.height + deltaGridY);
-        break;
-      case 'n':
-        newHeight = Math.max(1, resizeStartRef.current.height - deltaGridY);
-        newY = Math.max(0, resizeStartRef.current.posY + deltaGridY);
-        break;
-      case 'se':
-        newWidth = Math.max(1, resizeStartRef.current.width + deltaGridX);
-        newHeight = Math.max(1, resizeStartRef.current.height + deltaGridY);
-        break;
-      case 'sw':
-        newWidth = Math.max(1, resizeStartRef.current.width - deltaGridX);
-        newHeight = Math.max(1, resizeStartRef.current.height + deltaGridY);
-        newX = Math.max(0, resizeStartRef.current.posX + deltaGridX);
-        break;
-      case 'ne':
-        newWidth = Math.max(1, resizeStartRef.current.width + deltaGridX);
-        newHeight = Math.max(1, resizeStartRef.current.height - deltaGridY);
-        newY = Math.max(0, resizeStartRef.current.posY + deltaGridY);
-        break;
-      case 'nw':
-        newWidth = Math.max(1, resizeStartRef.current.width - deltaGridX);
-        newHeight = Math.max(1, resizeStartRef.current.height - deltaGridY);
-        newX = Math.max(0, resizeStartRef.current.posX + deltaGridX);
-        newY = Math.max(0, resizeStartRef.current.posY + deltaGridY);
-        break;
-    }
-    
-    if (newX + newWidth > gridCols) {
-      newWidth = gridCols - newX;
-    }
-    if (newY + newHeight > gridRows) {
-      newHeight = gridRows - newY;
-    }
-    
-    const wouldCollide = isPositionOccupied(newX, newY, newWidth, newHeight, project.id);
-    
-    if (!wouldCollide) {
-      setResizePreview({ width: newWidth, height: newHeight, x: newX, y: newY });
-    }
-  }, [gridSize, gridCols, gridRows]);
-
-  const handleResizeEnd = useCallback(() => {
-    if (!isResizingRef.current || !resizedProjectRef.current || !resizePreview) return;
-    
-    const resizedProject = resizedProjectRef.current;
-    
-    setProjects(prevProjects =>
-      prevProjects.map(p =>
-        p.id === resizedProject.id
-          ? { 
-              ...p, 
-              size: { width: resizePreview.width, height: resizePreview.height },
-              position: { 
-                x: resizePreview.x !== undefined ? resizePreview.x : p.position!.x,
-                y: resizePreview.y !== undefined ? resizePreview.y : p.position!.y
-              }
-            }
-          : p
-      )
-    );
-    
-    isResizingRef.current = false;
-    resizedProjectRef.current = null;
-    setResizePreview(null);
-    
-    setTimeout(() => {
-      setCanNavigate(true);
-    }, 100);
-  }, [resizePreview]);
+  const handleMouseMove = (e: React.MouseEvent, project: Project) => {
+    const element = e.currentTarget as HTMLElement;
+    const direction = getResizeDirection(e, element);
+    element.style.cursor = getCursorStyle(direction);
+  };
 
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
-      handleDragMove(e);
-      handleResizeMove(e);
+      // Check if we've moved enough to cancel navigation
+      const deltaX = Math.abs(e.clientX - interactionStartPosRef.current.x);
+      const deltaY = Math.abs(e.clientY - interactionStartPosRef.current.y);
+      if (deltaX > 5 || deltaY > 5) {
+        setCanNavigate(false);
+      }
+      
+      if (isDraggingRef.current && draggedProjectRef.current) {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const rect = container.getBoundingClientRect();
+        const gap = 16;
+        
+        // Calculate new position relative to the container
+        const newX = e.clientX - rect.left - dragOffsetRef.current.x;
+        const newY = e.clientY - rect.top - dragOffsetRef.current.y;
+
+        setDragPosition({ x: newX, y: newY });
+      } else if (isResizingRef.current && resizedProjectRef.current) {
+        const deltaX = e.clientX - resizeStartRef.current.x;
+        const deltaY = e.clientY - resizeStartRef.current.y;
+        const gap = 16;
+        const dir = resizeDirectionRef.current;
+        
+        let newWidth = resizeStartRef.current.width;
+        let newHeight = resizeStartRef.current.height;
+        let newX = resizeStartRef.current.posX;
+        let newY = resizeStartRef.current.posY;
+        
+        const cellsX = Math.round(deltaX / (gridSize.cellWidth + gap));
+        const cellsY = Math.round(deltaY / (gridSize.cellHeight + gap));
+        
+        // Handle resize based on direction
+        if (dir.includes('e')) {
+          newWidth = Math.max(1, resizeStartRef.current.width + cellsX);
+        }
+        if (dir.includes('w')) {
+          const widthChange = Math.min(resizeStartRef.current.width - 1, cellsX);
+          newWidth = resizeStartRef.current.width - widthChange;
+          newX = resizeStartRef.current.posX + widthChange;
+        }
+        if (dir.includes('s')) {
+          newHeight = Math.max(1, resizeStartRef.current.height + cellsY);
+        }
+        if (dir.includes('n')) {
+          const heightChange = Math.min(resizeStartRef.current.height - 1, cellsY);
+          newHeight = resizeStartRef.current.height - heightChange;
+          newY = resizeStartRef.current.posY + heightChange;
+        }
+        
+        // Ensure within bounds
+        newWidth = Math.min(newWidth, gridCols - (dir.includes('w') ? newX : resizeStartRef.current.posX));
+        newHeight = Math.min(newHeight, gridRows - (dir.includes('n') ? newY : resizeStartRef.current.posY));
+        newX = Math.max(0, newX);
+        newY = Math.max(0, newY);
+        
+        setResizePreview({ width: newWidth, height: newHeight, x: newX, y: newY });
+      }
     };
-    
+
     const handleGlobalMouseUp = () => {
-      if (isDraggingRef.current) {
-        handleDragEnd();
+      if (isDraggingRef.current && draggedProjectRef.current && dragPosition) {
+        const gap = 16;
+        const cellWidth = gridSize.cellWidth + gap;
+        const cellHeight = gridSize.cellHeight + gap;
+
+        const gridX = Math.round(dragPosition.x / cellWidth);
+        const gridY = Math.round(dragPosition.y / cellHeight);
+
+        const project = draggedProjectRef.current;
+        const size = project.size || { width: 1, height: 1 };
+
+        const finalX = Math.max(0, Math.min(gridCols - size.width, gridX));
+        const finalY = Math.max(0, Math.min(gridRows - size.height, gridY));
+
+        if (!isPositionOccupied(finalX, finalY, size.width, size.height, project.id)) {
+          setProjects(prevProjects =>
+            prevProjects.map(p =>
+              p.id === project.id
+                ? { ...p, position: { x: finalX, y: finalY } }
+                : p
+            )
+          );
+        }
+      } else if (isResizingRef.current && resizedProjectRef.current && resizePreview) {
+        const project = resizedProjectRef.current;
+        const newX = resizePreview.x !== undefined ? resizePreview.x : (project.position?.x || 0);
+        const newY = resizePreview.y !== undefined ? resizePreview.y : (project.position?.y || 0);
+
+        if (!isPositionOccupied(newX, newY, resizePreview.width, resizePreview.height, project.id)) {
+          setProjects(prevProjects =>
+            prevProjects.map(p =>
+              p.id === project.id
+                ? { 
+                    ...p, 
+                    size: { width: resizePreview.width, height: resizePreview.height },
+                    position: { x: newX, y: newY }
+                  }
+                : p
+            )
+          );
+        }
       }
-      if (isResizingRef.current) {
-        handleResizeEnd();
-      }
+
+      // Reset states
+      isDraggingRef.current = false;
+      draggedProjectRef.current = null;
+      setDragPosition(null);
+      isResizingRef.current = false;
+      resizedProjectRef.current = null;
+      setResizePreview(null);
+      
+      // Small delay to ensure click event doesn't fire on drag end
+      setTimeout(() => {
+        setCanNavigate(true);
+      }, 100);
     };
-    
+
     document.addEventListener('mousemove', handleGlobalMouseMove);
     document.addEventListener('mouseup', handleGlobalMouseUp);
-    
+
     return () => {
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [handleDragMove, handleDragEnd, handleResizeMove, handleResizeEnd]);
+  }, [dragPosition, gridSize, gridCols, gridRows, resizePreview, projects]);
 
   const isPositionOccupied = (x: number, y: number, width: number, height: number, excludeId?: string): boolean => {
     return currentProjects.some(project => {
@@ -552,19 +491,11 @@ const ProjectsPage: React.FC = () => {
       return;
     }
     
-    // Calculate initial status based on deadline
-    let status: 'green' | 'yellow' | 'red' = 'green';
-    if (newProject.deadline) {
-      const daysUntilDeadline = Math.floor((new Date(newProject.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-      if (daysUntilDeadline < 7) status = 'red';
-      else if (daysUntilDeadline < 30) status = 'yellow';
-    }
-    
     const newProjectData: Project = {
       id: projectId,
       name: newProject.name || typeConfig.defaultName,
       type: newProject.type,
-      status: status,
+      status: 'green',
       metrics: typeConfig.defaultMetrics,
       priority: newProject.priority,
       team: newProject.team,
@@ -598,131 +529,141 @@ const ProjectsPage: React.FC = () => {
   };
 
   const navigateToProject = (projectId: string) => {
-    console.log(`Navigate to project ${projectId}`);
-    // Implement navigation logic
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'low': return 'text-gray-400';
-      case 'medium': return 'text-blue-400';
-      case 'high': return 'text-orange-400';
-      case 'critical': return 'text-red-400';
-      default: return 'text-gray-400';
+    if (onNavigateToDetail) {
+      onNavigateToDetail(projectId);
+    } else {
+      console.log(`Navigate to project ${projectId}`);
     }
   };
 
   return (
     <div className="h-full bg-gray-900 flex">
       {/* Sidebar */}
-      <div className="bg-gray-800 w-64 p-4 flex flex-col gap-4 border-r border-gray-700">
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors"
-        >
-          <FaPlus />
-          Add Project
-        </button>
+      <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-700">
+          <h1 className="text-2xl font-bold text-white mb-4">Projects</h1>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors"
+          >
+            <FaPlus />
+            Add Project
+          </button>
+        </div>
 
-        {/* Filter & Sort */}
-        <div className="bg-gray-700 rounded-lg p-4 space-y-3">
-          <div className="flex items-center gap-2 text-gray-300">
-            <FaFilter className="w-4 h-4" />
-            <span className="font-medium">Filter & Sort</span>
-          </div>
-          
+        {/* Controls */}
+        <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+          {/* Status Filter */}
           <div>
-            <label className="text-sm text-gray-400">Status</label>
+            <div className="flex items-center gap-2 text-gray-300 mb-3">
+              <FaFilter className="w-4 h-4" />
+              <span className="font-medium">Filter by Status</span>
+            </div>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value as any)}
-              className="w-full mt-1 bg-gray-600 text-white rounded px-2 py-1 text-sm"
+              className="w-full bg-gray-700 text-white rounded px-3 py-2"
             >
-              <option value="all">All</option>
+              <option value="all">All Status</option>
               <option value="green">On Track</option>
               <option value="yellow">At Risk</option>
-              <option value="red">Behind</option>
+              <option value="red">Off Track</option>
             </select>
           </div>
-          
+
+          {/* Priority Filter */}
           <div>
-            <label className="text-sm text-gray-400">Priority</label>
+            <div className="flex items-center gap-2 text-gray-300 mb-3">
+              <FaFilter className="w-4 h-4" />
+              <span className="font-medium">Filter by Priority</span>
+            </div>
             <select
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value as any)}
-              className="w-full mt-1 bg-gray-600 text-white rounded px-2 py-1 text-sm"
+              className="w-full bg-gray-700 text-white rounded px-3 py-2"
             >
-              <option value="all">All</option>
+              <option value="all">All Priorities</option>
               <option value="critical">Critical</option>
               <option value="high">High</option>
               <option value="medium">Medium</option>
               <option value="low">Low</option>
             </select>
           </div>
-          
+
+          {/* Sort */}
           <div>
-            <label className="text-sm text-gray-400">Sort By</label>
+            <div className="flex items-center gap-2 text-gray-300 mb-3">
+              <FaSortAmountDown className="w-4 h-4" />
+              <span className="font-medium">Sort by</span>
+            </div>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full mt-1 bg-gray-600 text-white rounded px-2 py-1 text-sm"
+              className="w-full bg-gray-700 text-white rounded px-3 py-2"
             >
               <option value="date">Date Added</option>
               <option value="name">Name</option>
-              <option value="status">Status</option>
               <option value="priority">Priority</option>
+              <option value="deadline">Deadline</option>
             </select>
           </div>
-        </div>
 
-        {/* Grid Controls */}
-        <div className="bg-gray-700 rounded-lg p-4 space-y-3">
-          <div className="text-gray-300 font-medium">Grid Layout</div>
-          <div className="space-y-2">
-            <div>
-              <label className="text-sm text-gray-400">Columns</label>
-              <input
-                type="number"
-                min="1"
-                max="6"
-                value={gridCols}
-                onChange={(e) => setGridCols(Number(e.target.value))}
-                className="w-full mt-1 bg-gray-600 text-white rounded px-2 py-1 text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-gray-400">Rows</label>
-              <input
-                type="number"
-                min="1"
-                max="6"
-                value={gridRows}
-                onChange={(e) => setGridRows(Number(e.target.value))}
-                className="w-full mt-1 bg-gray-600 text-white rounded px-2 py-1 text-sm"
-              />
+          {/* Grid Size */}
+          <div>
+            <label className="block text-gray-300 mb-3 font-medium">Grid Size</label>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Columns</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="8"
+                  value={gridCols}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 1;
+                    setGridCols(Math.max(1, Math.min(8, val)));
+                  }}
+                  className="w-full bg-gray-700 text-white rounded px-3 py-1"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Rows</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="8"
+                  value={gridRows}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 1;
+                    setGridRows(Math.max(1, Math.min(8, val)));
+                  }}
+                  className="w-full bg-gray-700 text-white rounded px-3 py-1"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Stats */}
-        <div className="bg-gray-700 rounded-lg p-4">
-          <div className="text-gray-300 font-medium mb-2">Statistics</div>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Total:</span>
-              <span className="text-white">{projects.length}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">On Track:</span>
-              <span className="text-green-400">{projects.filter(p => p.status === 'green').length}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">At Risk:</span>
-              <span className="text-yellow-400">{projects.filter(p => p.status === 'yellow').length}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Behind:</span>
-              <span className="text-red-400">{projects.filter(p => p.status === 'red').length}</span>
+          {/* Stats */}
+          <div className="bg-gray-700 rounded p-4">
+            <h3 className="text-white font-medium mb-3">Statistics</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Total:</span>
+                <span className="text-white">{projects.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Critical:</span>
+                <span className="text-red-400">{projects.filter(p => p.priority === 'critical').length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">On Track:</span>
+                <span className="text-green-400">{projects.filter(p => p.status === 'green').length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">At Risk:</span>
+                <span className="text-yellow-400">{projects.filter(p => p.status === 'yellow').length}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -820,23 +761,23 @@ const ProjectsPage: React.FC = () => {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-gray-800 rounded-lg px-4 py-2 shadow-lg">
+          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-gray-800 px-3 py-2 rounded shadow-lg">
             <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
-              className="text-white disabled:text-gray-500 hover:text-blue-400 transition-colors"
+              className="p-1 hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <FaChevronLeft />
+              <FaChevronLeft className="text-white" />
             </button>
-            <span className="text-white text-sm">
+            <span className="text-white px-2">
               {currentPage} / {totalPages}
             </span>
             <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
-              className="text-white disabled:text-gray-500 hover:text-blue-400 transition-colors"
+              className="p-1 hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <FaChevronRight />
+              <FaChevronRight className="text-white" />
             </button>
           </div>
         )}
@@ -845,14 +786,14 @@ const ProjectsPage: React.FC = () => {
       {/* Add Project Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">Add New Project</h2>
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Add New Project</h2>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-gray-400 hover:text-white"
+                className="text-gray-400 hover:text-white transition-colors"
               >
-                <FaTimes />
+                <FaTimes className="w-5 h-5" />
               </button>
             </div>
 
@@ -865,16 +806,13 @@ const ProjectsPage: React.FC = () => {
                   onChange={(e) => setNewProject({ ...newProject, type: e.target.value })}
                   className="w-full bg-gray-700 text-white rounded px-3 py-2"
                 >
-                  <option value="software">Software</option>
-                  <option value="hardware">Hardware</option>
-                  <option value="research">Research</option>
-                  <option value="marketing">Marketing</option>
-                  <option value="operations">Operations</option>
-                  <option value="custom">Custom</option>
+                  {Object.entries(PROJECT_TYPES).map(([value, config]) => (
+                    <option key={value} value={value}>{config.defaultName}</option>
+                  ))}
                 </select>
               </div>
 
-              {/* Name */}
+              {/* Project Name */}
               <div>
                 <label className="block text-gray-300 mb-1">Project Name</label>
                 <input
@@ -933,7 +871,7 @@ const ProjectsPage: React.FC = () => {
                 <textarea
                   value={newProject.description}
                   onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
-                  placeholder="Project goals, requirements, or notes"
+                  placeholder="Project goals, objectives, and details..."
                   className="w-full bg-gray-700 text-white rounded px-3 py-2 h-20 resize-none"
                 />
               </div>
