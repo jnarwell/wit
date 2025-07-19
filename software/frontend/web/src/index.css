@@ -8,14 +8,36 @@
   @apply w-full text-left px-3 py-2 rounded text-gray-300 hover:bg-gray-700 hover:text-white transition-colors text-sm;
 }
 
+.widget-menu-item span {
+  @apply leading-tight;
+}
+
 /* Widget container styles */
 .widget-container {
-  @apply bg-gray-800 rounded-lg shadow-lg overflow-hidden;
+  @apply bg-gray-800 rounded-lg shadow-lg overflow-hidden relative;
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
 .widget-container:hover {
   @apply shadow-xl;
+}
+
+/* Widget during drag */
+.widget-container.dragging {
+  @apply opacity-80;
+}
+
+/* Widget during resize */
+.widget-container.resizing {
+  @apply ring-2 ring-blue-500;
+}
+
+/* Visual edge indicators on hover */
+.widget-container:not(.dragging):hover {
+  box-shadow: 
+    inset 0 0 0 1px rgba(59, 130, 246, 0.2),
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 /* Prevent text selection during drag */
@@ -76,6 +98,19 @@
 /* List widget styles */
 .list-item {
   @apply py-2 px-3 hover:bg-gray-700 rounded cursor-pointer transition-colors;
+}
+
+.list-widget-container {
+  @apply flex flex-col h-full;
+}
+
+.list-widget-items {
+  @apply flex-1 overflow-y-auto;
+}
+
+/* Compact list items for better density */
+.list-widget-item {
+  @apply py-1.5 px-2 text-sm;
 }
 
 /* Status indicator styles */
