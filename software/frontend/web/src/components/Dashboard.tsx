@@ -31,6 +31,8 @@ const Dashboard: React.FC = () => {
   const [gridSize, setGridSize] = useState<GridSize>({ cellWidth: 0, cellHeight: 0, cols: 5, rows: 2 });
   const [gridCols, setGridCols] = useState(3);
   const [gridRows, setGridRows] = useState(3);
+  const [gridColsInput, setGridColsInput] = useState('3');
+  const [gridRowsInput, setGridRowsInput] = useState('3');
   const [isGridReady, setIsGridReady] = useState(false);
   const [hasLoadedLayout, setHasLoadedLayout] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<{ [key: string]: boolean }>({
@@ -70,11 +72,12 @@ const Dashboard: React.FC = () => {
       if (!containerRef.current) return;
 
       const container = containerRef.current;
-      const padding = 32;
+      const paddingHorizontal = 56; // pl-8 (32px) + pr-6 (24px) = 56px
+      const paddingVertical = 48; // py-6 = 24px * 2 = 48px
       const gap = 16;
       
-      const availableWidth = container.clientWidth - padding;
-      const availableHeight = container.clientHeight - padding;
+      const availableWidth = container.clientWidth - paddingHorizontal;
+      const availableHeight = container.clientHeight - paddingVertical;
 
       const cellWidth = (availableWidth - (gap * (gridCols - 1))) / gridCols;
       const cellHeight = (availableHeight - (gap * (gridRows - 1))) / gridRows;
@@ -152,8 +155,12 @@ const Dashboard: React.FC = () => {
           
           // Load grid configuration if available
           if (parsed.gridConfig) {
-            setGridCols(parsed.gridConfig.cols || 3);
-            setGridRows(parsed.gridConfig.rows || 3);
+            const newCols = parsed.gridConfig.cols || 3;
+            const newRows = parsed.gridConfig.rows || 3;
+            setGridCols(newCols);
+            setGridRows(newRows);
+            setGridColsInput(String(newCols));
+            setGridRowsInput(String(newRows));
           }
         }
         
@@ -356,7 +363,7 @@ const Dashboard: React.FC = () => {
     const widgetElement = e.currentTarget as HTMLElement;
     const widgetRect = widgetElement.getBoundingClientRect();
     const containerRect = containerRef.current.getBoundingClientRect();
-    const containerPadding = 16; // p-4 = 16px
+    const containerPadding = 32; // pl-8 = 32px (left padding)
     
     dragOffsetRef.current = {
       x: e.clientX - widgetRect.left,
@@ -373,7 +380,7 @@ const Dashboard: React.FC = () => {
     if (!isDraggingRef.current || !draggedWidgetRef.current || !containerRef.current) return;
     
     const containerRect = containerRef.current.getBoundingClientRect();
-    const containerPadding = 16;
+    const containerPadding = 32; // pl-8 = 32px (left padding)
     
     setDragPosition({
       x: e.clientX - containerRect.left - dragOffsetRef.current.x - containerPadding,
@@ -541,8 +548,8 @@ const Dashboard: React.FC = () => {
   return (
     <div className="h-full flex">
       {/* Sidebar */}
-      <div className="bg-gray-800 w-64 flex flex-col h-full">
-        <div className="p-4 flex-1 flex flex-col overflow-hidden">
+      <div className="bg-gray-800 w-64 flex flex-col h-full border-r border-gray-700">
+        <div className="p-4 flex-1 flex flex-col overflow-hidden gap-4">
           <button
             onClick={() => setShowAddMenu(!showAddMenu)}
             className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors mb-4 flex-shrink-0"
@@ -554,81 +561,95 @@ const Dashboard: React.FC = () => {
           {showAddMenu && (
             <div className="flex-1 bg-gray-700 rounded-lg p-4 overflow-y-auto mb-4">
               <div className="space-y-2">
-              {/* Lists Category */}
-              <div>
-                <button
-                  onClick={() => toggleCategory('lists')}
-                  className="w-full flex items-center justify-between text-gray-300 hover:text-white transition-colors p-2 rounded hover:bg-gray-600"
-                >
-                  <span className="font-medium">Lists</span>
-                  {expandedCategories.lists ? <FaChevronDown size={12} /> : <FaChevronRight size={12} />}
-                </button>
-                {expandedCategories.lists && (
-                  <div className="ml-4 mt-1 space-y-1">
-                    <button onClick={() => addWidget('projects-list')} className="widget-menu-item">Projects List</button>
-                    <button onClick={() => addWidget('machines-list')} className="widget-menu-item">Machines List</button>
-                    <button onClick={() => addWidget('sensors-list')} className="widget-menu-item">Sensors List</button>
-                  </div>
-                )}
+                {/* Lists Category */}
+                <div>
+                  <button
+                    onClick={() => toggleCategory('lists')}
+                    className="w-full flex items-center justify-between text-gray-300 hover:text-white transition-colors p-2 rounded hover:bg-gray-600"
+                  >
+                    <span className="font-medium">Lists</span>
+                    {expandedCategories.lists ? <FaChevronDown size={12} /> : <FaChevronRight size={12} />}
+                  </button>
+                  {expandedCategories.lists && (
+                    <div className="ml-4 mt-1 space-y-1">
+                      <button onClick={() => addWidget('projects-list')} className="widget-menu-item">Projects List</button>
+                      <button onClick={() => addWidget('machines-list')} className="widget-menu-item">Machines List</button>
+                      <button onClick={() => addWidget('sensors-list')} className="widget-menu-item">Sensors List</button>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Utilities Category */}
+                <div>
+                  <button
+                    onClick={() => toggleCategory('utilities')}
+                    className="w-full flex items-center justify-between text-gray-300 hover:text-white transition-colors p-2 rounded hover:bg-gray-600"
+                  >
+                    <span className="font-medium">Utilities</span>
+                    {expandedCategories.utilities ? <FaChevronDown size={12} /> : <FaChevronRight size={12} />}
+                  </button>
+                  {expandedCategories.utilities && (
+                    <div className="ml-4 mt-1 space-y-1">
+                      <button onClick={() => addWidget('utility', 'cpu')} className="widget-menu-item">CPU Usage</button>
+                      <button onClick={() => addWidget('utility', 'ram')} className="widget-menu-item">Memory</button>
+                      <button onClick={() => addWidget('utility', 'disk')} className="widget-menu-item">Disk Space</button>
+                      <button onClick={() => addWidget('utility', 'network')} className="widget-menu-item">Network</button>
+                      <button onClick={() => addWidget('utility', 'temp')} className="widget-menu-item">Temperature</button>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Special Category */}
+                <div>
+                  <button
+                    onClick={() => toggleCategory('special')}
+                    className="w-full flex items-center justify-between text-gray-300 hover:text-white transition-colors p-2 rounded hover:bg-gray-600"
+                  >
+                    <span className="font-medium">Special</span>
+                    {expandedCategories.special ? <FaChevronDown size={12} /> : <FaChevronRight size={12} />}
+                  </button>
+                  {expandedCategories.special && (
+                    <div className="ml-4 mt-1 space-y-1">
+                      <button onClick={() => addWidget('wits')} className="w-full text-left text-gray-400 hover:text-white text-sm py-1 px-2 rounded hover:bg-gray-600 transition-colors">WITs Assistant</button>
+                    </div>
+                  )}
+                </div>
               </div>
               
-              {/* Utilities Category */}
-              <div>
-                <button
-                  onClick={() => toggleCategory('utilities')}
-                  className="w-full flex items-center justify-between text-gray-300 hover:text-white transition-colors p-2 rounded hover:bg-gray-600"
-                >
-                  <span className="font-medium">Utilities</span>
-                  {expandedCategories.utilities ? <FaChevronDown size={12} /> : <FaChevronRight size={12} />}
-                </button>
-                {expandedCategories.utilities && (
-                  <div className="ml-4 mt-1 space-y-1">
-                    <button onClick={() => addWidget('utility', 'cpu')} className="widget-menu-item">CPU Usage</button>
-                    <button onClick={() => addWidget('utility', 'ram')} className="widget-menu-item">Memory</button>
-                    <button onClick={() => addWidget('utility', 'disk')} className="widget-menu-item">Disk Space</button>
-                    <button onClick={() => addWidget('utility', 'network')} className="widget-menu-item">Network</button>
-                    <button onClick={() => addWidget('utility', 'temp')} className="widget-menu-item">Temperature</button>
-                  </div>
-                )}
-              </div>
-              
-              {/* Special Category */}
-              <div>
-                <button
-                  onClick={() => toggleCategory('special')}
-                  className="w-full flex items-center justify-between text-gray-300 hover:text-white transition-colors p-2 rounded hover:bg-gray-600"
-                >
-                  <span className="font-medium">Special</span>
-                  {expandedCategories.special ? <FaChevronDown size={12} /> : <FaChevronRight size={12} />}
-                </button>
-                {expandedCategories.special && (
-                  <div className="ml-4 mt-1 space-y-1">
-                    <button onClick={() => addWidget('wits')} className="widget-menu-item">WITs Assistant</button>
-                  </div>
-                )}
+              <div className="mt-4 pt-4 border-t border-gray-700">
+                <p className="text-gray-400 text-xs">
+                  Click & hold to move. Drag edges to resize.
+                </p>
               </div>
             </div>
-            
-            <div className="mt-4 pt-4 border-t border-gray-700">
-              <p className="text-gray-400 text-xs">
-                Click & hold to move. Drag edges to resize.
-              </p>
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Grid Control - Always visible at bottom */}
-        <div className="bg-gray-700 rounded-lg p-4 flex-shrink-0">
-          <h4 className="text-gray-300 text-sm font-medium mb-3">Grid Size</h4>
-          <div className="grid grid-cols-2 gap-3">
+          {/* Grid Control - Always visible at bottom */}
+          <div className="grid grid-cols-2 gap-3 mt-auto">
             <div>
               <label className="text-gray-400 text-xs block mb-1">Columns</label>
               <input
                 type="number"
                 min="1"
-                max="10"
-                value={gridCols}
-                onChange={(e) => setGridCols(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
+                max="20"
+                value={gridColsInput}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setGridColsInput(value);
+                  
+                  if (value !== '') {
+                    const numValue = parseInt(value);
+                    if (!isNaN(numValue) && numValue >= 1 && numValue <= 20) {
+                      setGridCols(numValue);
+                    }
+                  }
+                }}
+                onBlur={(e) => {
+                  if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                    setGridColsInput('1');
+                    setGridCols(1);
+                  }
+                }}
                 className="w-full bg-gray-600 text-white rounded px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -637,41 +658,34 @@ const Dashboard: React.FC = () => {
               <input
                 type="number"
                 min="1"
-                max="10"
-                value={gridRows}
-                onChange={(e) => setGridRows(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
+                max="20"
+                value={gridRowsInput}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setGridRowsInput(value);
+                  
+                  if (value !== '') {
+                    const numValue = parseInt(value);
+                    if (!isNaN(numValue) && numValue >= 1 && numValue <= 20) {
+                      setGridRows(numValue);
+                    }
+                  }
+                }}
+                onBlur={(e) => {
+                  if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                    setGridRowsInput('1');
+                    setGridRows(1);
+                  }
+                }}
                 className="w-full bg-gray-600 text-white rounded px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
-          <div className="mt-3">
-            <div className="text-center mb-2">
-              <span className="text-gray-400 text-xs">
-                {gridCols} × {gridRows} Grid
-              </span>
-            </div>
-            {/* Grid Preview */}
-            <div className="flex justify-center">
-              <div 
-                className="grid gap-0.5 p-2 bg-gray-800 rounded"
-                style={{
-                  gridTemplateColumns: `repeat(${Math.min(gridCols, 10)}, 1fr)`,
-                  gridTemplateRows: `repeat(${Math.min(gridRows, 10)}, 1fr)`,
-                  width: `${Math.min(gridCols, 10) * 12 + 16}px`,
-                  height: `${Math.min(gridRows, 10) * 12 + 16}px`
-                }}
-              >
-                {Array.from({ length: Math.min(gridCols * gridRows, 100) }, (_, i) => (
-                  <div key={i} className="bg-gray-600 rounded-sm" style={{ width: '10px', height: '10px' }} />
-                ))}
-            </div>
-          </div>
-        </div>
         </div>
       </div>
 
       {/* Widget Grid Container */}
-      <div ref={containerRef} className="flex-1 relative p-4 bg-gray-700 overflow-hidden">
+      <div ref={containerRef} className="flex-1 relative pl-8 pr-6 py-6 bg-gray-700 overflow-hidden">
         {isGridReady && widgets.map((widget) => {
           const isResizing = isResizingRef.current && resizedWidgetRef.current?.id === widget.id;
           const position = (isResizing && resizePreview?.x !== undefined && resizePreview?.y !== undefined)
