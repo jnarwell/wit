@@ -1,25 +1,26 @@
 """
-W.I.T. Equipment API Router
+W.I.T. Equipment API Router - Updated with Direct Prusa Support
 
-File: software/backend/api/equipment_api.py
+File: software/backend/api/equipment_api_v2.py
 
-API endpoints for controlling workshop equipment (3D printers, CNC machines, etc.)
+Enhanced API endpoints for controlling workshop equipment including direct serial connection to Prusa printers.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 import asyncio
 import logging
+import json
 from datetime import datetime
-import io
 
 # Import integrations
-import sys
-# Import path handled by main module
 from software.integrations.octoprint_integration import (
-    OctoPrintManager, OctoPrintConfig, PrinterState, JobState
+    OctoPrintManager, OctoPrintConfig, PrinterState as OctoPrintState
+)
+from software.integrations.prusa_serial import (
+    PrusaSerial, PrusaConfig, PrinterState as PrusaState
 )
 from software.integrations.grbl_integration import (
     GRBLController, GRBLConfig, MachineState
@@ -35,83 +36,148 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/equipment", tags=["equipment"])
 
 # Global equipment managers
-printer_manager = OctoPrintManager()
+octoprint_manager = OctoPrintManager()
+prusa_printers: Dict[str, PrusaSerial] = {}
 cnc_controllers: Dict[str, GRBLController] = {}
+
+# Active WebSocket connections
+active_connections: Dict[str, List[WebSocket]] = {}
 
 
 # Request/Response Models
-class PrinterConfig(BaseModel):
-    """3D Printer configuration"""
+class PrinterConnectionType(str):
+    OCTOPRINT = "octoprint"
+    SERIAL = "serial"
+    PRUSALINK = "prusalink"
+
+
+class PrinterAddRequest(BaseModel):
+    """Add printer request"""
     printer_id: str = Field(..., description="Unique printer ID")
     name: str = Field(..., description="Printer name")
-    url: str = Field(..., description="OctoPrint URL")
-    api_key: str = Field(..., description="OctoPrint API key")
+    connection_type: str = Field(..., description="Connection type: octoprint, serial, prusalink")
+    
+    # OctoPrint specific
+    url: Optional[str] = Field(None, description="OctoPrint URL")
+    api_key: Optional[str] = Field(None, description="OctoPrint API key")
+    
+    # Serial specific
+    port: Optional[str] = Field(None, description="Serial port")
+    baudrate: Optional[int] = Field(115200, description="Baud rate")
+    model: Optional[str] = Field("Prusa XL", description="Printer model")
+    
+    # Common settings
     auto_connect: bool = Field(default=True)
 
 
-class CNCConfig(BaseModel):
-    """CNC machine configuration"""
-    machine_id: str = Field(..., description="Unique machine ID")
-    name: str = Field(..., description="Machine name")
-    port: str = Field(..., description="Serial port")
-    baudrate: int = Field(default=115200)
-    max_x: float = Field(default=300.0, description="Max X travel (mm)")
-    max_y: float = Field(default=300.0, description="Max Y travel (mm)")
-    max_z: float = Field(default=100.0, description="Max Z travel (mm)")
-
-
-class PrintCommand(BaseModel):
-    """3D print command"""
+class TemperatureSetRequest(BaseModel):
+    """Temperature control request"""
     printer_id: str
-    file_path: str
-    
-    
-class MoveCommand(BaseModel):
-    """Movement command"""
-    machine_id: str
+    hotend: Optional[float] = Field(None, ge=0, le=300)
+    bed: Optional[float] = Field(None, ge=0, le=120)
+    wait: bool = Field(default=False, description="Wait for temperature to reach target")
+
+
+class MoveRequest(BaseModel):
+    """Movement request"""
+    printer_id: str
     x: Optional[float] = None
     y: Optional[float] = None
     z: Optional[float] = None
-    feed_rate: float = Field(default=1000.0, description="Feed rate (mm/min)")
+    feedrate: Optional[float] = Field(None, description="Movement speed in mm/min")
     relative: bool = Field(default=False, description="Relative movement")
 
 
-class GCodeCommand(BaseModel):
-    """G-code command"""
-    machine_id: str
-    commands: List[str] = Field(..., description="G-code commands")
-    wait_response: bool = Field(default=False)
-
-
-class TemperatureCommand(BaseModel):
-    """Temperature command"""
+class GCodeRequest(BaseModel):
+    """Direct G-code request"""
     printer_id: str
-    extruder: Optional[float] = Field(None, ge=0, le=300)
-    bed: Optional[float] = Field(None, ge=0, le=120)
+    commands: List[str] = Field(..., description="G-code commands to send")
+    priority: bool = Field(default=False, description="Send as priority commands")
 
 
-# Printer endpoints
+# Printer discovery endpoint
+@router.get("/printers/discover", response_model=List[Dict[str, Any]])
+async def discover_printers():
+    """Discover available printers (serial ports)"""
+    try:
+        # Create temporary Prusa instance for port discovery
+        prusa = PrusaSerial(PrusaConfig(port=""))
+        ports = prusa.find_prusa_ports()
+        
+        return [{
+            "port": p["port"],
+            "description": p["description"],
+            "likely_prusa": p["likely_prusa"],
+            "connection_type": "serial"
+        } for p in ports]
+        
+    except Exception as e:
+        logger.error(f"Discovery error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Add printer endpoint
 @router.post("/printers", response_model=Dict[str, str])
 async def add_printer(
-    config: PrinterConfig,
+    request: PrinterAddRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    """Add a 3D printer"""
+    """Add a 3D printer with any connection type"""
     try:
-        octo_config = OctoPrintConfig(
-            url=config.url,
-            api_key=config.api_key,
-            name=config.name,
-            auto_connect=config.auto_connect
-        )
-        
-        success = await printer_manager.add_printer(config.printer_id, octo_config)
-        
+        if request.connection_type == "octoprint":
+            # OctoPrint connection
+            if not request.url or not request.api_key:
+                raise HTTPException(
+                    status_code=400,
+                    detail="URL and API key required for OctoPrint"
+                )
+                
+            config = OctoPrintConfig(
+                url=request.url,
+                api_key=request.api_key,
+                name=request.name,
+                auto_connect=request.auto_connect
+            )
+            
+            success = await octoprint_manager.add_printer(request.printer_id, config)
+            
+        elif request.connection_type == "serial":
+            # Direct serial connection
+            if not request.port:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Serial port required for direct connection"
+                )
+                
+            config = PrusaConfig(
+                port=request.port,
+                baudrate=request.baudrate,
+                model=request.model
+            )
+            
+            printer = PrusaSerial(config)
+            success = await printer.connect()
+            
+            if success:
+                prusa_printers[request.printer_id] = printer
+                
+                # Register status callbacks for WebSocket updates
+                async def on_state_change():
+                    await broadcast_printer_status(request.printer_id)
+                    
+                printer.register_state_callback(on_state_change)
+                
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported connection type: {request.connection_type}"
+            )
+            
         if success:
-            logger.info(f"Added printer: {config.printer_id}")
+            logger.info(f"Added printer: {request.printer_id} via {request.connection_type}")
             return {
                 "status": "success",
-                "message": f"Printer {config.name} added successfully"
+                "message": f"Printer {request.name} connected successfully"
             }
         else:
             raise HTTPException(
@@ -119,380 +185,199 @@ async def add_printer(
                 detail="Failed to connect to printer"
             )
             
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error adding printer: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Get all printers
 @router.get("/printers", response_model=List[Dict[str, Any]])
 async def get_printers():
     """Get all configured printers"""
     printers = []
     
-    for printer_id, client in printer_manager.get_all_printers().items():
+    # OctoPrint printers
+    for printer_id, client in octoprint_manager.get_all_printers().items():
         status = client.get_status()
         printers.append({
             "id": printer_id,
-            "name": client.config.name,
+            "connection_type": "octoprint",
+            **status
+        })
+        
+    # Direct serial printers
+    for printer_id, printer in prusa_printers.items():
+        status = printer.get_status()
+        printers.append({
+            "id": printer_id,
+            "connection_type": "serial",
             **status
         })
         
     return printers
 
 
+# Get specific printer
 @router.get("/printers/{printer_id}", response_model=Dict[str, Any])
 async def get_printer_status(printer_id: str):
     """Get specific printer status"""
-    printer = printer_manager.get_printer(printer_id)
     
-    if not printer:
-        raise HTTPException(status_code=404, detail="Printer not found")
-        
-    return printer.get_status()
-
-
-@router.delete("/printers/{printer_id}", response_model=Dict[str, str])
-async def remove_printer(
-    printer_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Remove a printer"""
-    success = await printer_manager.remove_printer(printer_id)
-    
-    if success:
+    # Check OctoPrint
+    printer = octoprint_manager.get_printer(printer_id)
+    if printer:
         return {
-            "status": "success",
-            "message": f"Printer {printer_id} removed"
+            "id": printer_id,
+            "connection_type": "octoprint",
+            **printer.get_status()
         }
-    else:
-        raise HTTPException(status_code=404, detail="Printer not found")
-
-
-@router.post("/printers/{printer_id}/print", response_model=Dict[str, str])
-async def start_print(
-    printer_id: str,
-    file_path: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Start a print job"""
-    printer = printer_manager.get_printer(printer_id)
-    
-    if not printer:
-        raise HTTPException(status_code=404, detail="Printer not found")
         
-    success = await printer.start_print(file_path)
-    
-    if success:
+    # Check serial printers
+    if printer_id in prusa_printers:
         return {
-            "status": "success",
-            "message": f"Started printing {file_path}"
+            "id": printer_id,
+            "connection_type": "serial",
+            **prusa_printers[printer_id].get_status()
         }
-    else:
-        raise HTTPException(status_code=400, detail="Failed to start print")
-
-
-@router.post("/printers/{printer_id}/pause", response_model=Dict[str, str])
-async def pause_print(
-    printer_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Pause current print"""
-    printer = printer_manager.get_printer(printer_id)
-    
-    if not printer:
-        raise HTTPException(status_code=404, detail="Printer not found")
         
-    success = await printer.pause_print()
-    
-    if success:
-        return {"status": "success", "message": "Print paused"}
-    else:
-        raise HTTPException(status_code=400, detail="No active print to pause")
+    raise HTTPException(status_code=404, detail="Printer not found")
 
 
-@router.post("/printers/{printer_id}/resume", response_model=Dict[str, str])
-async def resume_print(
-    printer_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Resume paused print"""
-    printer = printer_manager.get_printer(printer_id)
-    
-    if not printer:
-        raise HTTPException(status_code=404, detail="Printer not found")
-        
-    success = await printer.resume_print()
-    
-    if success:
-        return {"status": "success", "message": "Print resumed"}
-    else:
-        raise HTTPException(status_code=400, detail="No paused print to resume")
-
-
-@router.post("/printers/{printer_id}/cancel", response_model=Dict[str, str])
-async def cancel_print(
-    printer_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Cancel current print"""
-    printer = printer_manager.get_printer(printer_id)
-    
-    if not printer:
-        raise HTTPException(status_code=404, detail="Printer not found")
-        
-    success = await printer.cancel_print()
-    
-    if success:
-        return {"status": "success", "message": "Print cancelled"}
-    else:
-        raise HTTPException(status_code=400, detail="No active print to cancel")
-
-
-@router.post("/printers/{printer_id}/temperature", response_model=Dict[str, str])
-async def set_printer_temperature(
-    command: TemperatureCommand,
+# Temperature control
+@router.post("/printers/temperature", response_model=Dict[str, str])
+async def set_temperature(
+    request: TemperatureSetRequest,
     current_user: dict = Depends(get_current_user)
 ):
     """Set printer temperatures"""
-    printer = printer_manager.get_printer(command.printer_id)
-    
-    if not printer:
-        raise HTTPException(status_code=404, detail="Printer not found")
-        
-    success = await printer.set_temperatures(
-        extruder=command.extruder,
-        bed=command.bed
-    )
-    
-    if success:
-        return {"status": "success", "message": "Temperatures set"}
-    else:
-        raise HTTPException(status_code=400, detail="Failed to set temperatures")
-
-
-@router.post("/printers/{printer_id}/home", response_model=Dict[str, str])
-async def home_printer(
-    printer_id: str,
-    axes: List[str] = ["x", "y", "z"],
-    current_user: dict = Depends(get_current_user)
-):
-    """Home printer axes"""
-    printer = printer_manager.get_printer(printer_id)
-    
-    if not printer:
-        raise HTTPException(status_code=404, detail="Printer not found")
-        
-    success = await printer.home_axes(axes)
-    
-    if success:
-        return {"status": "success", "message": f"Homed axes: {axes}"}
-    else:
-        raise HTTPException(status_code=400, detail="Failed to home axes")
-
-
-@router.get("/printers/{printer_id}/files", response_model=List[Dict[str, Any]])
-async def get_printer_files(printer_id: str):
-    """Get available files on printer"""
-    printer = printer_manager.get_printer(printer_id)
-    
-    if not printer:
-        raise HTTPException(status_code=404, detail="Printer not found")
-        
-    return await printer.get_files()
-
-
-@router.post("/printers/{printer_id}/upload")
-async def upload_to_printer(
-    printer_id: str,
-    file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user)
-):
-    """Upload file to printer"""
-    printer = printer_manager.get_printer(printer_id)
-    
-    if not printer:
-        raise HTTPException(status_code=404, detail="Printer not found")
-        
     try:
-        contents = await file.read()
-        success = await printer.upload_file(contents, file.filename)
-        
-        if success:
-            return {
-                "status": "success",
-                "message": f"Uploaded {file.filename}",
-                "filename": file.filename
-            }
-        else:
-            raise HTTPException(status_code=400, detail="Upload failed")
-            
-    except Exception as e:
-        logger.error(f"Upload error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# CNC endpoints
-@router.post("/cnc", response_model=Dict[str, str])
-async def add_cnc_machine(
-    config: CNCConfig,
-    current_user: dict = Depends(get_current_user)
-):
-    """Add a CNC machine"""
-    try:
-        grbl_config = GRBLConfig(
-            port=config.port,
-            baudrate=config.baudrate,
-            max_x=config.max_x,
-            max_y=config.max_y,
-            max_z=config.max_z
-        )
-        
-        controller = GRBLController(grbl_config)
-        
-        if await controller.connect():
-            cnc_controllers[config.machine_id] = controller
-            logger.info(f"Added CNC machine: {config.machine_id}")
-            
-            return {
-                "status": "success",
-                "message": f"CNC machine {config.name} added successfully"
-            }
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Failed to connect to CNC machine"
+        # Find printer
+        if request.printer_id in prusa_printers:
+            printer = prusa_printers[request.printer_id]
+            await printer.set_temperature(
+                hotend=request.hotend,
+                bed=request.bed,
+                wait=request.wait
             )
             
-    except Exception as e:
-        logger.error(f"Error adding CNC machine: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/cnc", response_model=List[Dict[str, Any]])
-async def get_cnc_machines():
-    """Get all configured CNC machines"""
-    machines = []
-    
-    for machine_id, controller in cnc_controllers.items():
-        status = controller.get_status()
-        machines.append({
-            "id": machine_id,
-            "name": controller.config.port,
-            **status
-        })
-        
-    return machines
-
-
-@router.get("/cnc/{machine_id}", response_model=Dict[str, Any])
-async def get_cnc_status(machine_id: str):
-    """Get specific CNC machine status"""
-    controller = cnc_controllers.get(machine_id)
-    
-    if not controller:
-        raise HTTPException(status_code=404, detail="CNC machine not found")
-        
-    return controller.get_status()
-
-
-@router.delete("/cnc/{machine_id}", response_model=Dict[str, str])
-async def remove_cnc_machine(
-    machine_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Remove a CNC machine"""
-    if machine_id in cnc_controllers:
-        await cnc_controllers[machine_id].disconnect()
-        del cnc_controllers[machine_id]
-        
+        elif octoprint_manager.get_printer(request.printer_id):
+            printer = octoprint_manager.get_printer(request.printer_id)
+            await printer.set_temperatures(
+                extruder=request.hotend,
+                bed=request.bed
+            )
+            
+        else:
+            raise HTTPException(status_code=404, detail="Printer not found")
+            
         return {
             "status": "success",
-            "message": f"CNC machine {machine_id} removed"
+            "message": "Temperature command sent"
         }
-    else:
-        raise HTTPException(status_code=404, detail="CNC machine not found")
+        
+    except Exception as e:
+        logger.error(f"Temperature control error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/cnc/{machine_id}/home", response_model=Dict[str, str])
-async def home_cnc(
-    machine_id: str,
+# Movement control
+@router.post("/printers/move", response_model=Dict[str, str])
+async def move_printer(
+    request: MoveRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    """Home CNC machine"""
-    controller = cnc_controllers.get(machine_id)
-    
-    if not controller:
-        raise HTTPException(status_code=404, detail="CNC machine not found")
-        
-    success = await controller.home_machine()
-    
-    if success:
-        return {"status": "success", "message": "Machine homed"}
-    else:
-        raise HTTPException(status_code=400, detail="Failed to home machine")
-
-
-@router.post("/cnc/{machine_id}/move", response_model=Dict[str, str])
-async def move_cnc(
-    command: MoveCommand,
-    current_user: dict = Depends(get_current_user)
-):
-    """Move CNC machine"""
-    controller = cnc_controllers.get(command.machine_id)
-    
-    if not controller:
-        raise HTTPException(status_code=404, detail="CNC machine not found")
-        
+    """Move printer to position"""
     try:
-        if command.relative:
-            success = await controller.jog(
-                x=command.x or 0,
-                y=command.y or 0,
-                z=command.z or 0,
-                feed_rate=command.feed_rate
-            )
-        else:
-            success = await controller.move_to(
-                x=command.x,
-                y=command.y,
-                z=command.z,
-                feed_rate=command.feed_rate
+        if request.printer_id in prusa_printers:
+            printer = prusa_printers[request.printer_id]
+            await printer.move_to(
+                x=request.x,
+                y=request.y,
+                z=request.z,
+                feedrate=request.feedrate,
+                relative=request.relative
             )
             
-        if success:
-            return {"status": "success", "message": "Movement completed"}
-        else:
-            raise HTTPException(status_code=400, detail="Movement failed")
+        elif octoprint_manager.get_printer(request.printer_id):
+            printer = octoprint_manager.get_printer(request.printer_id)
+            # OctoPrint movement would go here
+            raise HTTPException(
+                status_code=501,
+                detail="Movement control not implemented for OctoPrint"
+            )
             
+        else:
+            raise HTTPException(status_code=404, detail="Printer not found")
+            
+        return {
+            "status": "success",
+            "message": "Movement command sent"
+        }
+        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Movement error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/cnc/{machine_id}/gcode", response_model=Dict[str, Any])
-async def send_gcode(
-    command: GCodeCommand,
+# Home printer
+@router.post("/printers/{printer_id}/home", response_model=Dict[str, str])
+async def home_printer(
+    printer_id: str,
+    axes: str = "XYZ",
     current_user: dict = Depends(get_current_user)
 ):
-    """Send G-code to CNC machine"""
-    controller = cnc_controllers.get(command.machine_id)
-    
-    if not controller:
-        raise HTTPException(status_code=404, detail="CNC machine not found")
-        
+    """Home printer axes"""
     try:
-        responses = []
-        
-        for gcode in command.commands:
-            response = await controller.send_command(
-                gcode, 
-                wait_response=command.wait_response
-            )
-            responses.append(response)
+        if printer_id in prusa_printers:
+            printer = prusa_printers[printer_id]
+            await printer.home_axes(axes)
+            
+        elif octoprint_manager.get_printer(printer_id):
+            printer = octoprint_manager.get_printer(printer_id)
+            await printer.home_axes(list(axes.lower()))
+            
+        else:
+            raise HTTPException(status_code=404, detail="Printer not found")
             
         return {
             "status": "success",
-            "responses": responses if command.wait_response else None
+            "message": f"Homing axes: {axes}"
+        }
+        
+    except Exception as e:
+        logger.error(f"Homing error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Send G-code
+@router.post("/printers/gcode", response_model=Dict[str, str])
+async def send_gcode(
+    request: GCodeRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Send G-code commands to printer"""
+    try:
+        if request.printer_id in prusa_printers:
+            printer = prusa_printers[request.printer_id]
+            
+            for command in request.commands:
+                if request.priority:
+                    printer.send_command_priority(command)
+                else:
+                    printer.send_command(command)
+                    
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail="Printer not found or doesn't support direct G-code"
+            )
+            
+        return {
+            "status": "success",
+            "message": f"Sent {len(request.commands)} commands"
         }
         
     except Exception as e:
@@ -500,217 +385,99 @@ async def send_gcode(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/cnc/{machine_id}/job")
-async def upload_cnc_job(
-    machine_id: str,
-    file: UploadFile = File(...),
+# Emergency stop
+@router.post("/printers/{printer_id}/emergency-stop", response_model=Dict[str, str])
+async def emergency_stop(
+    printer_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Upload and run G-code job"""
-    controller = cnc_controllers.get(machine_id)
-    
-    if not controller:
-        raise HTTPException(status_code=404, detail="CNC machine not found")
-        
+    """Emergency stop printer"""
     try:
-        # Read G-code file
-        contents = await file.read()
-        gcode_lines = contents.decode('utf-8').splitlines()
-        
-        # Filter out empty lines and comments
-        gcode_lines = [
-            line.strip() for line in gcode_lines 
-            if line.strip() and not line.strip().startswith(';')
-        ]
-        
-        # Start job
-        success = await controller.run_gcode_file(gcode_lines)
-        
-        if success:
-            return {
-                "status": "success",
-                "message": f"Started job: {file.filename}",
-                "lines": len(gcode_lines)
-            }
-        else:
-            raise HTTPException(status_code=400, detail="Failed to start job")
+        if printer_id in prusa_printers:
+            printer = prusa_printers[printer_id]
+            await printer.emergency_stop()
             
+        else:
+            # Try all connection types
+            logger.warning(f"Emergency stop for unknown printer: {printer_id}")
+            
+        return {
+            "status": "success",
+            "message": "Emergency stop activated"
+        }
+        
     except Exception as e:
-        logger.error(f"Job upload error: {e}")
+        logger.error(f"Emergency stop error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/cnc/{machine_id}/pause", response_model=Dict[str, str])
-async def pause_cnc_job(
-    machine_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Pause CNC job"""
-    controller = cnc_controllers.get(machine_id)
+# WebSocket for real-time updates
+@router.websocket("/ws/{printer_id}")
+async def websocket_endpoint(websocket: WebSocket, printer_id: str):
+    """WebSocket for real-time printer updates"""
+    await websocket.accept()
     
-    if not controller:
-        raise HTTPException(status_code=404, detail="CNC machine not found")
-        
-    success = await controller.pause_job()
+    # Add to active connections
+    if printer_id not in active_connections:
+        active_connections[printer_id] = []
+    active_connections[printer_id].append(websocket)
     
-    if success:
-        return {"status": "success", "message": "Job paused"}
-    else:
-        raise HTTPException(status_code=400, detail="No active job to pause")
-
-
-@router.post("/cnc/{machine_id}/resume", response_model=Dict[str, str])
-async def resume_cnc_job(
-    machine_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Resume CNC job"""
-    controller = cnc_controllers.get(machine_id)
-    
-    if not controller:
-        raise HTTPException(status_code=404, detail="CNC machine not found")
-        
-    success = await controller.resume_job()
-    
-    if success:
-        return {"status": "success", "message": "Job resumed"}
-    else:
-        raise HTTPException(status_code=400, detail="No paused job to resume")
-
-
-@router.post("/cnc/{machine_id}/stop", response_model=Dict[str, str])
-async def stop_cnc_job(
-    machine_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Stop CNC job"""
-    controller = cnc_controllers.get(machine_id)
-    
-    if not controller:
-        raise HTTPException(status_code=404, detail="CNC machine not found")
-        
-    success = await controller.stop_job()
-    
-    if success:
-        return {"status": "success", "message": "Job stopped"}
-    else:
-        raise HTTPException(status_code=400, detail="Failed to stop job")
-
-
-@router.post("/cnc/{machine_id}/probe", response_model=Dict[str, Any])
-async def probe_cnc(
-    machine_id: str,
-    axis: str = "z",
-    feed_rate: float = 100.0,
-    max_distance: float = 10.0,
-    current_user: dict = Depends(get_current_user)
-):
-    """Probe CNC machine"""
-    controller = cnc_controllers.get(machine_id)
-    
-    if not controller:
-        raise HTTPException(status_code=404, detail="CNC machine not found")
-        
-    if axis.lower() != "z":
-        raise HTTPException(status_code=400, detail="Only Z probe supported")
-        
-    result = await controller.probe_z(
-        feed_rate=feed_rate,
-        max_distance=max_distance
-    )
-    
-    if result is not None:
-        return {
-            "status": "success",
-            "probe_position": result,
-            "axis": axis
-        }
-    else:
-        raise HTTPException(status_code=400, detail="Probe failed")
-
-
-@router.get("/cnc/ports", response_model=List[str])
-async def find_cnc_ports():
-    """Find available serial ports for CNC"""
-    # Use any controller to find ports
-    temp_controller = GRBLController(GRBLConfig(port=""))
-    ports = temp_controller.find_grbl_ports()
-    
-    return ports
-
-
-# Equipment summary endpoint
-@router.get("/summary", response_model=Dict[str, Any])
-async def get_equipment_summary():
-    """Get summary of all equipment"""
-    printer_summary = printer_manager.get_status_summary()
-    
-    cnc_summary = {
-        "total_machines": len(cnc_controllers),
-        "machines": {}
-    }
-    
-    for machine_id, controller in cnc_controllers.items():
-        cnc_summary["machines"][machine_id] = controller.get_status()
-        
-    return {
-        "printers": printer_summary,
-        "cnc": cnc_summary,
-        "timestamp": datetime.now().isoformat()
-    }
-
-
-# Emergency stop
-@router.post("/emergency-stop", response_model=Dict[str, str])
-async def emergency_stop_all(
-    current_user: dict = Depends(get_current_user)
-):
-    """Emergency stop all equipment"""
-    logger.warning(f"EMERGENCY STOP initiated by {current_user['username']}")
-    
-    results = []
-    
-    # Stop all printers
-    for printer_id, printer in printer_manager.get_all_printers().items():
-        try:
-            await printer.cancel_print()
-            results.append(f"Stopped printer: {printer_id}")
-        except Exception as e:
-            logger.error(f"Failed to stop printer {printer_id}: {e}")
+    try:
+        while True:
+            # Send periodic status updates
+            if printer_id in prusa_printers:
+                status = prusa_printers[printer_id].get_status()
+                await websocket.send_json({
+                    "type": "status",
+                    "data": status
+                })
+                
+            await asyncio.sleep(1)  # Update every second
             
-    # Stop all CNC machines
-    for machine_id, controller in cnc_controllers.items():
-        try:
-            await controller.stop_job()
-            results.append(f"Stopped CNC: {machine_id}")
-        except Exception as e:
-            logger.error(f"Failed to stop CNC {machine_id}: {e}")
+    except WebSocketDisconnect:
+        active_connections[printer_id].remove(websocket)
+        if not active_connections[printer_id]:
+            del active_connections[printer_id]
             
-    return {
-        "status": "success",
-        "message": "Emergency stop executed",
-        "results": results
-    }
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        try:
+            active_connections[printer_id].remove(websocket)
+        except:
+            pass
 
 
-# Startup event
-@router.on_event("startup")
-async def startup_event():
-    """Initialize equipment connections on startup"""
-    logger.info("Equipment API starting up...")
-    # Could auto-connect to configured equipment here
+async def broadcast_printer_status(printer_id: str):
+    """Broadcast status update to all connected WebSocket clients"""
+    if printer_id in active_connections:
+        status = None
+        
+        if printer_id in prusa_printers:
+            status = prusa_printers[printer_id].get_status()
+            
+        if status:
+            for connection in active_connections[printer_id]:
+                try:
+                    await connection.send_json({
+                        "type": "status",
+                        "data": status
+                    })
+                except:
+                    pass
 
 
-# Shutdown event
-@router.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup equipment connections on shutdown"""
-    logger.info("Equipment API shutting down...")
+# Cleanup on shutdown
+async def shutdown_equipment():
+    """Disconnect all equipment on shutdown"""
+    logger.info("Shutting down equipment connections...")
     
-    # Disconnect all printers
-    await printer_manager.shutdown()
+    # Disconnect serial printers
+    for printer_id, printer in prusa_printers.items():
+        await printer.disconnect()
+        
+    # Disconnect OctoPrint
+    await octoprint_manager.shutdown()
     
-    # Disconnect all CNC machines
-    for controller in cnc_controllers.values():
-        await controller.disconnect()
-    cnc_controllers.clear()
+    # Clear connections
+    prusa_printers.clear()
+    active_connections.clear()

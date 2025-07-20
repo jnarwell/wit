@@ -1,6 +1,6 @@
 // src/pages/MachinesPage.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import SpecificWidget from '../components/widgets/SpecificWidget';
 
 interface Machine {
@@ -9,7 +9,7 @@ interface Machine {
   type: string;
   status: 'green' | 'yellow' | 'red';
   metrics: { label: string; value: string }[];
-  connectionType: 'usb' | 'network' | 'serial' | 'bluetooth';
+  connectionType: 'usb' | 'network' | 'serial' | 'bluetooth' | 'network-prusalink' | 'network-octoprint';
   connectionDetails: string;
   manufacturer: string;
   model?: string;
@@ -22,8 +22,8 @@ interface Machine {
 
 interface MachineTypeConfig {
   defaultName: string;
-  connectionTypes: Array<'usb' | 'network' | 'serial' | 'bluetooth'>;
-  defaultConnection: 'usb' | 'network' | 'serial' | 'bluetooth';
+  connectionTypes: Array<'usb' | 'network' | 'serial' | 'bluetooth' | 'network-prusalink' | 'network-octoprint'>;
+  defaultConnection: 'usb' | 'network' | 'serial' | 'bluetooth' | 'network-prusalink' | 'network-octoprint';
   manufacturers: string[];
 }
 
@@ -31,24 +31,30 @@ interface MachinesPageProps {
   onNavigateToDetail?: (id: string) => void;
 }
 
+interface NetworkConfig {
+  url: string;
+  apiKey: string;
+  connectionMethod: 'prusalink' | 'octoprint';
+}
+
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
 const MACHINE_TYPES: Record<string, MachineTypeConfig> = {
   '3d-printer': {
     defaultName: '3D Printer',
-    connectionTypes: ['usb', 'network', 'serial'],
+    connectionTypes: ['usb', 'network-prusalink', 'network-octoprint', 'serial'],
     defaultConnection: 'usb',
     manufacturers: ['Prusa', 'Ultimaker', 'MakerBot', 'Creality', 'Anycubic', 'Other']
   },
   'laser-cutter': {
     defaultName: 'Laser Cutter',
-    connectionTypes: ['usb', 'network'],
-    defaultConnection: 'network',
+    connectionTypes: ['usb', 'network-prusalink', 'network-octoprint'],
+    defaultConnection: 'network-octoprint',
     manufacturers: ['Epilog', 'Trotec', 'Universal Laser', 'Glowforge', 'Other']
   },
   'cnc-mill': {
     defaultName: 'CNC Mill',
-    connectionTypes: ['usb', 'serial', 'network'],
+    connectionTypes: ['usb', 'serial', 'network-octoprint'],
     defaultConnection: 'serial',
     manufacturers: ['Haas', 'Tormach', 'ShopBot', 'Carbide 3D', 'Other']
   },
@@ -66,36 +72,66 @@ const MACHINE_TYPES: Record<string, MachineTypeConfig> = {
   },
   'custom': {
     defaultName: 'Custom Equipment',
-    connectionTypes: ['usb', 'network', 'serial', 'bluetooth'],
-    defaultConnection: 'network',
+    connectionTypes: ['usb', 'network-prusalink', 'network-octoprint', 'serial', 'bluetooth'],
+    defaultConnection: 'network-octoprint',
     manufacturers: ['Custom', 'Other']
+  }
+};
+
+const CONNECTION_CONFIGS: Record<string, any> = {
+  'usb': {
+    label: 'USB',
+    placeholder: '/dev/ttyUSB0 or COM3',
+    helperText: 'Connect printer directly via USB cable'
+  },
+  'network-prusalink': {
+    label: 'Network (PrusaLink)',
+    placeholder: '192.168.1.100',
+    helperText: 'Built-in network interface on Prusa XL/MK4/MINI+',
+    requiresApiKey: true
+  },
+  'network-octoprint': {
+    label: 'Network (OctoPrint)',
+    placeholder: 'http://octopi.local:5000',
+    helperText: 'OctoPrint server URL',
+    requiresApiKey: true
+  },
+  'serial': {
+    label: 'Serial',
+    placeholder: '/dev/ttyS0',
+    helperText: 'Direct serial connection'
+  },
+  'bluetooth': {
+    label: 'Bluetooth',
+    placeholder: 'Device name',
+    helperText: 'Bluetooth connection (experimental)'
   }
 };
 
 const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [machines, setMachines] = useState<Machine[]>(() => {
-  // Initialize from localStorage to prevent race condition
-  const saved = localStorage.getItem('wit-machines');
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      console.log('[MachinesPage] Initial state from localStorage:', parsed.length, 'machines');
-      return parsed;
-    } catch (e) {
-      console.error('[MachinesPage] Failed to parse initial state:', e);
-      return [];
+    // Initialize from localStorage to prevent race condition
+    const saved = localStorage.getItem('wit-machines');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        console.log('[MachinesPage] Initial state from localStorage:', parsed.length, 'machines');
+        return parsed;
+      } catch (e) {
+        console.error('[MachinesPage] Failed to parse initial state:', e);
+        return [];
+      }
     }
-  }
-  console.log('[MachinesPage] No saved machines, starting with empty array');
-  return [];
-});
+    console.log('[MachinesPage] No saved machines, starting with empty array');
+    return [];
+  });
 
   useEffect(() => {
-  // Check what's in localStorage on every render
-  const stored = localStorage.getItem('wit-machines');
-  console.log('[MachinesPage] Current localStorage:', stored ? 'has data' : 'empty');
-}, []); // Run once to check initial state
+    // Check what's in localStorage on every render
+    const stored = localStorage.getItem('wit-machines');
+    console.log('[MachinesPage] Current localStorage:', stored ? 'has data' : 'empty');
+  }, []); // Run once to check initial state
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -104,16 +140,19 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
   const [sortBy, setSortBy] = useState<'name' | 'status' | 'date'>('date');
   const [gridCols, setGridCols] = useState(3);
   const [gridRows, setGridRows] = useState(3);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionTestResult, setConnectionTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  
   const [newMachine, setNewMachine] = useState({
     type: '3d-printer',
     name: '',
-    connectionType: 'usb' as 'usb' | 'network' | 'serial' | 'bluetooth',
+    connectionType: 'usb' as 'usb' | 'network-prusalink' | 'network-octoprint' | 'serial' | 'bluetooth',
     connectionDetails: '',
+    apiKey: '', // Added API key field
     manufacturer: '',
     model: '',
     notes: ''
   });
-  
 
   // Drag state
   const isDraggingRef = useRef(false);
@@ -146,40 +185,42 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
 
   // Load saved machines on mount
   useEffect(() => {
-  console.log('[MachinesPage] Component mounted, checking localStorage...');
-  const saved = localStorage.getItem('wit-machines');
-  
-  if (saved) {
-    try {
-      const parsedMachines = JSON.parse(saved);
-      console.log('[MachinesPage] Found', parsedMachines.length, 'saved machines');
-      setMachines(parsedMachines);
-    } catch (error) {
-      console.error('[MachinesPage] Failed to parse saved machines:', error);
-      localStorage.removeItem('wit-machines');
+    console.log('[MachinesPage] Component mounted, checking localStorage...');
+    const saved = localStorage.getItem('wit-machines');
+    
+    if (saved) {
+      try {
+        const parsedMachines = JSON.parse(saved);
+        console.log('[MachinesPage] Found', parsedMachines.length, 'saved machines');
+        setMachines(parsedMachines);
+      } catch (error) {
+        console.error('[MachinesPage] Failed to parse saved machines:', error);
+        localStorage.removeItem('wit-machines');
+      }
+    } else {
+      console.log('[MachinesPage] No saved machines found');
     }
-  } else {
-    console.log('[MachinesPage] No saved machines found');
-  }
-}, []);
+  }, []);
 
-useEffect(() => {
-  console.log('[MachinesPage] Saving', machines.length, 'machines to localStorage');
-  localStorage.setItem('wit-machines', JSON.stringify(machines));
-  
-  // Verify it saved
-  const saved = localStorage.getItem('wit-machines');
-  console.log('[MachinesPage] Verified save:', saved ? JSON.parse(saved).length + ' machines' : 'null');
-}, [machines]);
+  useEffect(() => {
+    console.log('[MachinesPage] Saving', machines.length, 'machines to localStorage');
+    localStorage.setItem('wit-machines', JSON.stringify(machines));
+    
+    // Verify it saved
+    const saved = localStorage.getItem('wit-machines');
+    console.log('[MachinesPage] Verified save:', saved ? JSON.parse(saved).length + ' machines' : 'null');
+  }, [machines]);
+
   // Update machine details when type changes
   useEffect(() => {
     const typeConfig = MACHINE_TYPES[newMachine.type];
     if (typeConfig) {
       setNewMachine(prev => ({
         ...prev,
-        name: typeConfig.defaultName,
+        name: prev.name || typeConfig.defaultName,
         connectionType: typeConfig.defaultConnection,
-        manufacturer: prev.manufacturer || typeConfig.manufacturers[0]
+        manufacturer: prev.manufacturer || typeConfig.manufacturers[0],
+        apiKey: '' // Reset API key when type changes
       }));
     }
   }, [newMachine.type]);
@@ -482,60 +523,155 @@ useEffect(() => {
     return null;
   };
 
-  const handleAddMachine = () => {
+  const testConnection = async () => {
+    setTestingConnection(true);
+    setConnectionTestResult(null);
+
+    try {
+      const response = await fetch('/api/v1/equipment/printers/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          connection_type: newMachine.connectionType.replace('network-', ''),
+          url: newMachine.connectionDetails,
+          api_key: newMachine.apiKey,
+          port: newMachine.connectionDetails
+        })
+      });
+      
+      if (response.ok) {
+        setConnectionTestResult({ success: true, message: 'Connection successful!' });
+      } else {
+        const error = await response.text();
+        setConnectionTestResult({ success: false, message: error || 'Connection failed' });
+      }
+    } catch (error: any) {
+      setConnectionTestResult({ success: false, message: error.message || 'Connection test failed' });
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
+  const handleAddMachine = async () => {
     const machineId = `M${Date.now()}`;
     const typeConfig = MACHINE_TYPES[newMachine.type];
     
-    const position = findAvailablePosition(1, 1);
-    if (!position) {
-      alert('No space available! Please remove machines or increase grid size.');
-      return;
-    }
-    
-    const newMachineData: Machine = {
-      id: machineId,
+    // Prepare the API request based on connection type
+    const apiRequest: any = {
+      printer_id: machineId,
       name: newMachine.name || typeConfig.defaultName,
-      type: newMachine.type,
-      status: 'yellow',
-      metrics: [
-        { label: 'Status', value: 'Configuring' },
-        { label: 'Connection', value: 'Pending' }
-      ],
-      connectionType: newMachine.connectionType,
-      connectionDetails: newMachine.connectionDetails,
+      connection_type: newMachine.connectionType.replace('network-', ''), // Remove 'network-' prefix
       manufacturer: newMachine.manufacturer,
       model: newMachine.model,
-      notes: newMachine.notes,
-      dateAdded: new Date().toISOString(),
-      position: position,
-      size: { width: 1, height: 1 }
+      notes: newMachine.notes
     };
 
-    setMachines(prevMachines => {
-    const newMachines = [...prevMachines, newMachineData];
-    console.log('[MachinesPage] Adding machine, new total:', newMachines.length);
-    return newMachines;
-  });
-    
-    // Reset form
-    setNewMachine({
-      type: '3d-printer',
-      name: '',
-      connectionType: 'usb',
-      connectionDetails: '',
-      manufacturer: '',
-      model: '',
-      notes: ''
-    });
-    
-    setShowAddModal(false);
+    // Add connection-specific fields
+    if (newMachine.connectionType.startsWith('network')) {
+      apiRequest.url = newMachine.connectionDetails;
+      apiRequest.api_key = newMachine.apiKey;
+    } else {
+      apiRequest.port = newMachine.connectionDetails;
+    }
+
+    try {
+      // Send to backend API if network connection
+      if (newMachine.connectionType.startsWith('network')) {
+        const response = await fetch('/api/v1/equipment/printers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(apiRequest)
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to add printer');
+        }
+      }
+
+      // Add to local state for display
+      const position = findAvailablePosition(1, 1);
+      if (!position) {
+        alert('No space available! Please remove machines or increase grid size.');
+        return;
+      }
+      
+      const newMachineData: Machine = {
+        id: machineId,
+        name: newMachine.name || typeConfig.defaultName,
+        type: newMachine.type,
+        status: 'yellow', // Connecting
+        metrics: [
+          { label: 'Status', value: 'Connecting...' },
+          { label: 'Connection', value: CONNECTION_CONFIGS[newMachine.connectionType]?.label || newMachine.connectionType }
+        ],
+        connectionType: newMachine.connectionType as any,
+        connectionDetails: newMachine.connectionDetails,
+        manufacturer: newMachine.manufacturer,
+        model: newMachine.model,
+        notes: newMachine.notes,
+        dateAdded: new Date().toISOString(),
+        position: position,
+        size: { width: 1, height: 1 }
+      };
+
+      setMachines(prevMachines => {
+        const newMachines = [...prevMachines, newMachineData];
+        console.log('[MachinesPage] Adding machine, new total:', newMachines.length);
+        return newMachines;
+      });
+      
+      // Reset form
+      setNewMachine({
+        type: '3d-printer',
+        name: '',
+        connectionType: 'usb',
+        connectionDetails: '',
+        apiKey: '',
+        manufacturer: '',
+        model: '',
+        notes: ''
+      });
+      
+      setShowAddModal(false);
+      setConnectionTestResult(null);
+
+      // Update status after connection establishes (for network printers)
+      if (newMachine.connectionType.startsWith('network')) {
+        setTimeout(async () => {
+          try {
+            const statusResponse = await fetch(`/api/v1/equipment/printers/${machineId}`);
+            if (statusResponse.ok) {
+              const status = await statusResponse.json();
+              // Update machine status based on response
+              setMachines(prev => prev.map(m => 
+                m.id === machineId 
+                  ? { 
+                      ...m, 
+                      status: status.connected ? 'green' : 'red',
+                      metrics: [
+                        { label: 'Status', value: status.state || 'Unknown' },
+                        { label: 'Temp', value: `${status.temperatures?.hotend?.current || 0}°C` }
+                      ]
+                    }
+                  : m
+              ));
+            }
+          } catch (error) {
+            console.error('Failed to get printer status:', error);
+          }
+        }, 2000);
+      }
+
+    } catch (error: any) {
+      alert(`Failed to add machine: ${error.message}`);
+    }
   };
 
   const handleDeleteMachine = (machineId: string) => {
-  console.log('[MachinesPage] Deleting machine:', machineId);
-  setMachines(prevMachines => prevMachines.filter(m => m.id !== machineId));
-  // The useEffect will handle saving automatically
-};
+    console.log('[MachinesPage] Deleting machine:', machineId);
+    setMachines(prevMachines => prevMachines.filter(m => m.id !== machineId));
+    // The useEffect will handle saving automatically
+  };
 
   const navigateToMachine = (machineId: string) => {
     if (onNavigateToDetail) {
@@ -546,12 +682,7 @@ useEffect(() => {
   };
 
   const getConnectionPlaceholder = () => {
-    switch (newMachine.connectionType) {
-      case 'usb': return '/dev/ttyUSB0 or COM3';
-      case 'network': return '192.168.1.100 or printer.local';
-      case 'serial': return '/dev/ttyS0 or COM1';
-      case 'bluetooth': return 'Device MAC address';
-    }
+    return CONNECTION_CONFIGS[newMachine.connectionType]?.placeholder || 'Enter connection details';
   };
 
   return (
@@ -788,7 +919,10 @@ useEffect(() => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-white">Add New Machine</h2>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={() => {
+                  setShowAddModal(false);
+                  setConnectionTestResult(null);
+                }}
                 className="text-gray-400 hover:text-white transition-colors"
               >
                 <FaTimes className="w-5 h-5" />
@@ -801,11 +935,24 @@ useEffect(() => {
                 <label className="block text-gray-300 mb-1">Machine Type</label>
                 <select
                   value={newMachine.type}
-                  onChange={(e) => setNewMachine({ ...newMachine, type: e.target.value })}
+                  onChange={(e) => {
+                    const type = e.target.value;
+                    const typeConfig = MACHINE_TYPES[type];
+                    setNewMachine({
+                      ...newMachine,
+                      type,
+                      connectionType: typeConfig.defaultConnection,
+                      manufacturer: typeConfig.manufacturers[0],
+                      apiKey: ''
+                    });
+                    setConnectionTestResult(null);
+                  }}
                   className="w-full bg-gray-700 text-white rounded px-3 py-2"
                 >
-                  {Object.entries(MACHINE_TYPES).map(([value, config]) => (
-                    <option key={value} value={value}>{config.defaultName}</option>
+                  {Object.entries(MACHINE_TYPES).map(([key, config]) => (
+                    <option key={key} value={key}>
+                      {config.defaultName}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -827,28 +974,106 @@ useEffect(() => {
                 <label className="block text-gray-300 mb-1">Connection Type</label>
                 <select
                   value={newMachine.connectionType}
-                  onChange={(e) => setNewMachine({ ...newMachine, connectionType: e.target.value as any })}
+                  onChange={(e) => {
+                    setNewMachine({ 
+                      ...newMachine, 
+                      connectionType: e.target.value as any,
+                      connectionDetails: '',
+                      apiKey: ''
+                    });
+                    setConnectionTestResult(null);
+                  }}
                   className="w-full bg-gray-700 text-white rounded px-3 py-2"
                 >
                   {MACHINE_TYPES[newMachine.type].connectionTypes.map(type => (
-                    <option key={type} value={type}>{type.toUpperCase()}</option>
+                    <optgroup 
+                      key={type.includes('network') ? 'network' : 'direct'} 
+                      label={type.includes('network') ? 'Network Connection' : 'Direct Connection'}
+                    >
+                      <option key={type} value={type}>
+                        {CONNECTION_CONFIGS[type]?.label || type.toUpperCase()}
+                      </option>
+                    </optgroup>
                   ))}
                 </select>
+                {CONNECTION_CONFIGS[newMachine.connectionType]?.helperText && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    {CONNECTION_CONFIGS[newMachine.connectionType].helperText}
+                  </p>
+                )}
               </div>
 
               {/* Connection Details */}
               <div>
                 <label className="block text-gray-300 mb-1">
-                  {newMachine.connectionType === 'network' ? 'IP Address/Hostname' : 'Port/Address'}
+                  {newMachine.connectionType.includes('network') ? 'IP Address/URL' : 'Port/Address'}
                 </label>
                 <input
                   type="text"
                   value={newMachine.connectionDetails}
-                  onChange={(e) => setNewMachine({ ...newMachine, connectionDetails: e.target.value })}
+                  onChange={(e) => {
+                    setNewMachine({ ...newMachine, connectionDetails: e.target.value });
+                    setConnectionTestResult(null);
+                  }}
                   placeholder={getConnectionPlaceholder()}
                   className="w-full bg-gray-700 text-white rounded px-3 py-2"
                 />
               </div>
+
+              {/* API Key (for network connections) */}
+              {CONNECTION_CONFIGS[newMachine.connectionType]?.requiresApiKey && (
+                <div>
+                  <label className="block text-gray-300 mb-1">API Key</label>
+                  <input
+                    type="password"
+                    value={newMachine.apiKey}
+                    onChange={(e) => {
+                      setNewMachine({ ...newMachine, apiKey: e.target.value });
+                      setConnectionTestResult(null);
+                    }}
+                    placeholder="Enter API key"
+                    className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    {newMachine.connectionType === 'network-prusalink' 
+                      ? 'Get from PrusaLink Settings → API Keys'
+                      : 'Get from OctoPrint Settings → API'}
+                  </p>
+                </div>
+              )}
+
+              {/* Test Connection Button */}
+              {newMachine.connectionDetails && (
+                <div>
+                  <button
+                    onClick={testConnection}
+                    disabled={testingConnection || (CONNECTION_CONFIGS[newMachine.connectionType]?.requiresApiKey && !newMachine.apiKey)}
+                    className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded text-sm flex items-center gap-2"
+                  >
+                    {testingConnection ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Testing...
+                      </>
+                    ) : (
+                      'Test Connection'
+                    )}
+                  </button>
+                  
+                  {connectionTestResult && (
+                    <div className={`mt-2 p-3 rounded flex items-center gap-2 ${
+                      connectionTestResult.success ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'
+                    }`}>
+                      {connectionTestResult.success ? (
+                        <FaCheckCircle className="flex-shrink-0" />
+                      ) : (
+                        <FaExclamationCircle className="flex-shrink-0" />
+                      )}
+                      <span className="text-sm">{connectionTestResult.message}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Manufacturer */}
               <div>
@@ -871,7 +1096,7 @@ useEffect(() => {
                   type="text"
                   value={newMachine.model}
                   onChange={(e) => setNewMachine({ ...newMachine, model: e.target.value })}
-                  placeholder="e.g., MK3S+, Pro XL"
+                  placeholder="e.g., XL 5-tool, MK4, MINI+"
                   className="w-full bg-gray-700 text-white rounded px-3 py-2"
                 />
               </div>
@@ -882,7 +1107,7 @@ useEffect(() => {
                 <textarea
                   value={newMachine.notes}
                   onChange={(e) => setNewMachine({ ...newMachine, notes: e.target.value })}
-                  placeholder="Additional details or configuration notes"
+                  placeholder="Additional details, location, or configuration notes"
                   className="w-full bg-gray-700 text-white rounded px-3 py-2 h-20 resize-none"
                 />
               </div>
@@ -891,12 +1116,16 @@ useEffect(() => {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={handleAddMachine}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors"
+                disabled={!newMachine.connectionDetails || (CONNECTION_CONFIGS[newMachine.connectionType]?.requiresApiKey && !newMachine.apiKey)}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded transition-colors"
               >
                 Add Machine
               </button>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={() => {
+                  setShowAddModal(false);
+                  setConnectionTestResult(null);
+                }}
                 className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded transition-colors"
               >
                 Cancel

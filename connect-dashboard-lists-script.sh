@@ -1,309 +1,159 @@
 #!/bin/bash
-# W.I.T. Restore Proper Layout
 
-echo "🔨 W.I.T. Complete Layout Restoration"
-echo "===================================="
-echo "Fixing the entire page layout structure"
+# W.I.T. - Test Prusa XL Connection
+# Run this script to verify your printer connection is working
+
+echo "🖨️  W.I.T. - Testing Prusa XL Connection"
+echo "========================================"
 echo ""
 
+# Colors for output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
 # Check if we're in the right directory
-if [ ! -d "software/frontend/web/src" ]; then
-    echo "❌ Error: Please run this script from the project root directory"
+if [ ! -d "software/backend" ]; then
+    echo -e "${RED}❌ Error: Please run this script from the project root directory${NC}"
     exit 1
 fi
 
-# First, let's clean up App.css from all the conflicting styles
-echo "🧹 Cleaning up conflicting CSS..."
-
-# Backup current App.css
-cp software/frontend/web/src/App.css software/frontend/web/src/App.css.broken-backup
-
-# Create a clean, working App.css
-echo "📝 Creating clean layout CSS..."
-
-cat > software/frontend/web/src/styles/clean-layout.css << 'EOF'
-/* Clean Layout CSS for W.I.T. */
-
-/* Base layout structure */
-html, body, #root {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background-color: #111827;
-}
-
-/* Main app container */
-.App {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Navigation bar */
-nav {
-  flex-shrink: 0;
-  z-index: 50;
-}
-
-/* Main content wrapper */
-main {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-  min-height: 0;
-}
-
-/* Page layout container */
-.h-full.flex {
-  display: flex;
-  width: 100%;
-  height: 100%;
-}
-
-/* Sidebar */
-.bg-gray-800.w-64 {
-  width: 16rem;
-  flex-shrink: 0;
-  overflow-y: auto;
-  background-color: #1f2937;
-}
-
-/* Main content area */
-.flex-1.p-6 {
-  flex: 1;
-  padding: 1.5rem;
-  background-color: #1f2937;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-/* Grid container */
-.relative.w-full.h-full {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  flex: 1;
-  background-color: #374151;
-  border-radius: 0.5rem;
-  overflow: hidden;
-}
-
-/* Grid items */
-.absolute {
-  position: absolute;
-}
-
-/* Modal fixes */
-.fixed.inset-0 {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-}
-
-.fixed .bg-gray-800.rounded-lg {
-  max-width: 600px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-  margin: auto;
-}
-
-/* Detail page fixes */
-.h-full.bg-gray-900 {
-  width: 100%;
-  height: 100%;
-  padding: 2rem;
-}
-
-/* Utility classes */
-.overflow-hidden {
-  overflow: hidden;
-}
-
-.overflow-auto {
-  overflow: auto;
-}
-
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #374151;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #6b7280;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-}
-EOF
-
-echo "✅ Created clean layout CSS"
-
-# Now fix the component structure
-echo ""
-echo "📝 Fixing page component structure..."
-
-# Fix MachinesPage
-if [ -f "software/frontend/web/src/pages/MachinesPage.tsx" ]; then
-    echo "  🔧 Checking MachinesPage structure..."
-    
-    # Make sure the page has proper structure
-    # This is a safety check - we'll create a verification script
-    cat > check_structure.py << 'EOF'
-import re
-
-with open('software/frontend/web/src/pages/MachinesPage.tsx', 'r') as f:
-    content = f.read()
-
-# Check if main structure exists
-has_container = 'className="h-full flex"' in content
-has_sidebar = 'className="bg-gray-800 w-64' in content
-has_content = 'className="flex-1 p-6"' in content or 'className="flex-1 p-6 bg-gray-800"' in content
-has_grid = 'ref={containerRef}' in content
-
-print(f"Structure check:")
-print(f"  Has container: {has_container}")
-print(f"  Has sidebar: {has_sidebar}")
-print(f"  Has content area: {has_content}")
-print(f"  Has grid container: {has_grid}")
-
-if not all([has_container, has_sidebar, has_content, has_grid]):
-    print("❌ Page structure is broken!")
-else:
-    print("✅ Page structure looks correct")
-EOF
-
-    python3 check_structure.py
-    rm check_structure.py
+# Step 1: Check Python
+echo "1️⃣  Checking Python installation..."
+if command -v python3 &> /dev/null; then
+    PYTHON_VERSION=$(python3 --version)
+    echo -e "${GREEN}✅ Python installed: $PYTHON_VERSION${NC}"
+else
+    echo -e "${RED}❌ Python 3 not found. Please install Python 3.8+${NC}"
+    exit 1
 fi
 
-# Import the clean CSS
+# Step 2: Check pyserial
 echo ""
-echo "📝 Importing clean layout CSS..."
+echo "2️⃣  Checking pyserial installation..."
+if python3 -c "import serial" 2>/dev/null; then
+    echo -e "${GREEN}✅ pyserial is installed${NC}"
+else
+    echo -e "${YELLOW}⚠️  pyserial not found. Installing...${NC}"
+    pip install pyserial
+fi
 
-# Add import to App.css
-echo '@import "./styles/clean-layout.css";' > software/frontend/web/src/App.css.tmp
-echo "" >> software/frontend/web/src/App.css.tmp
-cat software/frontend/web/src/App.css >> software/frontend/web/src/App.css.tmp
-mv software/frontend/web/src/App.css.tmp software/frontend/web/src/App.css
-
-# Create a layout verification utility
+# Step 3: Check for serial ports
 echo ""
-echo "📝 Creating layout verification utility..."
+echo "3️⃣  Scanning for serial ports..."
+python3 << 'EOF'
+import serial.tools.list_ports
+import sys
 
-cat > software/frontend/web/src/utils/verifyLayout.ts << 'EOF'
-// Verify and fix layout structure
-export const verifyLayout = () => {
-  console.log('[Layout] Verifying page structure...');
-  
-  // Check for main containers
-  const mainContent = document.querySelector('.flex-1.p-6');
-  const sidebar = document.querySelector('.bg-gray-800.w-64');
-  const gridContainer = document.querySelector('.relative.w-full.h-full');
-  
-  console.log('[Layout] Main content:', mainContent ? 'Found' : 'Missing');
-  console.log('[Layout] Sidebar:', sidebar ? 'Found' : 'Missing');
-  console.log('[Layout] Grid container:', gridContainer ? 'Found' : 'Missing');
-  
-  // Fix visibility
-  if (mainContent) {
-    const el = mainContent as HTMLElement;
-    el.style.display = 'flex';
-    el.style.flexDirection = 'column';
-    el.style.flex = '1';
-    el.style.visibility = 'visible';
-  }
-  
-  if (gridContainer) {
-    const el = gridContainer as HTMLElement;
-    el.style.display = 'block';
-    el.style.visibility = 'visible';
-    el.style.position = 'relative';
-  }
-  
-  // Check for grid items
-  const gridItems = document.querySelectorAll('.absolute[style*="transform"]');
-  console.log('[Layout] Grid items found:', gridItems.length);
-  
-  gridItems.forEach((item, index) => {
-    const el = item as HTMLElement;
-    el.style.visibility = 'visible';
-    console.log(`[Layout] Grid item ${index}:`, el);
-  });
-};
+ports = list(serial.tools.list_ports.comports())
 
-// Run on page load and route changes
-if (typeof window !== 'undefined') {
-  window.addEventListener('DOMContentLoaded', verifyLayout);
-  
-  // Monitor route changes
-  let lastPath = window.location.pathname;
-  setInterval(() => {
-    if (window.location.pathname !== lastPath) {
-      lastPath = window.location.pathname;
-      setTimeout(verifyLayout, 100);
-    }
-  }, 100);
-}
+if not ports:
+    print("\033[0;31m❌ No serial ports found!\033[0m")
+    print("   Please check:")
+    print("   - Printer is connected via USB")
+    print("   - Printer is powered on")
+    sys.exit(1)
+
+print("\033[0;32m✅ Found serial ports:\033[0m")
+for i, port in enumerate(ports):
+    likely = "⭐" if any(x in port.description.lower() for x in ["prusa", "3d", "printer"]) else "  "
+    print(f"{likely} [{i+1}] {port.device} - {port.description}")
 EOF
 
-echo "✅ Created layout verification"
-
-# Quick inline fix
+# Step 4: Quick connection test
 echo ""
-echo "📝 Adding emergency inline styles..."
+echo "4️⃣  Testing printer connection..."
+echo ""
+echo "Select a port number from above (or press Enter to skip): "
+read -r PORT_NUM
 
-cat >> software/frontend/web/src/index.css << 'EOF'
+if [ -n "$PORT_NUM" ]; then
+    python3 << EOF
+import serial
+import serial.tools.list_ports
+import time
 
-/* Emergency layout fix */
-.h-full.flex {
-  display: flex !important;
-  height: 100% !important;
-}
+ports = list(serial.tools.list_ports.comports())
+try:
+    port_idx = int("$PORT_NUM") - 1
+    if 0 <= port_idx < len(ports):
+        port = ports[port_idx].device
+        print(f"Testing connection to {port}...")
+        
+        # Try to connect
+        ser = serial.Serial(port, 115200, timeout=2)
+        time.sleep(2)
+        
+        # Send M115 (firmware info)
+        ser.write(b"M115\n")
+        time.sleep(0.5)
+        
+        # Read response
+        response = ser.read(ser.in_waiting).decode('utf-8', errors='ignore')
+        
+        if "FIRMWARE_NAME" in response or "Prusa" in response:
+            print("\033[0;32m✅ Successfully connected to Prusa printer!\033[0m")
+            print(f"Response: {response[:100]}...")
+        else:
+            print("\033[0;31m❌ Connected but no valid response\033[0m")
+            
+        ser.close()
+    else:
+        print("\033[0;31m❌ Invalid port selection\033[0m")
+except Exception as e:
+    print(f"\033[0;31m❌ Connection failed: {e}\033[0m")
+EOF
+fi
 
-.bg-gray-800.w-64 {
-  width: 16rem !important;
-  flex-shrink: 0 !important;
-}
+# Step 5: Check if backend API is running
+echo ""
+echo "5️⃣  Checking backend API..."
+if curl -s http://localhost:8000/docs > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Backend API is running${NC}"
+    
+    # Try to get printer list
+    echo "   Fetching printer list..."
+    PRINTERS=$(curl -s http://localhost:8000/api/v1/equipment/printers 2>/dev/null)
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ API endpoint accessible${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠️  Backend API not running${NC}"
+    echo "   Start it with:"
+    echo "   cd software/backend && python3 -m uvicorn main:app --reload"
+fi
 
-.flex-1.p-6 {
-  flex: 1 !important;
-  display: flex !important;
-  flex-direction: column !important;
-}
+# Step 6: Summary
+echo ""
+echo "========================================"
+echo "📊 Connection Test Summary"
+echo "========================================"
 
-.relative.w-full.h-full {
-  display: block !important;
-  position: relative !important;
-}
+# Create test status file
+cat > prusa_test_results.txt << EOF
+W.I.T. Prusa XL Connection Test Results
+Generated: $(date)
+
+System Checks:
+- Python: $(python3 --version)
+- pyserial: $(python3 -c "import serial; print('Installed')" 2>/dev/null || echo "Not installed")
+- Backend API: $(curl -s http://localhost:8000/docs > /dev/null 2>&1 && echo "Running" || echo "Not running")
+
+Available Ports:
+$(python3 -c "import serial.tools.list_ports; [print(f'  - {p.device}: {p.description}') for p in serial.tools.list_ports.comports()]" 2>/dev/null)
+
+Next Steps:
+1. Run setup script: python3 setup-prusa-xl.py
+2. Start backend: cd software/backend && python3 -m uvicorn main:app --reload
+3. Open dashboard: http://localhost:3000
+4. Add printer via UI
 EOF
 
+echo -e "${GREEN}✅ Test complete! Results saved to prusa_test_results.txt${NC}"
 echo ""
-echo "🎉 Layout restoration complete!"
+echo "🚀 Next steps:"
+echo "   1. Run the setup script: python3 setup-prusa-xl.py"
+echo "   2. Follow the connection guide in connect-prusa-guide.md"
 echo ""
-echo "📋 What was fixed:"
-echo "  ✅ Clean CSS structure without conflicts"
-echo "  ✅ Proper flex layout (sidebar + content)"
-echo "  ✅ Grid container visibility"
-echo "  ✅ Modal constraints"
-echo ""
-echo "🔄 IMPORTANT STEPS:"
-echo "  1. Restart your dev server"
-echo "  2. Clear browser cache (Ctrl+Shift+Delete)"
-echo "  3. Hard refresh (Ctrl+F5)"
-echo ""
-echo "💡 Check browser console for [Layout] messages"
-echo ""
-echo "If still broken, restore original:"
-echo "  git checkout software/frontend/web/src/App.css"
-echo "  git checkout software/frontend/web/src/index.css"
+echo "Need help? Check the troubleshooting section in the guide!"

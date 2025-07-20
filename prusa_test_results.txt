@@ -1,0 +1,18 @@
+W.I.T. Prusa XL Connection Test Results
+Generated: Sat Jul 19 21:34:44 PDT 2025
+
+System Checks:
+- Python: Python 3.13.5
+- pyserial: Installed
+- Backend API: Running
+
+Available Ports:
+  - /dev/cu.MEGABLAST: n/a
+  - /dev/cu.Bluetooth-Incoming-Port: n/a
+  - /dev/cu.JamiesBigBlueSpeaker: n/a
+
+Next Steps:
+1. Run setup script: python3 setup-prusa-xl.py
+2. Start backend: cd software/backend && python3 -m uvicorn main:app --reload
+3. Open dashboard: http://localhost:3000
+4. Add printer via UI

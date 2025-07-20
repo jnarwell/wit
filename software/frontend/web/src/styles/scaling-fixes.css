@@ -1,0 +1,376 @@
+/* W.I.T. Dashboard Scaling Fixes */
+
+/* ===== SIDEBAR SCALING FIXES ===== */
+
+/* Base sidebar container */
+.bg-gray-800.w-64,
+.w-80.bg-gray-800 {
+  width: 20rem; /* 320px - standardize sidebar width */
+  min-width: 16rem; /* 256px minimum */
+  max-width: 24rem; /* 384px maximum */
+  flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: width 0.2s ease;
+}
+
+/* Responsive sidebar */
+@media (max-width: 1280px) {
+  .bg-gray-800.w-64,
+  .w-80.bg-gray-800 {
+    width: 18rem; /* 288px on medium screens */
+  }
+}
+
+@media (max-width: 1024px) {
+  .bg-gray-800.w-64,
+  .w-80.bg-gray-800 {
+    width: 16rem; /* 256px on tablets */
+  }
+}
+
+@media (max-width: 768px) {
+  .bg-gray-800.w-64,
+  .w-80.bg-gray-800 {
+    width: 14rem; /* 224px on small screens */
+    min-width: 14rem;
+  }
+}
+
+/* Sidebar content padding adjustment */
+.bg-gray-800.w-64 > div,
+.w-80.bg-gray-800 > div {
+  padding: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .bg-gray-800.w-64 > div,
+  .w-80.bg-gray-800 > div {
+    padding: 1rem;
+  }
+}
+
+/* Filter section styling */
+.bg-gray-800 select,
+.bg-gray-800 input[type="number"] {
+  width: 100%;
+  max-width: 100%;
+  font-size: 0.875rem;
+}
+
+/* Statistics container */
+.bg-gray-700.rounded-lg.p-4 {
+  margin-top: auto;
+  margin-bottom: 1rem;
+}
+
+/* Grid size controls */
+.grid.grid-cols-2.gap-3 {
+  gap: 0.75rem;
+}
+
+.grid.grid-cols-2.gap-3 input[type="number"] {
+  padding: 0.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+/* ===== MODAL SCALING FIXES ===== */
+
+/* Modal overlay */
+.fixed.inset-0.bg-black.bg-opacity-50,
+.fixed.inset-0.bg-gray-900.bg-opacity-75 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 50;
+}
+
+/* Modal container */
+.fixed .bg-gray-800.rounded-lg {
+  width: 90%;
+  max-width: 42rem; /* 672px max width */
+  max-height: 90vh;
+  overflow-y: auto;
+  margin: auto;
+  transform: scale(1);
+  transition: transform 0.2s ease;
+}
+
+/* Modal responsive sizing */
+@media (max-width: 768px) {
+  .fixed .bg-gray-800.rounded-lg {
+    width: 95%;
+    max-width: 100%;
+    max-height: 95vh;
+    margin: 0.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .fixed .bg-gray-800.rounded-lg {
+    width: 100%;
+    height: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+    margin: 0;
+  }
+}
+
+/* Modal content padding */
+.fixed .bg-gray-800.rounded-lg.p-6 {
+  padding: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .fixed .bg-gray-800.rounded-lg.p-6 {
+    padding: 1rem;
+  }
+}
+
+/* Modal header */
+.fixed .flex.items-center.justify-between.mb-6 {
+  margin-bottom: 1.5rem;
+}
+
+.fixed .text-2xl {
+  font-size: 1.5rem;
+  line-height: 2rem;
+}
+
+@media (max-width: 640px) {
+  .fixed .text-2xl {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+}
+
+/* Modal form fields */
+.fixed .space-y-4 > div {
+  margin-bottom: 1rem;
+}
+
+.fixed label {
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.fixed input,
+.fixed select,
+.fixed textarea {
+  width: 100%;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .fixed input,
+  .fixed select,
+  .fixed textarea {
+    font-size: 1rem; /* Larger touch targets on mobile */
+    padding: 0.75rem;
+  }
+}
+
+/* Modal buttons */
+.fixed .flex.gap-3 {
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.fixed button {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border-radius: 0.375rem;
+}
+
+@media (max-width: 640px) {
+  .fixed .flex.gap-3 {
+    flex-direction: column;
+  }
+  
+  .fixed button {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+  }
+}
+
+/* ===== PROJECT/MACHINE CARDS SCALING ===== */
+
+/* Card container */
+.bg-gray-800.rounded-lg.border {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bg-gray-800.rounded-lg.border:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Card content responsive */
+@media (max-width: 768px) {
+  .bg-gray-800.rounded-lg.border .text-lg {
+    font-size: 1rem;
+  }
+  
+  .bg-gray-800.rounded-lg.border .text-sm {
+    font-size: 0.75rem;
+  }
+}
+
+/* ===== SCROLLBAR STYLING ===== */
+
+/* Custom scrollbar for sidebar */
+.bg-gray-800.w-64::-webkit-scrollbar,
+.w-80.bg-gray-800::-webkit-scrollbar {
+  width: 6px;
+}
+
+.bg-gray-800.w-64::-webkit-scrollbar-track,
+.w-80.bg-gray-800::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+.bg-gray-800.w-64::-webkit-scrollbar-thumb,
+.w-80.bg-gray-800::-webkit-scrollbar-thumb {
+  background: #6b7280;
+  border-radius: 3px;
+}
+
+.bg-gray-800.w-64::-webkit-scrollbar-thumb:hover,
+.w-80.bg-gray-800::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Firefox scrollbar */
+.bg-gray-800.w-64,
+.w-80.bg-gray-800 {
+  scrollbar-width: thin;
+  scrollbar-color: #6b7280 #374151;
+}
+
+/* ===== MAIN CONTENT AREA SCALING ===== */
+
+/* Ensure main content expands properly */
+.flex-1.bg-gray-900.p-8,
+.flex-1.p-6 {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  padding: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .flex-1.bg-gray-900.p-8,
+  .flex-1.p-6 {
+    padding: 1rem;
+  }
+}
+
+/* Grid container responsive */
+.relative.w-full.h-full {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+}
+
+/* ===== PAGINATION CONTROLS ===== */
+
+/* Pagination container */
+.absolute.bottom-6.left-1\/2.transform.-translate-x-1\/2 {
+  bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .absolute.bottom-6.left-1\/2.transform.-translate-x-1\/2 {
+    bottom: 1rem;
+  }
+  
+  .absolute.bottom-6.left-1\/2.transform.-translate-x-1\/2 .px-3 {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
+/* ===== FORM INPUT ACCESSIBILITY ===== */
+
+/* Improve touch targets on mobile */
+@media (max-width: 768px) {
+  button,
+  input,
+  select,
+  textarea {
+    min-height: 44px; /* iOS recommendation */
+  }
+  
+  /* Dropdown styling */
+  select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+  }
+}
+
+/* ===== RESPONSIVE TEXT SCALING ===== */
+
+/* Heading sizes */
+@media (max-width: 1024px) {
+  .text-3xl { font-size: 1.875rem; }
+  .text-2xl { font-size: 1.5rem; }
+  .text-xl { font-size: 1.25rem; }
+  .text-lg { font-size: 1.125rem; }
+}
+
+@media (max-width: 768px) {
+  .text-3xl { font-size: 1.5rem; }
+  .text-2xl { font-size: 1.25rem; }
+  .text-xl { font-size: 1.125rem; }
+  .text-lg { font-size: 1rem; }
+  .text-base { font-size: 0.875rem; }
+  .text-sm { font-size: 0.75rem; }
+}
+
+/* ===== UTILITY FIXES ===== */
+
+/* Prevent horizontal scroll */
+body {
+  overflow-x: hidden;
+}
+
+/* Ensure all containers respect viewport */
+* {
+  max-width: 100vw;
+}
+
+/* Fix z-index stacking */
+.fixed {
+  z-index: 50;
+}
+
+nav {
+  z-index: 40;
+}
+
+.bg-gray-800.w-64,
+.w-80.bg-gray-800 {
+  z-index: 30;
+}
+
+/* Smooth transitions */
+* {
+  transition-property: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button,
+  a,
+  .bg-gray-800.rounded-lg.border {
+    transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+}

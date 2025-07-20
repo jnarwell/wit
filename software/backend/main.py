@@ -227,6 +227,11 @@ async def log_requests(request: Request, call_next):
     
     return response
 
+@app.on_event("shutdown")
+async def shutdown_event():
+    from api.equipment_api import shutdown_equipment
+    await shutdown_equipment()
+
 
 def create_app() -> FastAPI:
     """Factory function to create the app"""
