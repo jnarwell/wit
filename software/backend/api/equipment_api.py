@@ -9,6 +9,8 @@ Enhanced API endpoints for controlling workshop equipment including direct seria
 from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+import requests
+from requests.auth import HTTPDigestAuth
 from typing import Optional, List, Dict, Any, Union
 import asyncio
 import logging
@@ -93,6 +95,15 @@ class GCodeRequest(BaseModel):
     printer_id: str
     commands: List[str] = Field(..., description="G-code commands to send")
     priority: bool = Field(default=False, description="Send as priority commands")
+
+class PrinterTestRequest(BaseModel):
+    """Test printer connection request"""
+    connection_type: str
+    url: Optional[str] = None
+    port: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    api_key: Optional[str] = None
 
 
 # Printer discovery endpoint
@@ -446,6 +457,117 @@ async def websocket_endpoint(websocket: WebSocket, printer_id: str):
         except:
             pass
 
+@router.post("/printers/test", response_model=Dict[str, Any])
+async def test_printer_connection(request: PrinterTestRequest):
+    """Test printer connection without adding it"""
+    try:
+        if request.connection_type == "prusalink":
+            # Test PrusaLink connection with Digest auth
+            if not request.url or not request.username or not request.password:
+                return {
+                    "success": False,
+                    "message": "URL, username and password are required for PrusaLink"
+                }
+            
+            # Clean up URL - remove http:// if present, add it back
+            url = request.url.replace("http://", "").replace("https://", "").strip("/")
+            
+            auth = HTTPDigestAuth(request.username, request.password)
+            response = requests.get(
+                f"http://{url}/api/printer",
+                auth=auth,
+                timeout=5
+            )
+            
+            if response.status_code == 200:
+                return {
+                    "success": True,
+                    "message": "Connection successful! PrusaLink is responding."
+                }
+            elif response.status_code == 401:
+                return {
+                    "success": False,
+                    "message": "Authentication failed. Check your username and password."
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": f"Connection failed with status: {response.status_code}"
+                }
+                
+        elif request.connection_type == "octoprint":
+            # Test OctoPrint connection
+            if not request.url or not request.api_key:
+                return {
+                    "success": False,
+                    "message": "URL and API key are required for OctoPrint"
+                }
+                
+            headers = {"X-Api-Key": request.api_key}
+            response = requests.get(
+                f"{request.url}/api/printer",
+                headers=headers,
+                timeout=5
+            )
+            
+            if response.status_code == 200:
+                return {
+                    "success": True,
+                    "message": "Connection successful! OctoPrint is responding."
+                }
+            elif response.status_code == 401:
+                return {
+                    "success": False,
+                    "message": "Authentication failed. Check your API key."
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": f"Connection failed with status: {response.status_code}"
+                }
+                
+        elif request.connection_type == "serial":
+            # For serial connections, just validate the port format
+            if not request.port:
+                return {
+                    "success": False,
+                    "message": "Serial port is required"
+                }
+                
+            # Check if port looks valid
+            if not request.port.startswith(("/dev/", "COM")):
+                return {
+                    "success": False,
+                    "message": "Invalid serial port format"
+                }
+                
+            return {
+                "success": True,
+                "message": "Serial port format is valid. Connection will be tested when adding printer."
+            }
+            
+        else:
+            return {
+                "success": False,
+                "message": f"Unknown connection type: {request.connection_type}"
+            }
+            
+    except requests.exceptions.ConnectTimeout:
+        return {
+            "success": False,
+            "message": "Connection timeout - is the printer powered on and connected to the network?"
+        }
+    except requests.exceptions.ConnectionError:
+        return {
+            "success": False,
+            "message": "Connection error - check the IP address and network connection"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error: {str(e)}"
+        }
+
 
 async def broadcast_printer_status(printer_id: str):
     """Broadcast status update to all connected WebSocket clients"""
@@ -481,3 +603,4 @@ async def shutdown_equipment():
     # Clear connections
     prusa_printers.clear()
     active_connections.clear()
+

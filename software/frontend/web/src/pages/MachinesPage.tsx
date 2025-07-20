@@ -538,103 +538,57 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
     setConnectionTestResult(null);
 
     try {
-      // For now, simulate the connection test locally
-      // TODO: Replace with actual backend API when available
-      
-      // Simulate a delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Basic validation
-      if (!newMachine.connectionDetails) {
-        setConnectionTestResult({ 
-          success: false, 
-          message: 'Connection details are required' 
-        });
-        return;
-      }
-      
-      // Check based on connection type
+      // Build request for backend API
+      const requestBody: any = {
+        connection_type: newMachine.connectionType.replace('network-', ''),
+      };
+
       if (newMachine.connectionType === 'network-prusalink') {
-        if (!newMachine.username || !newMachine.password) {
+        requestBody.url = newMachine.connectionDetails.replace(/^https?:\/\//, '').replace(/\/$/, '');
+        requestBody.username = newMachine.username || 'maker';
+        requestBody.password = newMachine.password;
+        
+        if (!requestBody.password) {
           setConnectionTestResult({ 
             success: false, 
-            message: 'Username and password are required for PrusaLink' 
+            message: 'Password is required for PrusaLink' 
           });
           return;
         }
-        
-        // Clean up IP address (remove trailing slash if present)
-        const cleanIP = newMachine.connectionDetails.replace(/\/$/, '').trim();
-        
-        // Validate IP address format
-        const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
-        if (!ipRegex.test(cleanIP)) {
-          setConnectionTestResult({ 
-            success: false, 
-            message: 'Invalid IP address format. Example: 192.168.1.134' 
-          });
-          return;
-        }
-        
-        // Simulate successful connection
-        setConnectionTestResult({ 
-          success: true, 
-          message: 'Connection test simulated - Backend API not yet implemented' 
-        });
-        
       } else if (newMachine.connectionType === 'network-octoprint') {
-        if (!newMachine.apiKey) {
+        requestBody.url = newMachine.connectionDetails;
+        requestBody.api_key = newMachine.apiKey;
+        
+        if (!requestBody.api_key) {
           setConnectionTestResult({ 
             success: false, 
             message: 'API key is required for OctoPrint' 
           });
           return;
         }
-        
-        setConnectionTestResult({ 
-          success: true, 
-          message: 'Connection test simulated - Backend API not yet implemented' 
-        });
-        
       } else {
-        // USB/Serial connections
-        setConnectionTestResult({ 
-          success: true, 
-          message: 'Direct connection - Will be tested when adding machine' 
-        });
-      }
-      
-      /* Original backend code - uncomment when API is available
-      const requestBody: any = {
-        connection_type: newMachine.connectionType.replace('network-', ''),
-        port: newMachine.connectionDetails
-      };
-
-      // Add appropriate auth fields based on connection type
-      if (newMachine.connectionType === 'network-prusalink') {
-        requestBody.url = newMachine.connectionDetails;
-        requestBody.username = newMachine.username;
-        requestBody.password = newMachine.password;
-      } else if (newMachine.connectionType === 'network-octoprint') {
-        requestBody.url = newMachine.connectionDetails;
-        requestBody.api_key = newMachine.apiKey;
+        requestBody.port = newMachine.connectionDetails;
       }
 
+      // Actually call the backend
       const response = await fetch('/api/v1/equipment/printers/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
       });
       
-      if (response.ok) {
-        setConnectionTestResult({ success: true, message: 'Connection successful!' });
-      } else {
-        const error = await response.text();
-        setConnectionTestResult({ success: false, message: error || 'Connection failed' });
-      }
-      */
+      const result = await response.json();
+      setConnectionTestResult({ 
+        success: result.success, 
+        message: result.message 
+      });
+      
     } catch (error: any) {
-      setConnectionTestResult({ success: false, message: error.message || 'Connection test failed' });
+      console.error('Connection test error:', error);
+      setConnectionTestResult({ 
+        success: false, 
+        message: 'Could not reach backend. Is dev_server.py running?' 
+      });
     } finally {
       setTestingConnection(false);
     }

@@ -1,105 +1,128 @@
 #!/bin/bash
-# Update PrusaLink configuration to use username/password authentication
+# W.I.T. Quick Fix All Script
 
-echo "🔧 Updating PrusaLink Configuration"
-echo "=================================="
+echo "🔧 W.I.T. Quick Fix Script"
+echo "=========================="
 
-# Check if .env file exists
-if [ ! -f .env ]; then
-    echo "Creating .env file from template..."
-    cp software/.env.example .env
-fi
+# Create the minimal working dev server
+echo "Creating minimal dev server with equipment endpoints..."
 
-# Add PrusaLink configuration to .env
-echo ""
-echo "Adding PrusaLink configuration to .env file..."
+cat > dev_server_minimal_equipment.py << 'EOF'
+#!/usr/bin/env python3
+"""Minimal dev server with equipment endpoints"""
 
-# Check if PrusaLink config already exists
-if grep -q "PRUSALINK_" .env; then
-    echo "PrusaLink configuration found in .env, updating..."
-    # Comment out old entries
-    sed -i.bak 's/^PRUSALINK_/#PRUSALINK_/g' .env
-fi
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional, Dict, Any, List
+from datetime import datetime
+import uvicorn
 
-# Add new configuration
-cat >> .env << EOF
+app = FastAPI(title="W.I.T. Minimal Equipment API")
 
-# PrusaLink Configuration (Updated)
-PRUSALINK_HOST=192.168.1.134
-PRUSALINK_USERNAME=maker
-PRUSALINK_PASSWORD=6kSsqbykCym6Xd8
-PRUSALINK_HOSTNAME=prusa-xl
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Models
+class PrinterTestRequest(BaseModel):
+    connection_type: str
+    url: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    api_key: Optional[str] = None
+
+class PrinterAddRequest(BaseModel):
+    printer_id: str
+    name: str
+    connection_type: str
+    url: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    api_key: Optional[str] = None
+
+# In-memory storage
+printers = {}
+
+@app.get("/")
+async def root():
+    return {
+        "message": "W.I.T. Equipment API",
+        "routers_loaded": ["equipment"],
+        "endpoints": {
+            "test": "/api/v1/equipment/printers/test",
+            "add": "/api/v1/equipment/printers",
+            "list": "/api/v1/equipment/printers"
+        }
+    }
+
+@app.post("/api/v1/equipment/printers/test")
+async def test_connection(request: PrinterTestRequest):
+    """Test printer connection"""
+    if request.connection_type == "prusalink":
+        if not request.username or not request.password:
+            return {"success": False, "message": "Username and password required"}
+        return {"success": True, "message": "PrusaLink test successful (simulated)"}
+    
+    elif request.connection_type == "octoprint":
+        if not request.api_key:
+            return {"success": False, "message": "API key required"}
+        return {"success": True, "message": "OctoPrint test successful (simulated)"}
+    
+    return {"success": True, "message": "Connection test passed"}
+
+@app.post("/api/v1/equipment/printers")
+async def add_printer(request: PrinterAddRequest):
+    """Add printer"""
+    printers[request.printer_id] = {
+        "id": request.printer_id,
+        "name": request.name,
+        "connection_type": request.connection_type,
+        "connected": True,
+        "state": {"text": "Ready"},
+        "telemetry": {
+            "temp-nozzle": 25.0,
+            "temp-bed": 23.0
+        }
+    }
+    return {"status": "success", "message": f"Printer {request.name} added"}
+
+@app.get("/api/v1/equipment/printers")
+async def list_printers():
+    """List all printers"""
+    return list(printers.values())
+
+@app.get("/api/v1/equipment/printers/{printer_id}")
+async def get_printer(printer_id: str):
+    """Get printer status"""
+    if printer_id not in printers:
+        raise HTTPException(status_code=404, detail="Printer not found")
+    return printers[printer_id]
+
+if __name__ == "__main__":
+    print("\n" + "="*60)
+    print("🚀 W.I.T. Minimal Equipment Server")
+    print("="*60)
+    print("✅ All equipment endpoints available")
+    print("📍 API Docs: http://localhost:8000/docs")
+    print("="*60 + "\n")
+    
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
 EOF
 
-echo "✅ Updated .env file with PrusaLink credentials"
+chmod +x dev_server_minimal_equipment.py
 
-# Update the example file too
-echo ""
-echo "Updating .env.example template..."
-
-# Update the .env.example to show the new format
-cat >> software/.env.example << EOF
-
-# PrusaLink Configuration
-PRUSALINK_HOST=192.168.1.xxx
-PRUSALINK_USERNAME=maker
-PRUSALINK_PASSWORD=your_prusalink_password
-PRUSALINK_HOSTNAME=prusa-xl
-EOF
-
-echo "✅ Updated .env.example"
-
-# Create a migration note
-cat > PRUSALINK_AUTH_UPDATE.md << EOF
-# PrusaLink Authentication Update
-
-## What Changed
-PrusaLink has been updated to use username/password authentication instead of API keys.
-
-## Configuration
-The following environment variables are now used:
-- \`PRUSALINK_HOST\`: IP address of your printer (e.g., 192.168.1.134)
-- \`PRUSALINK_USERNAME\`: Username (default: "maker")
-- \`PRUSALINK_PASSWORD\`: Password from printer display
-- \`PRUSALINK_HOSTNAME\`: Hostname of printer (e.g., "prusa-xl")
-
-## Finding Your Credentials
-1. On your Prusa printer, go to: Settings → Network → PrusaLink
-2. Note the username (usually "maker")
-3. Note the password displayed
-4. Note the IP address
-
-## Files Updated
-- \`setup-network-printer.py\`: Now asks for username/password
-- \`software/integrations/prusalink-integration.py\`: Uses Basic Auth
-- \`software/frontend/web/src/pages/MachinesPage.tsx\`: Updated UI
-- \`.env\`: Your configuration file
-
-## Testing
-Run the setup wizard to test your connection:
-\`\`\`bash
-python3 setup-network-printer.py
-\`\`\`
-
-Choose option 1 for PrusaLink and enter your credentials.
-EOF
-
-echo ""
-echo "✅ Created PRUSALINK_AUTH_UPDATE.md with migration notes"
-
-# Summary
-echo ""
-echo "🎉 PrusaLink Authentication Update Complete!"
+echo "✅ Created dev_server_minimal_equipment.py"
 echo ""
 echo "Next steps:"
-echo "1. Review your .env file to ensure the credentials are correct"
-echo "2. Run: python3 setup-network-printer.py"
-echo "3. Choose option 1 (PrusaLink) to test the connection"
+echo "1. Stop any running dev_server.py (Ctrl+C)"
+echo "2. Run: python3 dev_server_minimal_equipment.py"
+echo "3. Run: python3 patch_frontend.py"
+echo "4. Start frontend: cd software/frontend/web && npm run dev"
 echo ""
-echo "Your PrusaLink configuration:"
-echo "  Host: 192.168.1.134"
-echo "  Username: maker"
-echo "  Password: [configured in .env]"
-echo "  Hostname: prusa-xl"
-echo ""
-echo "⚠️  Security Note: Keep your .env file private and never commit it to git!"
+echo "This minimal server includes all the equipment endpoints needed!"
