@@ -1,0 +1,13 @@
+{
+  "printers": {
+    "prusalink_20250720_112401": {
+      "type": "prusalink",
+      "host": "192.168.1.134",
+      "username": "maker",
+      "password": "GkSsqbykCym6Xd8",
+      "auth_type": "digest",
+      "name": "Prusa XL",
+      "added": "2025-07-20T11:24:01.886611"
+    }
+  }
+}

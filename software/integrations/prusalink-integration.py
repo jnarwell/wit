@@ -3,6 +3,7 @@ W.I.T. PrusaLink Integration
 
 Network interface for controlling Prusa printers via PrusaLink API.
 Supports Prusa XL, MK4, MINI+ with PrusaLink firmware.
+Updated to use username/password authentication.
 """
 
 import asyncio
@@ -74,9 +75,11 @@ class PrusaLinkStatus:
 class PrusaLinkConfig:
     """PrusaLink connection configuration"""
     host: str  # IP address or hostname
-    api_key: str  # API key from PrusaLink settings
-    username: Optional[str] = None  # For basic auth (older versions)
-    password: Optional[str] = None  # For basic auth (older versions)
+    username: str = "maker"  # Default username
+    password: str = ""  # Required password
+    
+    # Legacy API key support (for newer firmware that might add it)
+    api_key: Optional[str] = None
     
     # Connection settings
     port: int = 80  # Default HTTP port
@@ -92,7 +95,7 @@ class PrusaLinkConfig:
 
 
 class PrusaLinkClient:
-    """PrusaLink API client"""
+    """PrusaLink API client with username/password authentication"""
     
     def __init__(self, config: PrusaLinkConfig):
         self.config = config
@@ -113,18 +116,20 @@ class PrusaLinkClient:
         protocol = "https" if config.use_https else "http"
         self.base_url = f"{protocol}://{config.host}:{config.port}"
         
-        # Auth headers
-        self.headers = {
-            "X-Api-Key": config.api_key,
-            "Content-Type": "application/json"
-        }
+        # Setup authentication headers
+        self.headers = {"Content-Type": "application/json"}
         
-        # Add basic auth if provided (for older PrusaLink versions)
+        # Use Basic Auth with username/password
         if config.username and config.password:
             auth_str = f"{config.username}:{config.password}"
             auth_bytes = auth_str.encode('utf-8')
             auth_b64 = base64.b64encode(auth_bytes).decode('ascii')
             self.headers["Authorization"] = f"Basic {auth_b64}"
+        # Fallback to API key if provided (for future compatibility)
+        elif config.api_key:
+            self.headers["X-Api-Key"] = config.api_key
+        else:
+            logger.warning("No authentication credentials provided")
             
     async def connect(self) -> bool:
         """Connect to PrusaLink"""
@@ -150,6 +155,7 @@ class PrusaLinkClient:
                     self.status.printer_model = data.get("printer", self.config.model)
                     self.status.firmware_version = data.get("firmware")
                     self.status.serial_number = data.get("serial")
+                    self.status.hostname = data.get("hostname")
                     
                     self.connected = True
                     
@@ -157,14 +163,15 @@ class PrusaLinkClient:
                     self.poll_task = asyncio.create_task(self._poll_status())
                     
                     return True
+                elif response.status == 401:
+                    logger.error("Authentication failed - check username/password")
+                    return False
                 else:
                     logger.error(f"Connection failed: HTTP {response.status}")
                     return False
                     
         except Exception as e:
             logger.error(f"Connection error: {e}")
-            if self.session:
-                await self.session.close()
             return False
             
     async def disconnect(self):
@@ -183,22 +190,20 @@ class PrusaLinkClient:
         if self.session:
             await self.session.close()
             
-        logger.info("Disconnected from PrusaLink")
-        
     async def _poll_status(self):
-        """Continuously poll printer status"""
+        """Poll printer status periodically"""
         while self.connected:
             try:
                 await self._update_status()
-                await self._update_job_status()
                 await asyncio.sleep(self.config.poll_interval)
-                
+            except asyncio.CancelledError:
+                break
             except Exception as e:
                 logger.error(f"Polling error: {e}")
-                await asyncio.sleep(self.config.poll_interval * 2)
+                await asyncio.sleep(self.config.poll_interval)
                 
     async def _update_status(self):
-        """Update printer status"""
+        """Update printer status from API"""
         try:
             # Get printer status
             async with self.session.get(
@@ -208,61 +213,69 @@ class PrusaLinkClient:
                     data = await response.json()
                     
                     # Update state
-                    state_str = data.get("state", {}).get("text", "").lower()
-                    self.status.state = self._parse_state(state_str)
+                    state_text = data.get("state", {}).get("text", "").lower()
+                    self.status.state = self._parse_state(state_text)
                     
-                    # Update temperatures
+                    # Update temperatures from telemetry
                     telemetry = data.get("telemetry", {})
-                    self.status.nozzle_temp = telemetry.get("temp-nozzle", 0.0)
-                    self.status.bed_temp = telemetry.get("temp-bed", 0.0)
                     
-                    # Targets might be in different location
+                    # Nozzle temperature
+                    self.status.nozzle_temp = telemetry.get("temp-nozzle", 0.0)
                     self.status.nozzle_target = telemetry.get("target-nozzle", 0.0)
+                    
+                    # Bed temperature
+                    self.status.bed_temp = telemetry.get("temp-bed", 0.0)
                     self.status.bed_target = telemetry.get("target-bed", 0.0)
                     
-                    # Position (if available)
-                    self.status.pos_x = telemetry.get("axis-x")
-                    self.status.pos_y = telemetry.get("axis-y")
-                    self.status.pos_z = telemetry.get("axis-z")
+                    # Position
+                    self.status.pos_x = telemetry.get("axis-x", 0.0)
+                    self.status.pos_y = telemetry.get("axis-y", 0.0)
+                    self.status.pos_z = telemetry.get("axis-z", 0.0)
                     
-                    # Trigger callbacks
-                    await self._trigger_callbacks()
+                    # Print progress
+                    self.status.progress = telemetry.get("print-progress", 0.0)
                     
-        except Exception as e:
-            logger.error(f"Status update error: {e}")
-            
-    async def _update_job_status(self):
-        """Update current job status"""
-        try:
-            # Get job status
-            async with self.session.get(
-                urljoin(self.base_url, "/api/job")
-            ) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    
-                    # Update job info
-                    job = data.get("job", {})
-                    self.status.job_name = job.get("file", {}).get("display_name")
-                    
-                    # Progress
-                    progress = data.get("progress", {})
-                    self.status.progress = progress.get("completion", 0.0) * 100
-                    self.status.time_printing = progress.get("printTime", 0)
-                    self.status.time_remaining = progress.get("printTimeLeft", 0)
-                    
-                    # Trigger progress callbacks
-                    for callback in self.progress_callbacks:
-                        try:
+                    # Notify callbacks
+                    for callback in self.state_callbacks:
+                        await callback(self.status.state)
+                        
+                    for callback in self.temperature_callbacks:
+                        await callback({
+                            "nozzle": {"current": self.status.nozzle_temp, "target": self.status.nozzle_target},
+                            "bed": {"current": self.status.bed_temp, "target": self.status.bed_target}
+                        })
+                        
+            # Get job status if printing
+            if self.status.state in [PrusaLinkState.PRINTING, PrusaLinkState.PAUSED]:
+                async with self.session.get(
+                    urljoin(self.base_url, "/api/job")
+                ) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        
+                        # Job info
+                        self.status.job_name = data.get("file", {}).get("name")
+                        
+                        # Progress
+                        progress = data.get("progress", {})
+                        self.status.progress = progress.get("completion", 0.0) or 0.0
+                        self.status.time_printing = progress.get("printTime", 0) or 0
+                        self.status.time_remaining = progress.get("printTimeLeft", 0) or 0
+                        
+                        # Notify progress callbacks
+                        for callback in self.progress_callbacks:
                             await callback(self.status.progress)
-                        except Exception as e:
-                            logger.error(f"Progress callback error: {e}")
                             
         except Exception as e:
-            logger.error(f"Job status error: {e}")
+            logger.error(f"Status update error: {e}")
+            self.status.state = PrusaLinkState.OFFLINE
             
+            # Notify error callbacks
+            for callback in self.error_callbacks:
+                await callback(str(e))
+                
     def _parse_state(self, state_text: str) -> PrusaLinkState:
-        """Parse state string to enum"""
+        """Parse state text to enum"""
         state_map = {
             "idle": PrusaLinkState.IDLE,
             "busy": PrusaLinkState.BUSY,
@@ -272,223 +285,17 @@ class PrusaLinkClient:
             "stopped": PrusaLinkState.STOPPED,
             "error": PrusaLinkState.ERROR,
             "attention": PrusaLinkState.ATTENTION,
-            "ready": PrusaLinkState.READY
+            "ready": PrusaLinkState.READY,
+            "operational": PrusaLinkState.IDLE
         }
         
-        for key, value in state_map.items():
-            if key in state_text.lower():
-                return value
-                
-        return PrusaLinkState.IDLE
+        return state_map.get(state_text.lower(), PrusaLinkState.OFFLINE)
         
-    async def _trigger_callbacks(self):
-        """Trigger registered callbacks"""
-        # State callbacks
-        for callback in self.state_callbacks:
-            try:
-                await callback(self.status)
-            except Exception as e:
-                logger.error(f"State callback error: {e}")
-                
-        # Temperature callbacks
-        for callback in self.temperature_callbacks:
-            try:
-                await callback(
-                    self.status.nozzle_temp,
-                    self.status.nozzle_target,
-                    self.status.bed_temp,
-                    self.status.bed_target
-                )
-            except Exception as e:
-                logger.error(f"Temperature callback error: {e}")
-                
-    # Control methods
-    
-    async def set_temperature(self, nozzle: Optional[float] = None, bed: Optional[float] = None):
-        """Set target temperatures"""
-        try:
-            data = {}
-            
-            if nozzle is not None:
-                data["target-nozzle"] = nozzle
-                
-            if bed is not None:
-                data["target-bed"] = bed
-                
-            async with self.session.post(
-                urljoin(self.base_url, "/api/printer/tools"),
-                json=data
-            ) as response:
-                if response.status in [200, 204]:
-                    logger.info(f"Temperature set - Nozzle: {nozzle}, Bed: {bed}")
-                    return True
-                else:
-                    logger.error(f"Temperature command failed: {response.status}")
-                    return False
-                    
-        except Exception as e:
-            logger.error(f"Temperature control error: {e}")
-            return False
-            
-    async def home_axes(self, axes: str = "XYZ") -> bool:
-        """Home printer axes"""
-        try:
-            # PrusaLink uses G-code for homing
-            gcode = f"G28 {' '.join(axes)}"
-            
-            return await self.send_gcode(gcode)
-            
-        except Exception as e:
-            logger.error(f"Homing error: {e}")
-            return False
-            
-    async def send_gcode(self, gcode: str) -> bool:
-        """Send G-code command"""
-        try:
-            data = {"command": gcode}
-            
-            async with self.session.post(
-                urljoin(self.base_url, "/api/printer/gcode"),
-                json=data
-            ) as response:
-                if response.status in [200, 204]:
-                    logger.info(f"G-code sent: {gcode}")
-                    return True
-                else:
-                    logger.error(f"G-code failed: {response.status}")
-                    return False
-                    
-        except Exception as e:
-            logger.error(f"G-code error: {e}")
-            return False
-            
-    async def upload_file(self, filename: str, gcode_content: str) -> bool:
-        """Upload G-code file"""
-        try:
-            # Create multipart form
-            data = aiohttp.FormData()
-            data.add_field('file',
-                          gcode_content,
-                          filename=filename,
-                          content_type='text/plain')
-                          
-            # Remove content-type header for multipart
-            headers = {k: v for k, v in self.headers.items() if k != "Content-Type"}
-            
-            async with self.session.post(
-                urljoin(self.base_url, "/api/files/local"),
-                data=data,
-                headers=headers
-            ) as response:
-                if response.status in [200, 201]:
-                    logger.info(f"File uploaded: {filename}")
-                    return True
-                else:
-                    logger.error(f"Upload failed: {response.status}")
-                    return False
-                    
-        except Exception as e:
-            logger.error(f"Upload error: {e}")
-            return False
-            
-    async def start_print(self, filename: str) -> bool:
-        """Start printing a file"""
-        try:
-            data = {"command": "start"}
-            
-            async with self.session.post(
-                urljoin(self.base_url, f"/api/files/local/{filename}"),
-                json=data
-            ) as response:
-                if response.status in [200, 204]:
-                    logger.info(f"Print started: {filename}")
-                    return True
-                else:
-                    logger.error(f"Start print failed: {response.status}")
-                    return False
-                    
-        except Exception as e:
-            logger.error(f"Start print error: {e}")
-            return False
-            
-    async def pause_print(self) -> bool:
-        """Pause current print"""
-        try:
-            data = {"command": "pause", "action": "pause"}
-            
-            async with self.session.post(
-                urljoin(self.base_url, "/api/job"),
-                json=data
-            ) as response:
-                if response.status in [200, 204]:
-                    logger.info("Print paused")
-                    return True
-                else:
-                    return False
-                    
-        except Exception as e:
-            logger.error(f"Pause error: {e}")
-            return False
-            
-    async def resume_print(self) -> bool:
-        """Resume paused print"""
-        try:
-            data = {"command": "pause", "action": "resume"}
-            
-            async with self.session.post(
-                urljoin(self.base_url, "/api/job"),
-                json=data
-            ) as response:
-                if response.status in [200, 204]:
-                    logger.info("Print resumed")
-                    return True
-                else:
-                    return False
-                    
-        except Exception as e:
-            logger.error(f"Resume error: {e}")
-            return False
-            
-    async def cancel_print(self) -> bool:
-        """Cancel current print"""
-        try:
-            data = {"command": "cancel"}
-            
-            async with self.session.post(
-                urljoin(self.base_url, "/api/job"),
-                json=data
-            ) as response:
-                if response.status in [200, 204]:
-                    logger.info("Print cancelled")
-                    return True
-                else:
-                    return False
-                    
-        except Exception as e:
-            logger.error(f"Cancel error: {e}")
-            return False
-            
-    async def get_files(self) -> List[Dict[str, Any]]:
-        """Get list of files on printer"""
-        try:
-            async with self.session.get(
-                urljoin(self.base_url, "/api/files?recursive=true")
-            ) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    return data.get("files", [])
-                else:
-                    return []
-                    
-        except Exception as e:
-            logger.error(f"Get files error: {e}")
-            return []
-            
     def get_status(self) -> Dict[str, Any]:
-        """Get current status as dict"""
+        """Get current printer status"""
         return {
-            "state": self.status.state.value,
             "connected": self.connected,
+            "state": self.status.state.value,
             "temperatures": {
                 "nozzle": {
                     "current": self.status.nozzle_temp,
@@ -499,57 +306,278 @@ class PrusaLinkClient:
                     "target": self.status.bed_target
                 }
             },
+            "job": {
+                "name": self.status.job_name,
+                "progress": self.status.progress,
+                "time_printing": self.status.time_printing,
+                "time_remaining": self.status.time_remaining
+            },
             "position": {
                 "x": self.status.pos_x,
                 "y": self.status.pos_y,
                 "z": self.status.pos_z
             },
-            "job": {
-                "name": self.status.job_name,
-                "progress": self.status.progress,
-                "time_elapsed": self.status.time_printing,
-                "time_remaining": self.status.time_remaining
-            },
             "printer": {
                 "model": self.status.printer_model,
                 "firmware": self.status.firmware_version,
                 "serial": self.status.serial_number,
-                "ip": self.config.host
+                "hostname": self.status.hostname
             }
         }
         
-    # Callback registration
-    
-    def register_state_callback(self, callback: Callable):
-        """Register state change callback"""
+    # Control methods
+    async def start_print(self, filename: str) -> bool:
+        """Start printing a file"""
+        if not self.connected:
+            return False
+            
+        try:
+            data = {"command": "start"}
+            
+            async with self.session.post(
+                urljoin(self.base_url, f"/api/files/local/{filename}"),
+                json=data
+            ) as response:
+                return response.status == 204
+                
+        except Exception as e:
+            logger.error(f"Start print error: {e}")
+            return False
+            
+    async def pause_print(self) -> bool:
+        """Pause current print"""
+        if not self.connected:
+            return False
+            
+        try:
+            data = {"command": "pause", "action": "pause"}
+            
+            async with self.session.post(
+                urljoin(self.base_url, "/api/job"),
+                json=data
+            ) as response:
+                return response.status == 204
+                
+        except Exception as e:
+            logger.error(f"Pause print error: {e}")
+            return False
+            
+    async def resume_print(self) -> bool:
+        """Resume paused print"""
+        if not self.connected:
+            return False
+            
+        try:
+            data = {"command": "pause", "action": "resume"}
+            
+            async with self.session.post(
+                urljoin(self.base_url, "/api/job"),
+                json=data
+            ) as response:
+                return response.status == 204
+                
+        except Exception as e:
+            logger.error(f"Resume print error: {e}")
+            return False
+            
+    async def cancel_print(self) -> bool:
+        """Cancel current print"""
+        if not self.connected:
+            return False
+            
+        try:
+            data = {"command": "cancel"}
+            
+            async with self.session.post(
+                urljoin(self.base_url, "/api/job"),
+                json=data
+            ) as response:
+                return response.status == 204
+                
+        except Exception as e:
+            logger.error(f"Cancel print error: {e}")
+            return False
+            
+    async def set_temperatures(self, nozzle: Optional[float] = None, bed: Optional[float] = None) -> bool:
+        """Set target temperatures"""
+        if not self.connected:
+            return False
+            
+        try:
+            # PrusaLink uses different endpoints for nozzle and bed
+            success = True
+            
+            if nozzle is not None:
+                data = {"command": "target", "target": nozzle}
+                async with self.session.post(
+                    urljoin(self.base_url, "/api/printer/tool"),
+                    json=data
+                ) as response:
+                    success &= response.status == 204
+                    
+            if bed is not None:
+                data = {"command": "target", "target": bed}
+                async with self.session.post(
+                    urljoin(self.base_url, "/api/printer/bed"),
+                    json=data
+                ) as response:
+                    success &= response.status == 204
+                    
+            return success
+            
+        except Exception as e:
+            logger.error(f"Set temperature error: {e}")
+            return False
+            
+    async def home_axes(self, axes: List[str] = ["x", "y", "z"]) -> bool:
+        """Home printer axes"""
+        if not self.connected:
+            return False
+            
+        try:
+            data = {
+                "command": "home",
+                "axes": axes
+            }
+            
+            async with self.session.post(
+                urljoin(self.base_url, "/api/printer/printhead"),
+                json=data
+            ) as response:
+                return response.status == 204
+                
+        except Exception as e:
+            logger.error(f"Home axes error: {e}")
+            return False
+            
+    async def jog(self, x: float = 0, y: float = 0, z: float = 0, relative: bool = True) -> bool:
+        """Jog printer axes"""
+        if not self.connected:
+            return False
+            
+        try:
+            data = {
+                "command": "jog",
+                "x": x,
+                "y": y,
+                "z": z,
+                "absolute": not relative
+            }
+            
+            async with self.session.post(
+                urljoin(self.base_url, "/api/printer/printhead"),
+                json=data
+            ) as response:
+                return response.status == 204
+                
+        except Exception as e:
+            logger.error(f"Jog error: {e}")
+            return False
+            
+    async def get_files(self) -> List[Dict[str, Any]]:
+        """Get list of files on printer"""
+        if not self.connected:
+            return []
+            
+        try:
+            async with self.session.get(
+                urljoin(self.base_url, "/api/files/local")
+            ) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get("files", [])
+                    
+        except Exception as e:
+            logger.error(f"Get files error: {e}")
+            
+        return []
+        
+    async def upload_file(self, filename: str, file_data: bytes) -> bool:
+        """Upload file to printer"""
+        if not self.connected:
+            return False
+            
+        try:
+            # Create multipart form data
+            data = aiohttp.FormData()
+            data.add_field('file', file_data, filename=filename)
+            
+            # PrusaLink doesn't use the JSON content-type for uploads
+            headers = dict(self.headers)
+            headers.pop("Content-Type", None)
+            
+            async with self.session.post(
+                urljoin(self.base_url, "/api/files/local"),
+                data=data,
+                headers=headers
+            ) as response:
+                return response.status in [201, 204]
+                
+        except Exception as e:
+            logger.error(f"Upload file error: {e}")
+            return False
+            
+    async def delete_file(self, filename: str) -> bool:
+        """Delete file from printer"""
+        if not self.connected:
+            return False
+            
+        try:
+            async with self.session.delete(
+                urljoin(self.base_url, f"/api/files/local/{filename}")
+            ) as response:
+                return response.status == 204
+                
+        except Exception as e:
+            logger.error(f"Delete file error: {e}")
+            return False
+            
+    # Callback management
+    def add_state_callback(self, callback: Callable):
+        """Add state change callback"""
         self.state_callbacks.append(callback)
         
-    def register_temperature_callback(self, callback: Callable):
-        """Register temperature update callback"""
+    def add_temperature_callback(self, callback: Callable):
+        """Add temperature update callback"""
         self.temperature_callbacks.append(callback)
         
-    def register_progress_callback(self, callback: Callable):
-        """Register print progress callback"""
+    def add_progress_callback(self, callback: Callable):
+        """Add print progress callback"""
         self.progress_callbacks.append(callback)
         
-    def register_error_callback(self, callback: Callable):
-        """Register error callback"""
+    def add_error_callback(self, callback: Callable):
+        """Add error callback"""
         self.error_callbacks.append(callback)
 
 
-# Test function
-async def test_prusalink():
-    """Test PrusaLink connection"""
+# Example usage
+async def main():
+    """Example usage of PrusaLink client"""
     
     # Configure connection
     config = PrusaLinkConfig(
-        host="192.168.1.100",  # Replace with your printer's IP
-        api_key="YOUR_API_KEY",  # Get from PrusaLink settings
-        name="Prusa XL"
+        host="192.168.1.134",  # Your printer IP
+        username="maker",       # Default username
+        password="your_password_here"  # Your password from PrusaLink settings
     )
     
     # Create client
     client = PrusaLinkClient(config)
+    
+    # Define callbacks
+    async def on_state_change(state):
+        print(f"State changed: {state}")
+        
+    async def on_temperature_update(temps):
+        print(f"Temperatures: Nozzle={temps['nozzle']['current']}°C, Bed={temps['bed']['current']}°C")
+        
+    async def on_progress_update(progress):
+        print(f"Print progress: {progress:.1f}%")
+        
+    # Register callbacks
+    client.add_state_callback(on_state_change)
+    client.add_temperature_callback(on_temperature_update)
+    client.add_progress_callback(on_progress_update)
     
     # Connect
     if await client.connect():
@@ -557,18 +585,16 @@ async def test_prusalink():
         
         # Get status
         status = client.get_status()
-        print(json.dumps(status, indent=2))
+        print(f"Current status: {json.dumps(status, indent=2)}")
         
-        # Monitor for 30 seconds
+        # Keep running for 30 seconds to see updates
         await asyncio.sleep(30)
         
         # Disconnect
         await client.disconnect()
-        
     else:
         print("Failed to connect")
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    asyncio.run(test_prusalink())
+    asyncio.run(main())

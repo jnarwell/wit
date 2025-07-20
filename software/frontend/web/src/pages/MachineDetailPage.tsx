@@ -8,12 +8,16 @@ interface Machine {
   type: string;
   status: 'green' | 'yellow' | 'red';
   metrics: { label: string; value: string }[];
-  connectionType: 'usb' | 'network' | 'serial' | 'bluetooth';
+  connectionType: 'usb' | 'network' | 'serial' | 'bluetooth' | 'network-prusalink' | 'network-octoprint';
   connectionDetails: string;
   manufacturer: string;
   model?: string;
   notes?: string;
   dateAdded: string;
+  // Auth properties
+  username?: string;
+  password?: string;
+  apiKey?: string;
 }
 
 interface MachineDetailPageProps {
@@ -64,10 +68,24 @@ const MachineDetailPage: React.FC<MachineDetailPageProps> = ({ machineId, onClos
   const getConnectionIcon = () => {
     switch (machine?.connectionType) {
       case 'usb': return <FaUsb className="w-5 h-5" />;
-      case 'network': return <FaWifi className="w-5 h-5" />;
+      case 'network':
+      case 'network-prusalink':
+      case 'network-octoprint':
+        return <FaWifi className="w-5 h-5" />;
       case 'bluetooth': return <FaBluetooth className="w-5 h-5" />;
       case 'serial': return <FaEthernet className="w-5 h-5" />;
       default: return <FaWifi className="w-5 h-5" />;
+    }
+  };
+
+  const getConnectionTypeName = (type: string) => {
+    switch (type) {
+      case 'network-prusalink': return 'Network (PrusaLink)';
+      case 'network-octoprint': return 'Network (OctoPrint)';
+      case 'usb': return 'USB';
+      case 'serial': return 'Serial';
+      case 'bluetooth': return 'Bluetooth';
+      default: return type.toUpperCase();
     }
   };
 
@@ -188,37 +206,108 @@ const MachineDetailPage: React.FC<MachineDetailPageProps> = ({ machineId, onClos
             {getConnectionIcon()}
             Connection Information
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-400 text-sm mb-1">Connection Type</label>
-              {isEditing ? (
-                <select
-                  value={editedMachine.connectionType}
-                  onChange={(e) => setEditedMachine({ ...editedMachine, connectionType: e.target.value as any })}
-                  className="w-full bg-gray-700 text-white rounded px-3 py-2"
-                >
-                  <option value="usb">USB</option>
-                  <option value="network">Network</option>
-                  <option value="serial">Serial</option>
-                  <option value="bluetooth">Bluetooth</option>
-                </select>
-              ) : (
-                <div className="text-white">{machine.connectionType.toUpperCase()}</div>
-              )}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Connection Type</label>
+                {isEditing ? (
+                  <select
+                    value={editedMachine.connectionType}
+                    onChange={(e) => setEditedMachine({ 
+                      ...editedMachine, 
+                      connectionType: e.target.value as any,
+                      // Reset auth fields when changing connection type
+                      username: e.target.value === 'network-prusalink' ? 'maker' : undefined,
+                      password: e.target.value === 'network-prusalink' ? '' : undefined,
+                      apiKey: e.target.value === 'network-octoprint' ? '' : undefined
+                    })}
+                    className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                  >
+                    <option value="usb">USB</option>
+                    <option value="network-prusalink">Network (PrusaLink)</option>
+                    <option value="network-octoprint">Network (OctoPrint)</option>
+                    <option value="serial">Serial</option>
+                    <option value="bluetooth">Bluetooth</option>
+                  </select>
+                ) : (
+                  <div className="text-white">{getConnectionTypeName(machine.connectionType)}</div>
+                )}
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">
+                  {machine.connectionType.includes('network') ? 'IP Address/URL' : 'Port/Address'}
+                </label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editedMachine.connectionDetails}
+                    onChange={(e) => setEditedMachine({ ...editedMachine, connectionDetails: e.target.value })}
+                    className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                  />
+                ) : (
+                  <div className="text-white font-mono">{machine.connectionDetails || 'Not configured'}</div>
+                )}
+              </div>
             </div>
-            <div>
-              <label className="block text-gray-400 text-sm mb-1">Connection Details</label>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={editedMachine.connectionDetails}
-                  onChange={(e) => setEditedMachine({ ...editedMachine, connectionDetails: e.target.value })}
-                  className="w-full bg-gray-700 text-white rounded px-3 py-2"
-                />
-              ) : (
-                <div className="text-white font-mono">{machine.connectionDetails || 'Not configured'}</div>
-              )}
-            </div>
+
+            {/* PrusaLink Authentication */}
+            {machine.connectionType === 'network-prusalink' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Username</label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={editedMachine.username || 'maker'}
+                      onChange={(e) => setEditedMachine({ ...editedMachine, username: e.target.value })}
+                      className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                    />
+                  ) : (
+                    <div className="text-white">{machine.username || 'maker'}</div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Password</label>
+                  {isEditing ? (
+                    <input
+                      type="password"
+                      value={editedMachine.password || ''}
+                      onChange={(e) => setEditedMachine({ ...editedMachine, password: e.target.value })}
+                      placeholder="Enter PrusaLink password"
+                      className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                    />
+                  ) : (
+                    <div className="text-white">{'•'.repeat(machine.password?.length || 8)}</div>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">
+                    Find in printer: Settings → Network → PrusaLink
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* OctoPrint API Key */}
+            {machine.connectionType === 'network-octoprint' && (
+              <div className="mt-4">
+                <label className="block text-gray-400 text-sm mb-1">API Key</label>
+                {isEditing ? (
+                  <input
+                    type="password"
+                    value={editedMachine.apiKey || ''}
+                    onChange={(e) => setEditedMachine({ ...editedMachine, apiKey: e.target.value })}
+                    placeholder="Enter OctoPrint API key"
+                    className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                  />
+                ) : (
+                  <div className="text-white font-mono">
+                    {machine.apiKey ? `${machine.apiKey.substring(0, 8)}...` : 'Not configured'}
+                  </div>
+                )}
+                <p className="text-xs text-gray-400 mt-1">
+                  Get from OctoPrint Settings → API
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

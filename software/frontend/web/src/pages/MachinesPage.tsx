@@ -18,6 +18,10 @@ interface Machine {
   // Layout properties
   position?: { x: number; y: number };
   size?: { width: number; height: number };
+  // Auth properties
+  username?: string;
+  password?: string;
+  apiKey?: string;
 }
 
 interface MachineTypeConfig {
@@ -88,7 +92,8 @@ const CONNECTION_CONFIGS: Record<string, any> = {
     label: 'Network (PrusaLink)',
     placeholder: '192.168.1.100',
     helperText: 'Built-in network interface on Prusa XL/MK4/MINI+',
-    requiresApiKey: true
+    requiresAuth: true,
+    authType: 'basic' // Uses username/password
   },
   'network-octoprint': {
     label: 'Network (OctoPrint)',
@@ -148,7 +153,9 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
     name: '',
     connectionType: 'usb' as 'usb' | 'network-prusalink' | 'network-octoprint' | 'serial' | 'bluetooth',
     connectionDetails: '',
-    apiKey: '', // Added API key field
+    username: 'maker', // Default PrusaLink username
+    password: '', // PrusaLink password
+    apiKey: '', // OctoPrint API key
     manufacturer: '',
     model: '',
     notes: ''
@@ -220,7 +227,10 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
         name: prev.name || typeConfig.defaultName,
         connectionType: typeConfig.defaultConnection,
         manufacturer: prev.manufacturer || typeConfig.manufacturers[0],
-        apiKey: '' // Reset API key when type changes
+        // Reset auth fields when type changes
+        username: 'maker',
+        password: '',
+        apiKey: ''
       }));
     }
   }, [newMachine.type]);
@@ -528,15 +538,92 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
     setConnectionTestResult(null);
 
     try {
+      // For now, simulate the connection test locally
+      // TODO: Replace with actual backend API when available
+      
+      // Simulate a delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Basic validation
+      if (!newMachine.connectionDetails) {
+        setConnectionTestResult({ 
+          success: false, 
+          message: 'Connection details are required' 
+        });
+        return;
+      }
+      
+      // Check based on connection type
+      if (newMachine.connectionType === 'network-prusalink') {
+        if (!newMachine.username || !newMachine.password) {
+          setConnectionTestResult({ 
+            success: false, 
+            message: 'Username and password are required for PrusaLink' 
+          });
+          return;
+        }
+        
+        // Clean up IP address (remove trailing slash if present)
+        const cleanIP = newMachine.connectionDetails.replace(/\/$/, '').trim();
+        
+        // Validate IP address format
+        const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+        if (!ipRegex.test(cleanIP)) {
+          setConnectionTestResult({ 
+            success: false, 
+            message: 'Invalid IP address format. Example: 192.168.1.134' 
+          });
+          return;
+        }
+        
+        // Simulate successful connection
+        setConnectionTestResult({ 
+          success: true, 
+          message: 'Connection test simulated - Backend API not yet implemented' 
+        });
+        
+      } else if (newMachine.connectionType === 'network-octoprint') {
+        if (!newMachine.apiKey) {
+          setConnectionTestResult({ 
+            success: false, 
+            message: 'API key is required for OctoPrint' 
+          });
+          return;
+        }
+        
+        setConnectionTestResult({ 
+          success: true, 
+          message: 'Connection test simulated - Backend API not yet implemented' 
+        });
+        
+      } else {
+        // USB/Serial connections
+        setConnectionTestResult({ 
+          success: true, 
+          message: 'Direct connection - Will be tested when adding machine' 
+        });
+      }
+      
+      /* Original backend code - uncomment when API is available
+      const requestBody: any = {
+        connection_type: newMachine.connectionType.replace('network-', ''),
+        port: newMachine.connectionDetails
+      };
+
+      // Add appropriate auth fields based on connection type
+      if (newMachine.connectionType === 'network-prusalink') {
+        requestBody.url = newMachine.connectionDetails;
+        requestBody.username = newMachine.username;
+        requestBody.password = newMachine.password;
+      } else if (newMachine.connectionType === 'network-octoprint') {
+        requestBody.url = newMachine.connectionDetails;
+        requestBody.api_key = newMachine.apiKey;
+      }
+
       const response = await fetch('/api/v1/equipment/printers/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          connection_type: newMachine.connectionType.replace('network-', ''),
-          url: newMachine.connectionDetails,
-          api_key: newMachine.apiKey,
-          port: newMachine.connectionDetails
-        })
+        body: JSON.stringify(requestBody)
       });
       
       if (response.ok) {
@@ -545,6 +632,7 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
         const error = await response.text();
         setConnectionTestResult({ success: false, message: error || 'Connection failed' });
       }
+      */
     } catch (error: any) {
       setConnectionTestResult({ success: false, message: error.message || 'Connection test failed' });
     } finally {
@@ -556,114 +644,148 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
     const machineId = `M${Date.now()}`;
     const typeConfig = MACHINE_TYPES[newMachine.type];
     
-    // Prepare the API request based on connection type
-    const apiRequest: any = {
-      printer_id: machineId,
+    // Add to local state for display
+    const position = findAvailablePosition(1, 1);
+    if (!position) {
+      alert('No space available! Please remove machines or increase grid size.');
+      return;
+    }
+    
+    const newMachineData: Machine = {
+      id: machineId,
       name: newMachine.name || typeConfig.defaultName,
-      connection_type: newMachine.connectionType.replace('network-', ''), // Remove 'network-' prefix
+      type: newMachine.type,
+      status: 'yellow', // Connecting
+      metrics: [
+        { label: 'Status', value: 'Connecting...' },
+        { label: 'Connection', value: CONNECTION_CONFIGS[newMachine.connectionType]?.label || newMachine.connectionType }
+      ],
+      connectionType: newMachine.connectionType as any,
+      connectionDetails: newMachine.connectionDetails,
       manufacturer: newMachine.manufacturer,
       model: newMachine.model,
-      notes: newMachine.notes
+      notes: newMachine.notes,
+      dateAdded: new Date().toISOString(),
+      position: position,
+      size: { width: 1, height: 1 },
+      // Store auth info
+      username: newMachine.connectionType === 'network-prusalink' ? newMachine.username : undefined,
+      password: newMachine.connectionType === 'network-prusalink' ? newMachine.password : undefined,
+      apiKey: newMachine.connectionType === 'network-octoprint' ? newMachine.apiKey : undefined
     };
 
-    // Add connection-specific fields
-    if (newMachine.connectionType.startsWith('network')) {
-      apiRequest.url = newMachine.connectionDetails;
-      apiRequest.api_key = newMachine.apiKey;
-    } else {
-      apiRequest.port = newMachine.connectionDetails;
-    }
+    setMachines(prevMachines => {
+      const newMachines = [...prevMachines, newMachineData];
+      console.log('[MachinesPage] Adding machine, new total:', newMachines.length);
+      return newMachines;
+    });
+    
+    // Reset form
+    setNewMachine({
+      type: '3d-printer',
+      name: '',
+      connectionType: 'usb',
+      connectionDetails: '',
+      username: 'maker',
+      password: '',
+      apiKey: '',
+      manufacturer: '',
+      model: '',
+      notes: ''
+    });
+    
+    setShowAddModal(false);
+    setConnectionTestResult(null);
 
-    try {
-      // Send to backend API if network connection
-      if (newMachine.connectionType.startsWith('network')) {
+    // Try to connect to backend if available (but don't fail if it's not)
+    if (newMachine.connectionType.startsWith('network')) {
+      try {
+        // Prepare the API request
+        const apiRequest: any = {
+          printer_id: machineId,
+          name: newMachine.name || typeConfig.defaultName,
+          connection_type: newMachine.connectionType.replace('network-', ''),
+          manufacturer: newMachine.manufacturer,
+          model: newMachine.model,
+          notes: newMachine.notes
+        };
+
+        // Add connection-specific fields
+        if (newMachine.connectionType === 'network-prusalink') {
+          apiRequest.url = newMachine.connectionDetails;
+          apiRequest.username = newMachine.username;
+          apiRequest.password = newMachine.password;
+        } else if (newMachine.connectionType === 'network-octoprint') {
+          apiRequest.url = newMachine.connectionDetails;
+          apiRequest.api_key = newMachine.apiKey;
+        }
+
         const response = await fetch('/api/v1/equipment/printers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(apiRequest)
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to add printer');
-        }
-      }
-
-      // Add to local state for display
-      const position = findAvailablePosition(1, 1);
-      if (!position) {
-        alert('No space available! Please remove machines or increase grid size.');
-        return;
-      }
-      
-      const newMachineData: Machine = {
-        id: machineId,
-        name: newMachine.name || typeConfig.defaultName,
-        type: newMachine.type,
-        status: 'yellow', // Connecting
-        metrics: [
-          { label: 'Status', value: 'Connecting...' },
-          { label: 'Connection', value: CONNECTION_CONFIGS[newMachine.connectionType]?.label || newMachine.connectionType }
-        ],
-        connectionType: newMachine.connectionType as any,
-        connectionDetails: newMachine.connectionDetails,
-        manufacturer: newMachine.manufacturer,
-        model: newMachine.model,
-        notes: newMachine.notes,
-        dateAdded: new Date().toISOString(),
-        position: position,
-        size: { width: 1, height: 1 }
-      };
-
-      setMachines(prevMachines => {
-        const newMachines = [...prevMachines, newMachineData];
-        console.log('[MachinesPage] Adding machine, new total:', newMachines.length);
-        return newMachines;
-      });
-      
-      // Reset form
-      setNewMachine({
-        type: '3d-printer',
-        name: '',
-        connectionType: 'usb',
-        connectionDetails: '',
-        apiKey: '',
-        manufacturer: '',
-        model: '',
-        notes: ''
-      });
-      
-      setShowAddModal(false);
-      setConnectionTestResult(null);
-
-      // Update status after connection establishes (for network printers)
-      if (newMachine.connectionType.startsWith('network')) {
-        setTimeout(async () => {
-          try {
-            const statusResponse = await fetch(`/api/v1/equipment/printers/${machineId}`);
-            if (statusResponse.ok) {
-              const status = await statusResponse.json();
-              // Update machine status based on response
-              setMachines(prev => prev.map(m => 
-                m.id === machineId 
-                  ? { 
-                      ...m, 
-                      status: status.connected ? 'green' : 'red',
-                      metrics: [
-                        { label: 'Status', value: status.state || 'Unknown' },
-                        { label: 'Temp', value: `${status.temperatures?.hotend?.current || 0}°C` }
-                      ]
-                    }
-                  : m
-              ));
+        if (response.ok) {
+          // Update status after connection establishes
+          setTimeout(async () => {
+            try {
+              const statusResponse = await fetch(`/api/v1/equipment/printers/${machineId}`);
+              if (statusResponse.ok) {
+                const status = await statusResponse.json();
+                // Update machine status based on response
+                setMachines(prev => prev.map(m => 
+                  m.id === machineId 
+                    ? { 
+                        ...m, 
+                        status: status.connected ? 'green' : 'red',
+                        metrics: [
+                          { label: 'Status', value: status.state || 'Unknown' },
+                          { label: 'Temp', value: `${status.temperatures?.hotend?.current || 0}°C` }
+                        ]
+                      }
+                    : m
+                ));
+              }
+            } catch (error) {
+              console.error('Failed to get printer status:', error);
             }
-          } catch (error) {
-            console.error('Failed to get printer status:', error);
-          }
+          }, 2000);
+        }
+      } catch (error) {
+        console.warn('Backend API not available, machine added locally only:', error);
+        // Update status to show it's offline since backend isn't available
+        setTimeout(() => {
+          setMachines(prev => prev.map(m => 
+            m.id === machineId 
+              ? { 
+                  ...m, 
+                  status: 'red',
+                  metrics: [
+                    { label: 'Status', value: 'Backend Offline' },
+                    { label: 'Connection', value: CONNECTION_CONFIGS[newMachine.connectionType]?.label || newMachine.connectionType }
+                  ]
+                }
+              : m
+          ));
         }, 2000);
       }
-
-    } catch (error: any) {
-      alert(`Failed to add machine: ${error.message}`);
+    } else {
+      // For USB/Serial connections, mark as ready since they don't need backend
+      setTimeout(() => {
+        setMachines(prev => prev.map(m => 
+          m.id === machineId 
+            ? { 
+                ...m, 
+                status: 'green',
+                metrics: [
+                  { label: 'Status', value: 'Ready' },
+                  { label: 'Connection', value: CONNECTION_CONFIGS[newMachine.connectionType]?.label || newMachine.connectionType }
+                ]
+              }
+            : m
+        ));
+      }, 1000);
     }
   };
 
@@ -943,6 +1065,8 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
                       type,
                       connectionType: typeConfig.defaultConnection,
                       manufacturer: typeConfig.manufacturers[0],
+                      username: 'maker',
+                      password: '',
                       apiKey: ''
                     });
                     setConnectionTestResult(null);
@@ -979,6 +1103,8 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
                       ...newMachine, 
                       connectionType: e.target.value as any,
                       connectionDetails: '',
+                      username: 'maker',
+                      password: '',
                       apiKey: ''
                     });
                     setConnectionTestResult(null);
@@ -986,14 +1112,9 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
                   className="w-full bg-gray-700 text-white rounded px-3 py-2"
                 >
                   {MACHINE_TYPES[newMachine.type].connectionTypes.map(type => (
-                    <optgroup 
-                      key={type.includes('network') ? 'network' : 'direct'} 
-                      label={type.includes('network') ? 'Network Connection' : 'Direct Connection'}
-                    >
-                      <option key={type} value={type}>
-                        {CONNECTION_CONFIGS[type]?.label || type.toUpperCase()}
-                      </option>
-                    </optgroup>
+                    <option key={type} value={type}>
+                      {CONNECTION_CONFIGS[type]?.label || type.toUpperCase()}
+                    </option>
                   ))}
                 </select>
                 {CONNECTION_CONFIGS[newMachine.connectionType]?.helperText && (
@@ -1020,8 +1141,46 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
                 />
               </div>
 
-              {/* API Key (for network connections) */}
-              {CONNECTION_CONFIGS[newMachine.connectionType]?.requiresApiKey && (
+              {/* PrusaLink Authentication */}
+              {newMachine.connectionType === 'network-prusalink' && (
+                <>
+                  <div>
+                    <label className="block text-gray-300 mb-1">Username</label>
+                    <input
+                      type="text"
+                      value={newMachine.username}
+                      onChange={(e) => {
+                        setNewMachine({ ...newMachine, username: e.target.value });
+                        setConnectionTestResult(null);
+                      }}
+                      placeholder="Default: maker"
+                      className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Find in printer: Settings → Network → PrusaLink
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-gray-300 mb-1">Password</label>
+                    <input
+                      type="password"
+                      value={newMachine.password}
+                      onChange={(e) => {
+                        setNewMachine({ ...newMachine, password: e.target.value });
+                        setConnectionTestResult(null);
+                      }}
+                      placeholder="Enter PrusaLink password"
+                      className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Password shown on printer display
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* OctoPrint API Key */}
+              {newMachine.connectionType === 'network-octoprint' && (
                 <div>
                   <label className="block text-gray-300 mb-1">API Key</label>
                   <input
@@ -1035,9 +1194,7 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
                     className="w-full bg-gray-700 text-white rounded px-3 py-2"
                   />
                   <p className="text-xs text-gray-400 mt-1">
-                    {newMachine.connectionType === 'network-prusalink' 
-                      ? 'Get from PrusaLink Settings → API Keys'
-                      : 'Get from OctoPrint Settings → API'}
+                    Get from OctoPrint Settings → API
                   </p>
                 </div>
               )}
@@ -1047,7 +1204,10 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
                 <div>
                   <button
                     onClick={testConnection}
-                    disabled={testingConnection || (CONNECTION_CONFIGS[newMachine.connectionType]?.requiresApiKey && !newMachine.apiKey)}
+                    disabled={testingConnection || 
+                      (newMachine.connectionType === 'network-prusalink' && !newMachine.password) ||
+                      (newMachine.connectionType === 'network-octoprint' && !newMachine.apiKey)
+                    }
                     className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded text-sm flex items-center gap-2"
                   >
                     {testingConnection ? (
@@ -1072,6 +1232,11 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
                       <span className="text-sm">{connectionTestResult.message}</span>
                     </div>
                   )}
+                  
+                  {/* Backend status note */}
+                  <p className="text-xs text-gray-500 mt-2">
+                    Note: Connection test is simulated. Backend API integration pending.
+                  </p>
                 </div>
               )}
 
@@ -1116,7 +1281,10 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={handleAddMachine}
-                disabled={!newMachine.connectionDetails || (CONNECTION_CONFIGS[newMachine.connectionType]?.requiresApiKey && !newMachine.apiKey)}
+                disabled={!newMachine.connectionDetails || 
+                  (newMachine.connectionType === 'network-prusalink' && !newMachine.password) ||
+                  (newMachine.connectionType === 'network-octoprint' && !newMachine.apiKey)
+                }
                 className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded transition-colors"
               >
                 Add Machine
