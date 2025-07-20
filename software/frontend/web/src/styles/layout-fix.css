@@ -1,0 +1,21 @@
+/* Immediate layout fixes */
+.h-full.flex.page-container {
+  display: flex !important;
+  width: 100% !important;
+}
+
+.bg-gray-800.w-64 {
+  flex: 0 0 16rem !important;
+  width: 16rem !important;
+}
+
+.flex-1 {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Remove all max-width constraints */
+[class*="max-w-"] {
+  max-width: none !important;
+}

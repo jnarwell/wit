@@ -7,9 +7,11 @@ interface ListWidgetProps {
   height: number; // Grid units
   pixelHeight?: number; // Actual pixel height
   onRemove?: () => void;
+  onNavigate?: (page: string) => void;
+  onNavigateToDetail?: (page: string, id: string) => void;
 }
 
-const ListWidget: React.FC<ListWidgetProps> = ({ type, height, pixelHeight, onRemove }) => {
+const ListWidget: React.FC<ListWidgetProps> = ({ type, height, pixelHeight, onRemove, onNavigate, onNavigateToDetail }) => {
   const [currentPage, setCurrentPage] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
@@ -17,214 +19,305 @@ const ListWidget: React.FC<ListWidgetProps> = ({ type, height, pixelHeight, onRe
   const [itemsPerPage, setItemsPerPage] = useState(Math.max(2, height * 3));
   const [isCalculating, setIsCalculating] = useState(true);
   
-  // Sample data configurations
+  // Track mouse position for drag detection
+  const mouseDownPosRef = useRef({ x: 0, y: 0 });
+  const [canNavigate, setCanNavigate] = useState(true);
+  
+  // State for real data
+  const [realData, setRealData] = useState<any[]>([]);
+  
+  // Load real data from localStorage
+  useEffect(() => {
+    const loadData = () => {
+      const storageKeys = {
+        projects: 'wit-projects',
+        machines: 'wit-machines',
+        sensors: 'wit-sensors'
+      };
+      
+      const data = localStorage.getItem(storageKeys[type]);
+      if (data) {
+        try {
+          setRealData(JSON.parse(data));
+        } catch (e) {
+          console.error('Failed to parse data:', e);
+          setRealData([]);
+        }
+      }
+    };
+    
+    loadData();
+    
+    // Listen for changes
+    const handleStorageChange = () => loadData();
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener(`${type}-updated`, handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener(`${type}-updated`, handleStorageChange);
+    };
+  }, [type]);
+  
+  // Sample data configurations (used as fallback)
+  const sampleData = {
+    projects: [
+      { id: 'P001', name: 'Widget Production', status: 'Active' },
+      { id: 'P002', name: 'Client Dashboard', status: 'In Progress' },
+      { id: 'P003', name: 'Prototype Alpha', status: 'Planning' },
+      { id: 'P004', name: 'Research Phase 2', status: 'On Hold' },
+      { id: 'P005', name: 'Manufacturing Line', status: 'Active' },
+      { id: 'P006', name: 'Quality Control', status: 'Review' },
+      { id: 'P007', name: 'Beta Testing', status: 'In Progress' },
+      { id: 'P008', name: 'Documentation', status: 'Planning' },
+      { id: 'P009', name: 'Integration Tests', status: 'Active' },
+      { id: 'P010', name: 'Deployment Phase', status: 'On Hold' }
+    ],
+    machines: [
+      { id: 'M001', name: '3D Printer #1', status: 'Online' },
+      { id: 'M002', name: 'CNC Mill', status: 'Busy' },
+      { id: 'M003', name: 'Laser Cutter', status: 'Offline' },
+      { id: 'M004', name: '3D Printer #2', status: 'Maintenance' },
+      { id: 'M005', name: 'Vinyl Cutter', status: 'Online' },
+      { id: 'M006', name: 'Soldering Station', status: 'Available' },
+      { id: 'M007', name: 'Reflow Oven', status: 'Busy' },
+      { id: 'M008', name: 'Oscilloscope', status: 'Online' },
+      { id: 'M009', name: 'PCB Mill', status: 'Offline' },
+      { id: 'M010', name: 'Injection Molder', status: 'Maintenance' },
+      { id: 'M011', name: 'Grinding Machine', status: 'Online' },
+      { id: 'M012', name: 'Heat Press', status: 'Online' }
+    ],
+    sensors: [
+      { id: 'S001', name: 'Temperature #1', status: 'Normal' },
+      { id: 'S002', name: 'Humidity', status: 'Normal' },
+      { id: 'S003', name: 'Air Quality', status: 'Warning' },
+      { id: 'S004', name: 'Temperature #2', status: 'Critical' },
+      { id: 'S005', name: 'Pressure', status: 'Normal' },
+      { id: 'S006', name: 'Motion Detector', status: 'Active' },
+      { id: 'S007', name: 'Light Sensor', status: 'Normal' },
+      { id: 'S008', name: 'Sound Level', status: 'Warning' }
+    ]
+  };
+  
   const configs = {
     projects: {
       title: 'Projects',
-      items: [
-        { id: 'P001', name: 'Widget Production', status: 'Active' },
-        { id: 'P002', name: 'Client Dashboard', status: 'In Progress' },
-        { id: 'P003', name: 'Prototype Alpha', status: 'Planning' },
-        { id: 'P004', name: 'Research Phase 2', status: 'On Hold' },
-        { id: 'P005', name: 'Manufacturing Line', status: 'Active' },
-        { id: 'P006', name: 'Quality Control', status: 'Review' },
-        { id: 'P007', name: 'Beta Testing', status: 'In Progress' },
-        { id: 'P008', name: 'Documentation', status: 'Planning' },
-        { id: 'P009', name: 'Integration Tests', status: 'Active' },
-        { id: 'P010', name: 'Deployment Phase', status: 'On Hold' }
-      ],
-      page: 'projects'
+      items: realData.length > 0 ? realData.map(p => ({
+        id: p.id,
+        name: p.name,
+        status: p.status === 'green' ? 'Active' : p.status === 'yellow' ? 'In Progress' : 'On Hold'
+      })) : sampleData.projects,
+      page: 'projects',
+      detailPage: 'project'
     },
     machines: {
       title: 'Machines',
-      items: [
-        { id: 'M001', name: '3D Printer #1', status: 'Online' },
-        { id: 'M002', name: 'CNC Mill', status: 'Busy' },
-        { id: 'M003', name: 'Laser Cutter', status: 'Offline' },
-        { id: 'M004', name: '3D Printer #2', status: 'Maintenance' },
-        { id: 'M005', name: 'Vinyl Cutter', status: 'Online' },
-        { id: 'M006', name: 'Soldering Station', status: 'Available' },
-        { id: 'M007', name: 'Reflow Oven', status: 'Busy' },
-        { id: 'M008', name: 'Oscilloscope', status: 'Online' },
-        { id: 'M009', name: 'PCB Mill', status: 'Offline' },
-        { id: 'M010', name: 'Injection Molder', status: 'Maintenance' },
-        { id: 'M011', name: 'Grinding Machine', status: 'Online' },
-        { id: 'M012', name: 'Heat Press', status: 'Online' }
-      ],
-      page: 'machines'
+      items: realData.length > 0 ? realData.map(m => ({
+        id: m.id,
+        name: m.name,
+        status: m.status === 'green' ? 'Online' : m.status === 'yellow' ? 'Maintenance' : 'Offline'
+      })) : sampleData.machines,
+      page: 'machines',
+      detailPage: 'machine'
     },
     sensors: {
       title: 'Sensors',
-      items: [
-        { id: 'S001', name: 'Temperature', status: '72°F' },
-        { id: 'S002', name: 'Humidity', status: '45%' },
-        { id: 'S003', name: 'Air Quality', status: 'Good' },
-        { id: 'S004', name: 'Pressure', status: '14.7 PSI' },
-        { id: 'S005', name: 'CO2 Level', status: '400 ppm' },
-        { id: 'S006', name: 'Noise Level', status: '65 dB' },
-        { id: 'S007', name: 'Light Level', status: '500 lux' },
-        { id: 'S008', name: 'Motion', status: 'No Activity' },
-        { id: 'S009', name: 'Vibration', status: 'Normal' },
-        { id: 'S010', name: 'Power Usage', status: '2.3 kW' }
-      ],
-      page: 'sensors'
+      items: realData.length > 0 ? realData.map(s => ({
+        id: s.id,
+        name: s.name,
+        status: s.status === 'green' ? 'Normal' : s.status === 'yellow' ? 'Warning' : 'Critical'
+      })) : sampleData.sensors,
+      page: 'sensors',
+      detailPage: 'sensor'
     }
   };
 
   const config = configs[type];
-  
-  // Calculate items per page based on actual available height
+
+  // Calculate actual items per page based on available height
   useEffect(() => {
     const calculateItemsPerPage = () => {
       if (!containerRef.current || !itemsContainerRef.current) return;
       
-      // Get the actual height of the container
-      const containerHeight = pixelHeight || containerRef.current.offsetHeight;
+      const container = containerRef.current;
+      const header = container.querySelector('.widget-header');
+      const footer = container.querySelector('.widget-footer');
       
-      // Calculate used space based on widget size
-      const isCompact = height <= 1;
-      const padding = isCompact ? 24 : 32; // 12px * 2 or 16px * 2
-      const headerHeight = isCompact ? 32 : 40; // Smaller header for compact
-      const footerHeight = isCompact ? 32 : 40; // Smaller footer for compact
-      const itemSpacing = 4; // Space between items (from space-y-1)
+      if (!header || !footer) return;
       
-      // Calculate available height for items
-      const availableHeight = containerHeight - padding - headerHeight - footerHeight;
+      const headerHeight = header.getBoundingClientRect().height;
+      const footerHeight = footer.getBoundingClientRect().height;
+      const containerPadding = 24; // 12px top + 12px bottom
+      const itemsGap = 6; // gap between items
+      const singleItemHeight = 32; // approximate height of one item
       
-      // Calculate item height based on actual item sizing
-      // Item has p-2 (8px * 2 = 16px) + text (~20px) + margin-bottom (4px from space-y-1) = ~40px per item
-      const itemHeight = 40; // Height including margin
+      // Use pixel height if provided, otherwise use container height
+      const totalHeight = pixelHeight || container.clientHeight;
+      const availableHeight = totalHeight - headerHeight - footerHeight - containerPadding;
       
       // Calculate how many items can fit
-      // We need to account for the spacing between items
-      let calculatedItems = 1; // At least one item
-      if (availableHeight > itemHeight) {
-        // First item takes itemHeight, each additional item takes itemHeight + spacing
-        calculatedItems = 1 + Math.floor((availableHeight - itemHeight) / (itemHeight + itemSpacing));
-      }
+      const calculatedItems = Math.floor((availableHeight + itemsGap) / (singleItemHeight + itemsGap));
+      const finalItemsPerPage = Math.max(1, calculatedItems);
       
-      // For very small widgets (1x1), ensure we show at least 2 items if possible
-      // This prevents awkward single-item displays
-      if (height === 1 && calculatedItems < 2 && config.items.length >= 2) {
-        calculatedItems = 2;
-      }
-      
-      // Set items per page (minimum 1, maximum all items)
-      const newItemsPerPage = Math.max(1, Math.min(calculatedItems, config.items.length));
-      
-      // Only update if changed to avoid infinite loops
-      if (newItemsPerPage !== itemsPerPage) {
-        setItemsPerPage(newItemsPerPage);
-        // Reset to first page if current page is now out of bounds
-        const newTotalPages = Math.ceil(config.items.length / newItemsPerPage);
-        if (currentPage >= newTotalPages) {
-          setCurrentPage(0);
-        }
-      }
+      setItemsPerPage(finalItemsPerPage);
       setIsCalculating(false);
     };
-    
-    // Calculate on mount and when dependencies change
-    // Small delay to ensure container is rendered
-    const timeoutId = setTimeout(calculateItemsPerPage, 50);
+
+    // Initial calculation
     calculateItemsPerPage();
     
-    // Recalculate on window resize
+    // Recalculate on resize
     const resizeObserver = new ResizeObserver(calculateItemsPerPage);
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current);
     }
     
     return () => {
-      clearTimeout(timeoutId);
       resizeObserver.disconnect();
     };
-  }, [config.items.length, currentPage, itemsPerPage, height, pixelHeight]);
-  
-  const totalPages = Math.ceil(config.items.length / itemsPerPage);
-  const showPagination = totalPages > 1;
-  
-  // Get current page items
-  const currentItems = useMemo(() => {
-    const start = currentPage * itemsPerPage;
-    const end = start + itemsPerPage;
-    return config.items.slice(start, end);
-  }, [config.items, currentPage, itemsPerPage]);
+  }, [height, pixelHeight]);
 
-  const handleClick = () => {
-    const appNavigate = (window as any).__witNavigate;
-    if (appNavigate) {
-      appNavigate(config.page);
-    }
-  };
+  const totalPages = Math.ceil(config.items.length / itemsPerPage);
+  const currentItems = config.items.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
 
   const getStatusColor = (status: string) => {
-    const statusLower = status.toLowerCase();
-    if (statusLower.includes('online') || statusLower.includes('active') || statusLower.includes('good')) {
-      return 'text-green-400';
-    } else if (statusLower.includes('busy') || statusLower.includes('progress') || statusLower.includes('review')) {
-      return 'text-yellow-400';
-    } else if (statusLower.includes('offline') || statusLower.includes('hold') || statusLower.includes('maintenance')) {
-      return 'text-red-400';
-    }
-    return 'text-gray-400';
+    const statusColors: { [key: string]: string } = {
+      'Active': 'text-green-400',
+      'Online': 'text-green-400',
+      'Normal': 'text-green-400',
+      'In Progress': 'text-yellow-400',
+      'Busy': 'text-yellow-400',
+      'Warning': 'text-yellow-400',
+      'Available': 'text-blue-400',
+      'Review': 'text-blue-400',
+      'Planning': 'text-purple-400',
+      'On Hold': 'text-orange-400',
+      'Maintenance': 'text-orange-400',
+      'Offline': 'text-red-400',
+      'Critical': 'text-red-400'
+    };
+    return statusColors[status] || 'text-gray-400';
   };
 
+  const handleContainerClick = () => {
+    // Only navigate if we didn't drag
+    if (canNavigate) {
+      if (onNavigate) {
+        onNavigate(config.page);
+      } else if ((window as any).__witNavigate) {
+        (window as any).__witNavigate(config.page);
+      }
+    }
+  };
+
+  const handleItemClick = (e: React.MouseEvent, itemId: string) => {
+    e.stopPropagation(); // Prevent container click
+    
+    // Navigate to detail page
+    if (onNavigateToDetail) {
+      onNavigateToDetail(config.detailPage, itemId);
+    } else if ((window as any).__witNavigate) {
+      (window as any).__witNavigate(config.detailPage, itemId);
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+    setCanNavigate(true);
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    const dx = Math.abs(e.clientX - mouseDownPosRef.current.x);
+    const dy = Math.abs(e.clientY - mouseDownPosRef.current.y);
+    
+    // If mouse moved more than 5px, consider it a drag
+    if (dx > 5 || dy > 5) {
+      setCanNavigate(false);
+    } else {
+      handleContainerClick();
+    }
+  };
+
+  const showPagination = totalPages > 1 && !isCalculating;
+
+  // Reset current page if it's out of bounds
+  useEffect(() => {
+    if (currentPage >= totalPages && totalPages > 0) {
+      setCurrentPage(0);
+    }
+  }, [currentPage, totalPages]);
+
   return (
-    <div ref={containerRef} className={`h-full flex flex-col ${height <= 1 ? 'p-3' : 'p-4'} bg-gray-800 text-gray-100 relative group`}>
-      {/* Header */}
-      <div 
-        className={`flex justify-between items-center ${height <= 1 ? 'mb-2' : 'mb-3'} flex-shrink-0`}
-      >
-        <div 
-          className="flex items-center gap-2 cursor-pointer hover:text-blue-400 transition-colors flex-1"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleClick();
-          }}
-        >
-          <h3 className={`${height <= 1 ? 'text-base' : 'text-lg'} font-bold`}>
-            {config.title} 
-            {!showPagination && config.items.length > currentItems.length && 
-              <span className="text-sm font-normal text-gray-400 ml-2">
-                ({currentItems.length}/{config.items.length})
-              </span>
-            }
-          </h3>
-          <FiArrowRight className="text-blue-400" />
+    <div 
+      ref={containerRef}
+      className="bg-gray-800 rounded-lg p-3 h-full flex flex-col relative cursor-pointer hover:bg-gray-750 transition-colors"
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+    >
+      {/* Header with remove button */}
+      <div className="widget-header flex items-center justify-between mb-2 flex-shrink-0">
+        <h3 className="text-sm font-medium text-white">{config.title}</h3>
+        <div className="flex items-center gap-2">
+          {onRemove && (
+            <button 
+              className="text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <FiX size={14} />
+            </button>
+          )}
         </div>
-        {onRemove && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove();
-            }}
-            onMouseDown={(e) => e.stopPropagation()}
-            className="p-1 text-gray-400 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 ml-2"
-          >
-            <FiX size={height <= 1 ? 16 : 18} />
-          </button>
-        )}
       </div>
-      
-      {/* Items List - flex-1 to take all available space */}
-      <div ref={itemsContainerRef} className="flex-1 space-y-1 overflow-hidden min-h-0">
+
+      {/* Items container */}
+      <div 
+        ref={itemsContainerRef}
+        className="flex-1 overflow-hidden min-h-0"
+      >
         {isCalculating ? (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            <span className="text-sm">Loading...</span>
+          <div className="flex items-center justify-center h-full">
+            <div className="text-gray-500 text-xs">Loading...</div>
+          </div>
+        ) : config.items.length === 0 ? (
+          <div 
+            className="flex flex-col items-center justify-center h-full text-center px-4"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="text-gray-500 text-xs mb-2">No {type} yet</div>
+            <div className="text-gray-600 text-xs">
+              Click here to add your first {type.slice(0, -1)}
+            </div>
           </div>
         ) : (
-          currentItems.map(item => (
-            <div key={item.id} className="flex justify-between items-center p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors">
-              <span className="text-sm font-medium truncate flex-1 mr-2">{item.name}</span>
-              <span className={`text-xs ${getStatusColor(item.status)} whitespace-nowrap`}>{item.status}</span>
-            </div>
-          ))
+          <div className="space-y-1.5">
+            {currentItems.map((item) => (
+              <div 
+                key={item.id} 
+                className="flex items-center justify-between px-2 py-1.5 bg-gray-700 rounded hover:bg-gray-600 transition-colors cursor-pointer"
+                onClick={(e) => handleItemClick(e, item.id)}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center">
+                  <span className="text-xs text-gray-100">{item.name}</span>
+                </div>
+                <span className={`text-xs ${getStatusColor(item.status)}`}>
+                  {item.status}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
       </div>
-      
-      {/* Footer */}
-      <div className={`${height <= 1 ? 'mt-2' : 'mt-3'} flex items-center justify-between flex-shrink-0`}>
+
+      {/* Footer with pagination or view all */}
+      <div className={`widget-footer ${showPagination ? 'mt-2' : 'mt-3'} flex items-center justify-between flex-shrink-0`}>
         {showPagination ? (
           <>
             <button
@@ -258,7 +351,9 @@ const ListWidget: React.FC<ListWidgetProps> = ({ type, height, pixelHeight, onRe
             className="text-xs text-blue-400 hover:underline cursor-pointer mx-auto"
             onClick={(e) => {
               e.stopPropagation();
-              handleClick();
+              if (canNavigate) {
+                handleContainerClick();
+              }
             }}
             onMouseDown={(e) => e.stopPropagation()}
           >

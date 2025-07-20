@@ -98,7 +98,22 @@ const PROJECT_TYPES: Record<string, ProjectTypeConfig> = {
 
 const ProjectsPage: React.FC<ProjectsPageProps> = ({ onNavigateToDetail }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<Project[]>(() => {
+    // Initialize from localStorage to prevent race condition
+    const saved = localStorage.getItem('wit-projects');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        console.log('[ProjectsPage] Initial state from localStorage:', parsed.length, 'projects');
+        return parsed;
+      } catch (e) {
+        console.error('[ProjectsPage] Failed to parse initial state:', e);
+        return [];
+      }
+    }
+    console.log('[ProjectsPage] No saved projects, starting with empty array');
+    return [];
+  });
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [gridSize, setGridSize] = useState({ cellWidth: 0, cellHeight: 0 });
@@ -145,19 +160,14 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ onNavigateToDetail }) => {
   const interactionStartPosRef = useRef({ x: 0, y: 0 });
   const [canNavigate, setCanNavigate] = useState(true);
 
-  // Load saved projects on mount
+  // Debug: Check localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem('wit-projects');
-    if (saved) {
-      try {
-        const parsedProjects = JSON.parse(saved);
-        setProjects(parsedProjects);
-      } catch (error) {
-        console.error('Failed to parse saved projects:', error);
-        localStorage.removeItem('wit-projects');
-      }
-    }
-  }, []);
+    const stored = localStorage.getItem('wit-projects');
+    console.log('[ProjectsPage] Component mounted. localStorage:', stored ? 'has data' : 'empty');
+  }, []); // Run once to check initial state
+
+  // Load saved projects on mount
+  
 
   // Save projects to localStorage whenever they change
   useEffect(() => {

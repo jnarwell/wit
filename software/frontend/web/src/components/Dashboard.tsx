@@ -756,6 +756,16 @@ const Dashboard: React.FC = () => {
                   type="projects" 
                   height={size.height}
                   pixelHeight={size.height * gridSize.cellHeight + (size.height - 1) * 16}
+                  onNavigate={(page) => {
+                    if ((window as any).__witNavigate) {
+                      (window as any).__witNavigate(page);
+                    }
+                  }}
+                  onNavigateToDetail={(page, id) => {
+                    if ((window as any).__witNavigate) {
+                      (window as any).__witNavigate(page, id);
+                    }
+                  }}
                   {...commonProps}
                 />
               )}
@@ -764,6 +774,16 @@ const Dashboard: React.FC = () => {
                   type="machines" 
                   height={size.height}
                   pixelHeight={size.height * gridSize.cellHeight + (size.height - 1) * 16}
+                  onNavigate={(page) => {
+                    if ((window as any).__witNavigate) {
+                      (window as any).__witNavigate(page);
+                    }
+                  }}
+                  onNavigateToDetail={(page, id) => {
+                    if ((window as any).__witNavigate) {
+                      (window as any).__witNavigate(page, id);
+                    }
+                  }}
                   {...commonProps}
                 />
               )}
@@ -772,6 +792,16 @@ const Dashboard: React.FC = () => {
                   type="sensors" 
                   height={size.height}
                   pixelHeight={size.height * gridSize.cellHeight + (size.height - 1) * 16}
+                  onNavigate={(page) => {
+                    if ((window as any).__witNavigate) {
+                      (window as any).__witNavigate(page);
+                    }
+                  }}
+                  onNavigateToDetail={(page, id) => {
+                    if ((window as any).__witNavigate) {
+                      (window as any).__witNavigate(page, id);
+                    }
+                  }}
                   {...commonProps}
                 />
               )}

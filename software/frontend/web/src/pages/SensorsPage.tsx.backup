@@ -109,22 +109,7 @@ const SENSOR_TYPES: Record<string, SensorTypeConfig> = {
 
 const SensorsPage: React.FC<SensorsPageProps> = ({ onNavigateToDetail }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [sensors, setSensors] = useState<Sensor[]>(() => {
-    // Initialize from localStorage to prevent race condition
-    const saved = localStorage.getItem('wit-sensors');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        console.log('[SensorsPage] Initial state from localStorage:', parsed.length, 'sensors');
-        return parsed;
-      } catch (e) {
-        console.error('[SensorsPage] Failed to parse initial state:', e);
-        return [];
-      }
-    }
-    console.log('[SensorsPage] No saved sensors, starting with empty array');
-    return [];
-  });
+  const [sensors, setSensors] = useState<Sensor[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [gridSize, setGridSize] = useState({ cellWidth: 0, cellHeight: 0 });
@@ -171,14 +156,19 @@ const SensorsPage: React.FC<SensorsPageProps> = ({ onNavigateToDetail }) => {
   const interactionStartPosRef = useRef({ x: 0, y: 0 });
   const [canNavigate, setCanNavigate] = useState(true);
 
-  // Debug: Check localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem('wit-sensors');
-    console.log('[SensorsPage] Component mounted. localStorage:', stored ? 'has data' : 'empty');
-  }, []); // Run once to check initial state
-
   // Load saved sensors on mount
-  
+  useEffect(() => {
+    const saved = localStorage.getItem('wit-sensors');
+    if (saved) {
+      try {
+        const parsedSensors = JSON.parse(saved);
+        setSensors(parsedSensors);
+      } catch (error) {
+        console.error('Failed to parse saved sensors:', error);
+        localStorage.removeItem('wit-sensors');
+      }
+    }
+  }, []);
 
   // Save sensors to localStorage whenever they change
   useEffect(() => {

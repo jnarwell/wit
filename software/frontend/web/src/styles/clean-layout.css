@@ -1,0 +1,123 @@
+/* Clean Layout CSS for W.I.T. */
+
+/* Base layout structure */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #111827;
+}
+
+/* Main app container */
+.App {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Navigation bar */
+nav {
+  flex-shrink: 0;
+  z-index: 50;
+}
+
+/* Main content wrapper */
+main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Page layout container */
+.h-full.flex {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+/* Sidebar */
+.bg-gray-800.w-64 {
+  width: 16rem;
+  flex-shrink: 0;
+  overflow-y: auto;
+  background-color: #1f2937;
+}
+
+/* Main content area */
+.flex-1.p-6 {
+  flex: 1;
+  padding: 1.5rem;
+  background-color: #1f2937;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Grid container */
+.relative.w-full.h-full {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  background-color: #374151;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+/* Grid items */
+.absolute {
+  position: absolute;
+}
+
+/* Modal fixes */
+.fixed.inset-0 {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.fixed .bg-gray-800.rounded-lg {
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  margin: auto;
+}
+
+/* Detail page fixes */
+.h-full.bg-gray-900 {
+  width: 100%;
+  height: 100%;
+  padding: 2rem;
+}
+
+/* Utility classes */
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.overflow-auto {
+  overflow: auto;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #6b7280;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}

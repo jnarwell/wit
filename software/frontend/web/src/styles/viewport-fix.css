@@ -1,0 +1,138 @@
+/* Viewport and Overflow Fixes */
+
+/* Ensure html and body take full height without overflow */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Root app container */
+#root {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Main app container */
+.App {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Navigation should be fixed height */
+nav {
+  flex-shrink: 0;
+}
+
+/* Main content area */
+main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+}
+
+/* Page containers */
+.page-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Sidebar containers */
+.sidebar, .page-sidebar {
+  flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 100%;
+}
+
+/* Content areas */
+.page-content, .content-area {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Grid containers */
+.grid-container {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Widget containers */
+.widget-container {
+  position: absolute;
+  overflow: hidden;
+}
+
+/* Prevent any rogue scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(155, 155, 155, 0.5) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(155, 155, 155, 0.5);
+  border-radius: 3px;
+}
+
+/* Modal and overlay fixes */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: auto;
+}
+
+/* Form containers */
+.form-container {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Statistics and filter containers */
+.statistics-container,
+.filter-container {
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+/* Responsive text sizing */
+@media (max-width: 768px) {
+  .text-2xl { font-size: 1.5rem; }
+  .text-xl { font-size: 1.25rem; }
+  .text-lg { font-size: 1.125rem; }
+  .text-base { font-size: 1rem; }
+  .text-sm { font-size: 0.875rem; }
+  .text-xs { font-size: 0.75rem; }
+}
+
+/* Ensure dropdowns don't cause overflow */
+select, .dropdown {
+  max-width: 100%;
+}
+
+/* Grid size inputs */
+input[type="number"] {
+  max-width: 100%;
+}

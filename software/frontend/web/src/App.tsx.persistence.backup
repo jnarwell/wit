@@ -23,37 +23,8 @@ interface DetailPageState {
 }
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState<Page>(() => {
-    // Load saved page from localStorage
-    const savedPage = localStorage.getItem('wit-current-page');
-    if (savedPage) {
-      // Validate that it's a valid page
-      const validPages = ['dashboard', 'machines', 'projects', 'sensors', 'wit', 
-                         'machine-detail', 'sensor-detail', 'project-detail'];
-      if (validPages.includes(savedPage)) {
-        console.log('[App] Restoring page:', savedPage);
-        return savedPage as Page;
-      }
-    }
-    console.log('[App] No saved page, defaulting to dashboard');
-    return 'dashboard';
-  });
-  const [detailPageState, setDetailPageState] = useState<DetailPageState | null>(() => {
-    // Load saved detail state if we're on a detail page
-    const savedPage = localStorage.getItem('wit-current-page');
-    const savedDetailState = localStorage.getItem('wit-detail-state');
-    
-    if (savedPage?.includes('-detail') && savedDetailState) {
-      try {
-        const parsed = JSON.parse(savedDetailState);
-        console.log('[App] Restoring detail state:', parsed);
-        return parsed;
-      } catch (e) {
-        console.error('[App] Failed to parse detail state:', e);
-      }
-    }
-    return null;
-  });
+  const [currentPage, setCurrentPage] = useState<Page>('dashboard');
+  const [detailPageState, setDetailPageState] = useState<DetailPageState | null>(null);
 
   // Make navigation function globally available for widgets
   useEffect(() => {
@@ -77,28 +48,6 @@ function AppContent() {
     };
   }, [currentPage]);
 
-  // Save current page to localStorage whenever it changes
-  useEffect(() => {
-    // Don't save detail pages without their state
-    if (currentPage.includes('-detail') && !detailPageState) {
-      return;
-    }
-    
-    console.log('[App] Saving current page:', currentPage);
-    localStorage.setItem('wit-current-page', currentPage);
-  }, [currentPage, detailPageState]);
-
-  // Save detail page state
-  useEffect(() => {
-    if (detailPageState) {
-      console.log('[App] Saving detail state:', detailPageState);
-      localStorage.setItem('wit-detail-state', JSON.stringify(detailPageState));
-    } else {
-      // Clear detail state if not on detail page
-      localStorage.removeItem('wit-detail-state');
-    }
-  }, [detailPageState]);
-
   const handleNavigate = (page: string, id?: string) => {
     if (id) {
       // Navigating to a detail page
@@ -112,8 +61,6 @@ function AppContent() {
       // Regular navigation
       setCurrentPage(page as Page);
       setDetailPageState(null);
-      // Clear saved detail state when leaving detail pages
-      localStorage.removeItem('wit-detail-state');
     }
   };
 

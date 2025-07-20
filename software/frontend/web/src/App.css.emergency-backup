@@ -1,0 +1,348 @@
+@import "./styles/viewport-fix.css";
+/* App-specific styles are included in index.css for the industrial theme */
+/* ===== OVERFLOW AND SCALING FIXES ===== */
+
+/* Global overflow prevention */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.App {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Navigation fixed height */
+nav {
+  flex-shrink: 0;
+}
+
+/* Main content area */
+main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+}
+
+/* Page containers */
+.h-full.flex {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Sidebars */
+.bg-gray-800.w-64 {
+  flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 100%;
+}
+
+/* Content areas */
+.flex-1.p-6 {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Grid containers */
+.relative.w-full.h-full {
+  overflow: hidden;
+}
+
+/* Prevent horizontal scroll */
+* {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Custom scrollbar */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(155, 155, 155, 0.5);
+  border-radius: 3px;
+}
+
+/* ===== FIX WHITE SPACE IN CONTENT AREA ===== */
+
+/* Ensure all content areas have dark background */
+.flex-1.p-6,
+.page-content,
+.content-area {
+  background-color: #1f2937; /* gray-800 */
+  color: white;
+}
+
+/* Main container background */
+main {
+  background-color: #111827; /* gray-900 */
+}
+
+/* Grid container background */
+.relative.w-full.h-full,
+.grid-container {
+  background-color: #1f2937; /* gray-800 */
+}
+
+/* Ensure page containers have proper background */
+.page-container {
+  background-color: #111827; /* gray-900 */
+}
+
+/* Fix any white backgrounds */
+div[class*="bg-white"] {
+  background-color: #1f2937 !important;
+  color: white !important;
+}
+
+/* Ensure text is visible */
+* {
+  color: inherit;
+}
+
+/* Fix specific page content areas */
+.bg-gray-900 {
+  background-color: #111827 !important;
+}
+
+.bg-gray-800 {
+  background-color: #1f2937 !important;
+}
+
+/* Ensure proper height for content */
+.flex-1 {
+  flex: 1 1 0%;
+  min-height: 0;
+}
+
+/* ===== FIX CONTENT AREA WIDTH ===== */
+
+/* Ensure main container uses full width */
+main {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-width: 0; /* Important for flexbox children */
+}
+
+/* Fix dashboard specific layout */
+.page-container,
+.h-full.flex {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+/* Ensure sidebar has fixed width and doesn't grow */
+.bg-gray-800.w-64,
+.page-sidebar {
+  flex: 0 0 16rem; /* 64 * 0.25rem = 16rem */
+  width: 16rem;
+  min-width: 16rem;
+  max-width: 16rem;
+}
+
+/* Main content area must expand */
+.flex-1,
+.page-content,
+.content-area {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0; /* Crucial for proper flexbox behavior */
+}
+
+/* Dashboard specific - ensure right side expands */
+.bg-gray-900.p-8,
+.flex-1.bg-gray-900.p-8 {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  position: relative;
+}
+
+/* Grid container should fill available space */
+.relative.w-full.h-full,
+.grid-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* Prevent any max-width constraints */
+.flex-1 > * {
+  max-width: none;
+}
+
+/* Remove any width constraints on containers */
+div[class*="max-w-"] {
+  max-width: none !important;
+}
+
+/* Ensure proper flex for page wrappers */
+body > #root > div {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+/* ===== FIX DETAIL PAGES WIDTH ===== */
+
+/* Detail page containers should use full width */
+.h-full.bg-gray-900,
+.h-full.bg-gray-900.overflow-auto {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Detail page content wrapper */
+.max-w-4xl {
+  max-width: 100% !important;
+  width: 100%;
+  flex: 1;
+}
+
+/* Remove centering margin that pushes content left */
+.mx-auto {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Ensure detail pages fill the viewport */
+div[class*="DetailPage"] {
+  width: 100%;
+  height: 100%;
+}
+
+/* Detail content sections */
+.bg-gray-800.rounded-lg,
+.bg-gray-800.rounded-lg.p-6 {
+  width: 100%;
+  max-width: none;
+}
+
+/* Remove any container constraints */
+.container {
+  max-width: none !important;
+  width: 100% !important;
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+
+/* Specific fixes for padding */
+.px-6 {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* Ensure proper layout for detail pages */
+.h-full.bg-gray-900 > div {
+  width: 100%;
+  max-width: none;
+}
+
+/* ===== FIX MODAL STYLING ===== */
+
+/* Modal overlay should center content */
+.fixed.inset-0.bg-black.bg-opacity-50,
+.fixed.inset-0.bg-gray-900.bg-opacity-75,
+div[class*="fixed inset-0"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 2rem !important;
+  overflow-y: auto !important;
+}
+
+/* Modal content should have constraints */
+.bg-gray-800.rounded-lg.shadow-xl,
+.bg-gray-800.p-6.rounded-lg,
+.modal-content,
+div[class*="bg-gray-800"][class*="rounded"] {
+  max-width: 600px !important;
+  width: 100% !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  margin: auto !important;
+}
+
+/* Restore margins for modal elements */
+.fixed .mx-auto {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Modal specific max-width classes should work */
+.fixed .max-w-md,
+.fixed .max-w-lg,
+.fixed .max-w-xl,
+.fixed .max-w-2xl {
+  max-width: 28rem !important; /* md */
+}
+
+.fixed .max-w-lg {
+  max-width: 32rem !important; /* lg */
+}
+
+.fixed .max-w-xl {
+  max-width: 36rem !important; /* xl */
+}
+
+.fixed .max-w-2xl {
+  max-width: 42rem !important; /* 2xl */
+}
+
+/* Form inputs in modals should not overflow */
+.fixed input,
+.fixed textarea,
+.fixed select {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+/* Modal padding should be preserved */
+.fixed .p-6 {
+  padding: 1.5rem !important;
+}
+
+.fixed .p-8 {
+  padding: 2rem !important;
+}
+
+/* Ensure modals don't inherit page width fixes */
+.fixed > div {
+  width: auto !important;
+  min-width: 0 !important;
+}
+
+/* Specific fix for Add Machine/Project/Sensor modals */
+div[class*="Add New"] {
+  max-width: 600px !important;
+  margin: 2rem auto !important;
+}
+
+/* Override previous global fixes for modals */
+.fixed [class*="max-w-"] {
+  max-width: revert !important;
+}
+
+/* Ensure proper scrolling in modals */
+.modal-body,
+.fixed .overflow-y-auto {
+  max-height: calc(90vh - 8rem) !important;
+  overflow-y: auto !important;
+}
