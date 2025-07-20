@@ -1,7 +1,7 @@
 """
 W.I.T. Equipment API Router - Updated with Direct Prusa Support
 
-File: software/backend/api/equipment_api_v2.py
+File: software/backend/api/equipment_api.py
 
 Enhanced API endpoints for controlling workshop equipment including direct serial connection to Prusa printers.
 """
@@ -16,6 +16,7 @@ import asyncio
 import logging
 import json
 from datetime import datetime
+import time
 
 # Import integrations
 from software.integrations.octoprint_integration import (
@@ -42,8 +43,14 @@ octoprint_manager = OctoPrintManager()
 prusa_printers: Dict[str, PrusaSerial] = {}
 cnc_controllers: Dict[str, GRBLController] = {}
 
+# PrusaLink printer storage
+prusalink_printers: Dict[str, Dict[str, Any]] = {}
+
 # Active WebSocket connections
-active_connections: Dict[str, List[WebSocket]] = {}
+active_connections: List[WebSocket] = []
+
+# Background task for polling PrusaLink printers
+polling_task = None
 
 
 # Request/Response Models
@@ -60,8 +67,12 @@ class PrinterAddRequest(BaseModel):
     connection_type: str = Field(..., description="Connection type: octoprint, serial, prusalink")
     
     # OctoPrint specific
-    url: Optional[str] = Field(None, description="OctoPrint URL")
+    url: Optional[str] = Field(None, description="OctoPrint/PrusaLink URL")
     api_key: Optional[str] = Field(None, description="OctoPrint API key")
+    
+    # PrusaLink specific
+    username: Optional[str] = Field(None, description="PrusaLink username")
+    password: Optional[str] = Field(None, description="PrusaLink password")
     
     # Serial specific
     port: Optional[str] = Field(None, description="Serial port")
@@ -70,6 +81,8 @@ class PrinterAddRequest(BaseModel):
     
     # Common settings
     auto_connect: bool = Field(default=True)
+    manufacturer: Optional[str] = Field(None, description="Manufacturer")
+    notes: Optional[str] = Field(None, description="Notes")
 
 
 class TemperatureSetRequest(BaseModel):
@@ -106,6 +119,87 @@ class PrinterTestRequest(BaseModel):
     api_key: Optional[str] = None
 
 
+# Helper function to fetch PrusaLink data
+async def fetch_prusalink_status(printer_info: Dict[str, Any]) -> Dict[str, Any]:
+    """Fetch real-time status from PrusaLink printer"""
+    try:
+        url = printer_info["url"].replace("http://", "").replace("https://", "").strip("/")
+        auth = HTTPDigestAuth(printer_info["username"], printer_info["password"])
+        
+        # Fetch printer status
+        response = requests.get(
+            f"http://{url}/api/printer",
+            auth=auth,
+            timeout=5
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            telemetry = data.get("telemetry", {})
+            state = data.get("state", {})
+            
+            # Update printer info with real data
+            printer_info["connected"] = True
+            printer_info["state"] = state
+            printer_info["telemetry"] = {
+                "temp-nozzle": telemetry.get("temp-nozzle", 0.0),
+                "temp-bed": telemetry.get("temp-bed", 0.0),
+                "temp-nozzle-target": telemetry.get("target-nozzle", 0.0),
+                "temp-bed-target": telemetry.get("target-bed", 0.0),
+                "axis-x": telemetry.get("axis-x", 0.0),
+                "axis-y": telemetry.get("axis-y", 0.0),
+                "axis-z": telemetry.get("axis-z", 0.0),
+                "print-speed": telemetry.get("print-speed", 100),
+                "flow-factor": telemetry.get("flow-factor", 100)
+            }
+            
+            # Try to get job info
+            try:
+                job_response = requests.get(
+                    f"http://{url}/api/job",
+                    auth=auth,
+                    timeout=5
+                )
+                if job_response.status_code == 200:
+                    printer_info["job"] = job_response.json()
+            except:
+                printer_info["job"] = None
+                
+            printer_info["last_updated"] = datetime.utcnow().isoformat()
+            
+        else:
+            printer_info["connected"] = False
+            printer_info["state"] = {"text": "Offline", "flags": {"operational": False}}
+            logger.warning(f"PrusaLink connection failed for {printer_info['id']}: {response.status_code}")
+            
+    except Exception as e:
+        printer_info["connected"] = False
+        printer_info["state"] = {"text": "Connection Error", "flags": {"operational": False}}
+        logger.error(f"Error fetching PrusaLink data for {printer_info['id']}: {e}")
+        
+    return printer_info
+
+
+# Background task to poll PrusaLink printers
+async def poll_prusalink_printers():
+    """Background task to poll all PrusaLink printers"""
+    while True:
+        try:
+            for printer_id, printer_info in list(prusalink_printers.items()):
+                # Fetch updated status
+                updated_info = await fetch_prusalink_status(printer_info.copy())
+                prusalink_printers[printer_id] = updated_info
+                
+                # Broadcast update via WebSocket
+                await broadcast_printer_update(printer_id, updated_info)
+                
+            await asyncio.sleep(2)  # Poll every 2 seconds
+            
+        except Exception as e:
+            logger.error(f"Polling error: {e}")
+            await asyncio.sleep(5)
+
+
 # Printer discovery endpoint
 @router.get("/printers/discover", response_model=List[Dict[str, Any]])
 async def discover_printers():
@@ -134,8 +228,55 @@ async def add_printer(
     current_user: dict = Depends(get_current_user)
 ):
     """Add a 3D printer with any connection type"""
+    global polling_task
+    
     try:
-        if request.connection_type == "octoprint":
+        if request.connection_type == "prusalink":
+            # PrusaLink connection
+            if not request.url or not request.username or not request.password:
+                raise HTTPException(
+                    status_code=400,
+                    detail="URL, username and password are required for PrusaLink"
+                )
+            
+            # Store PrusaLink printer info
+            printer_info = {
+                "id": request.printer_id,
+                "name": request.name,
+                "connection_type": "prusalink",
+                "url": request.url,
+                "username": request.username,
+                "password": request.password,
+                "manufacturer": request.manufacturer or "Prusa",
+                "model": request.model or "",
+                "notes": request.notes or "",
+                "connected": False,
+                "state": {"text": "Connecting...", "flags": {"operational": False}},
+                "telemetry": {},
+                "added_at": datetime.utcnow().isoformat()
+            }
+            
+            # Test connection and fetch initial status
+            printer_info = await fetch_prusalink_status(printer_info)
+            
+            if printer_info["connected"]:
+                prusalink_printers[request.printer_id] = printer_info
+                
+                # Start polling task if not already running
+                if polling_task is None:
+                    polling_task = asyncio.create_task(poll_prusalink_printers())
+                
+                return {
+                    "status": "success",
+                    "message": f"Connected to PrusaLink printer {request.name}"
+                }
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Failed to connect to PrusaLink printer"
+                )
+                
+        elif request.connection_type == "octoprint":
             # OctoPrint connection
             if not request.url or not request.api_key:
                 raise HTTPException(
@@ -172,25 +313,19 @@ async def add_printer(
             if success:
                 prusa_printers[request.printer_id] = printer
                 
-                # Register status callbacks for WebSocket updates
-                async def on_state_change():
-                    await broadcast_printer_status(request.printer_id)
-                    
-                printer.register_state_callback(on_state_change)
-                
         else:
             raise HTTPException(
                 status_code=400,
                 detail=f"Unsupported connection type: {request.connection_type}"
             )
             
-        if success:
+        if request.connection_type != "prusalink" and success:
             logger.info(f"Added printer: {request.printer_id} via {request.connection_type}")
             return {
                 "status": "success",
                 "message": f"Printer {request.name} connected successfully"
             }
-        else:
+        elif request.connection_type != "prusalink":
             raise HTTPException(
                 status_code=400,
                 detail="Failed to connect to printer"
@@ -208,6 +343,13 @@ async def add_printer(
 async def get_printers():
     """Get all configured printers"""
     printers = []
+    
+    # PrusaLink printers with real data
+    for printer_id, printer_info in prusalink_printers.items():
+        # Ensure we have fresh data
+        updated_info = await fetch_prusalink_status(printer_info.copy())
+        prusalink_printers[printer_id] = updated_info
+        printers.append(updated_info)
     
     # OctoPrint printers
     for printer_id, client in octoprint_manager.get_all_printers().items():
@@ -233,7 +375,15 @@ async def get_printers():
 # Get specific printer
 @router.get("/printers/{printer_id}", response_model=Dict[str, Any])
 async def get_printer_status(printer_id: str):
-    """Get specific printer status"""
+    """Get specific printer status with real data"""
+    
+    # Check PrusaLink printers
+    if printer_id in prusalink_printers:
+        # Fetch fresh data
+        printer_info = prusalink_printers[printer_id]
+        updated_info = await fetch_prusalink_status(printer_info.copy())
+        prusalink_printers[printer_id] = updated_info
+        return updated_info
     
     # Check OctoPrint
     printer = octoprint_manager.get_printer(printer_id)
@@ -255,6 +405,49 @@ async def get_printer_status(printer_id: str):
     raise HTTPException(status_code=404, detail="Printer not found")
 
 
+# Delete printer
+@router.delete("/printers/{printer_id}", response_model=Dict[str, str])
+async def delete_printer(
+    printer_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a printer"""
+    deleted = False
+    
+    # Check PrusaLink
+    if printer_id in prusalink_printers:
+        del prusalink_printers[printer_id]
+        deleted = True
+        
+        # Stop polling if no more PrusaLink printers
+        global polling_task
+        if not prusalink_printers and polling_task:
+            polling_task.cancel()
+            polling_task = None
+    
+    # Check serial printers
+    if printer_id in prusa_printers:
+        await prusa_printers[printer_id].disconnect()
+        del prusa_printers[printer_id]
+        deleted = True
+    
+    # Check OctoPrint
+    if octoprint_manager.get_printer(printer_id):
+        # Remove from OctoPrint manager
+        deleted = True
+    
+    if deleted:
+        # Notify WebSocket clients
+        await broadcast_printer_deletion(printer_id)
+        
+        return {
+            "status": "success",
+            "message": f"Printer {printer_id} deleted"
+        }
+    else:
+        raise HTTPException(status_code=404, detail="Printer not found")
+
+
 # Temperature control
 @router.post("/printers/temperature", response_model=Dict[str, str])
 async def set_temperature(
@@ -263,8 +456,44 @@ async def set_temperature(
 ):
     """Set printer temperatures"""
     try:
-        # Find printer
-        if request.printer_id in prusa_printers:
+        # PrusaLink temperature control
+        if request.printer_id in prusalink_printers:
+            printer_info = prusalink_printers[request.printer_id]
+            url = printer_info["url"].replace("http://", "").replace("https://", "").strip("/")
+            auth = HTTPDigestAuth(printer_info["username"], printer_info["password"])
+            
+            success = True
+            
+            # Set nozzle temperature
+            if request.hotend is not None:
+                response = requests.post(
+                    f"http://{url}/api/printer/tool",
+                    auth=auth,
+                    json={"command": "target", "target": request.hotend},
+                    timeout=5
+                )
+                success &= response.status_code in [200, 204]
+            
+            # Set bed temperature
+            if request.bed is not None:
+                response = requests.post(
+                    f"http://{url}/api/printer/bed",
+                    auth=auth,
+                    json={"command": "target", "target": request.bed},
+                    timeout=5
+                )
+                success &= response.status_code in [200, 204]
+            
+            if success:
+                return {
+                    "status": "success",
+                    "message": "Temperature command sent"
+                }
+            else:
+                raise HTTPException(status_code=400, detail="Failed to set temperature")
+        
+        # Serial printer temperature control
+        elif request.printer_id in prusa_printers:
             printer = prusa_printers[request.printer_id]
             await printer.set_temperature(
                 hotend=request.hotend,
@@ -272,6 +501,7 @@ async def set_temperature(
                 wait=request.wait
             )
             
+        # OctoPrint temperature control
         elif octoprint_manager.get_printer(request.printer_id):
             printer = octoprint_manager.get_printer(request.printer_id)
             await printer.set_temperatures(
@@ -422,41 +652,7 @@ async def emergency_stop(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# WebSocket for real-time updates
-@router.websocket("/ws/{printer_id}")
-async def websocket_endpoint(websocket: WebSocket, printer_id: str):
-    """WebSocket for real-time printer updates"""
-    await websocket.accept()
-    
-    # Add to active connections
-    if printer_id not in active_connections:
-        active_connections[printer_id] = []
-    active_connections[printer_id].append(websocket)
-    
-    try:
-        while True:
-            # Send periodic status updates
-            if printer_id in prusa_printers:
-                status = prusa_printers[printer_id].get_status()
-                await websocket.send_json({
-                    "type": "status",
-                    "data": status
-                })
-                
-            await asyncio.sleep(1)  # Update every second
-            
-    except WebSocketDisconnect:
-        active_connections[printer_id].remove(websocket)
-        if not active_connections[printer_id]:
-            del active_connections[printer_id]
-            
-    except Exception as e:
-        logger.error(f"WebSocket error: {e}")
-        try:
-            active_connections[printer_id].remove(websocket)
-        except:
-            pass
-
+# Test printer connection
 @router.post("/printers/test", response_model=Dict[str, Any])
 async def test_printer_connection(request: PrinterTestRequest):
     """Test printer connection without adding it"""
@@ -569,29 +765,90 @@ async def test_printer_connection(request: PrinterTestRequest):
         }
 
 
-async def broadcast_printer_status(printer_id: str):
-    """Broadcast status update to all connected WebSocket clients"""
-    if printer_id in active_connections:
-        status = None
+# WebSocket for real-time updates
+@router.websocket("/ws/printers")
+async def websocket_printer_updates(websocket: WebSocket):
+    """WebSocket for real-time printer updates"""
+    await websocket.accept()
+    active_connections.append(websocket)
+    
+    try:
+        # Send initial printer list
+        printers = await get_printers()
+        await websocket.send_json({
+            "type": "initial",
+            "printers": printers
+        })
         
-        if printer_id in prusa_printers:
-            status = prusa_printers[printer_id].get_status()
+        # Keep connection alive
+        while True:
+            await asyncio.sleep(30)  # Heartbeat every 30 seconds
+            await websocket.send_json({"type": "ping"})
             
-        if status:
-            for connection in active_connections[printer_id]:
-                try:
-                    await connection.send_json({
-                        "type": "status",
-                        "data": status
-                    })
-                except:
-                    pass
+    except WebSocketDisconnect:
+        active_connections.remove(websocket)
+        logger.info("WebSocket client disconnected")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        if websocket in active_connections:
+            active_connections.remove(websocket)
+
+
+# Broadcast functions for WebSocket updates
+async def broadcast_printer_update(printer_id: str, printer_data: Dict[str, Any]):
+    """Broadcast printer update to all WebSocket clients"""
+    if active_connections:
+        message = {
+            "type": "printer_update",
+            "printer": printer_data
+        }
+        
+        disconnected = []
+        for connection in active_connections:
+            try:
+                await connection.send_json(message)
+            except:
+                disconnected.append(connection)
+                
+        # Remove disconnected clients
+        for conn in disconnected:
+            active_connections.remove(conn)
+
+
+async def broadcast_printer_deletion(printer_id: str):
+    """Broadcast printer deletion to all WebSocket clients"""
+    if active_connections:
+        message = {
+            "type": "printer_deleted",
+            "printer_id": printer_id
+        }
+        
+        disconnected = []
+        for connection in active_connections:
+            try:
+                await connection.send_json(message)
+            except:
+                disconnected.append(connection)
+                
+        # Remove disconnected clients
+        for conn in disconnected:
+            active_connections.remove(conn)
 
 
 # Cleanup on shutdown
 async def shutdown_equipment():
     """Disconnect all equipment on shutdown"""
+    global polling_task
+    
     logger.info("Shutting down equipment connections...")
+    
+    # Cancel polling task
+    if polling_task:
+        polling_task.cancel()
+        try:
+            await polling_task
+        except asyncio.CancelledError:
+            pass
     
     # Disconnect serial printers
     for printer_id, printer in prusa_printers.items():
@@ -602,5 +859,5 @@ async def shutdown_equipment():
     
     # Clear connections
     prusa_printers.clear()
+    prusalink_printers.clear()
     active_connections.clear()
-

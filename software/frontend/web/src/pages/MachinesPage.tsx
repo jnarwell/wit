@@ -1,8 +1,254 @@
 // src/pages/MachinesPage.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCheckCircle, FaExclamationCircle, FaUser, FaLock, FaSignInAlt, FaSignOutAlt, FaWifi, FaExclamationTriangle } from 'react-icons/fa';
 import SpecificWidget from '../components/widgets/SpecificWidget';
 
+// API base URL
+const API_BASE_URL = process.env.NODE_ENV === 'development' 
+  ? 'http://localhost:8000'
+  : '';
+
+// WebSocket configuration
+const WS_ENABLED = true; // Set to false to disable WebSocket completely
+const WS_MAX_RECONNECT_ATTEMPTS = 3;
+const WS_RECONNECT_DELAY = 5000; // 5 seconds
+
+// Auth token management
+const AuthTokens = {
+  getToken: (): string | null => {
+    return localStorage.getItem('access_token');
+  },
+  
+  setToken: (token: string): void => {
+    localStorage.setItem('access_token', token);
+  },
+  
+  removeToken: (): void => {
+    localStorage.removeItem('access_token');
+  },
+  
+  isAuthenticated: (): boolean => {
+    return !!AuthTokens.getToken();
+  }
+};
+
+// Auth headers helper
+const getAuthHeaders = (): HeadersInit => {
+  const token = AuthTokens.getToken();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
+};
+
+// Auth API functions
+const AuthAPI = {
+  login: async (username: string, password: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        AuthTokens.setToken(data.access_token);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
+    }
+  },
+  
+  logout: (): void => {
+    AuthTokens.removeToken();
+    window.location.reload();
+  },
+  
+  getCurrentUser: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+        headers: getAuthHeaders()
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      }
+      return null;
+    } catch (error) {
+      console.error('Get user error:', error);
+      return null;
+    }
+  }
+};
+
+// WebSocket Status Component
+const WebSocketStatus: React.FC<{ status: 'connected' | 'disconnected' | 'failed' | 'disabled' }> = ({ status }) => {
+  const statusConfig = {
+    connected: { color: 'text-green-400', icon: FaWifi, text: 'Live Updates Active' },
+    disconnected: { color: 'text-yellow-400', icon: FaWifi, text: 'Connecting...' },
+    failed: { color: 'text-red-400', icon: FaExclamationTriangle, text: 'Live Updates Unavailable' },
+    disabled: { color: 'text-gray-400', icon: FaWifi, text: 'Live Updates Disabled' }
+  };
+
+  const config = statusConfig[status];
+  const Icon = config.icon;
+
+  return (
+    <div className={`flex items-center gap-2 text-xs ${config.color}`}>
+      <Icon className="w-3 h-3" />
+      <span>{config.text}</span>
+    </div>
+  );
+};
+
+// Auth Section Component
+const AuthSection: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginError, setLoginError] = useState('');
+
+  useEffect(() => {
+    // Check if already authenticated on mount
+    if (AuthTokens.isAuthenticated()) {
+      AuthAPI.getCurrentUser().then(user => {
+        if (user) {
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+        } else {
+          AuthTokens.removeToken();
+        }
+      });
+    }
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    
+    const success = await AuthAPI.login(loginForm.username, loginForm.password);
+    if (success) {
+      const user = await AuthAPI.getCurrentUser();
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+      setShowLogin(false);
+      setLoginForm({ username: '', password: '' });
+    } else {
+      setLoginError('Invalid username or password');
+    }
+  };
+
+  const handleLogout = () => {
+    AuthAPI.logout();
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="p-4 bg-gray-700 rounded">
+        {!showLogin ? (
+          <button
+            onClick={() => setShowLogin(true)}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2"
+          >
+            <FaSignInAlt />
+            Login to Add Machines
+          </button>
+        ) : (
+          <form onSubmit={handleLogin} className="space-y-3">
+            <h3 className="text-white font-medium mb-2">Login</h3>
+            
+            <div>
+              <div className="flex items-center gap-2 text-gray-300 mb-1">
+                <FaUser className="w-3 h-3" />
+                <label className="text-sm">Username</label>
+              </div>
+              <input
+                type="text"
+                value={loginForm.username}
+                onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                placeholder="admin or maker"
+                className="w-full bg-gray-600 text-white rounded px-3 py-1.5 text-sm"
+                required
+              />
+            </div>
+            
+            <div>
+              <div className="flex items-center gap-2 text-gray-300 mb-1">
+                <FaLock className="w-3 h-3" />
+                <label className="text-sm">Password</label>
+              </div>
+              <input
+                type="password"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                placeholder="admin or maker123"
+                className="w-full bg-gray-600 text-white rounded px-3 py-1.5 text-sm"
+                required
+              />
+            </div>
+            
+            {loginError && (
+              <p className="text-red-400 text-sm">{loginError}</p>
+            )}
+            
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3 rounded text-sm"
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLogin(false)}
+                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-1.5 px-3 rounded text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+            
+            <div className="text-xs text-gray-400 mt-2">
+              <p>Default users:</p>
+              <p>• admin / admin</p>
+              <p>• maker / maker123</p>
+            </div>
+          </form>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 bg-gray-700 rounded">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm">
+          <p className="text-gray-400">Logged in as</p>
+          <p className="text-white font-medium">{currentUser?.username}</p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="bg-red-600 hover:bg-red-700 text-white p-2 rounded"
+          title="Logout"
+        >
+          <FaSignOutAlt className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Machine interfaces
 interface Machine {
   id: string;
   name: string;
@@ -15,10 +261,8 @@ interface Machine {
   model?: string;
   notes?: string;
   dateAdded: string;
-  // Layout properties
   position?: { x: number; y: number };
   size?: { width: number; height: number };
-  // Auth properties
   username?: string;
   password?: string;
   apiKey?: string;
@@ -33,12 +277,6 @@ interface MachineTypeConfig {
 
 interface MachinesPageProps {
   onNavigateToDetail?: (id: string) => void;
-}
-
-interface NetworkConfig {
-  url: string;
-  apiKey: string;
-  connectionMethod: 'prusalink' | 'octoprint';
 }
 
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
@@ -93,7 +331,7 @@ const CONNECTION_CONFIGS: Record<string, any> = {
     placeholder: '192.168.1.100',
     helperText: 'Built-in network interface on Prusa XL/MK4/MINI+',
     requiresAuth: true,
-    authType: 'basic' // Uses username/password
+    authType: 'basic'
   },
   'network-octoprint': {
     label: 'Network (OctoPrint)',
@@ -116,7 +354,6 @@ const CONNECTION_CONFIGS: Record<string, any> = {
 const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [machines, setMachines] = useState<Machine[]>(() => {
-    // Initialize from localStorage to prevent race condition
     const saved = localStorage.getItem('wit-machines');
     if (saved) {
       try {
@@ -132,11 +369,251 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
     return [];
   });
 
+  // WebSocket state
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const [isConnectingWS, setIsConnectingWS] = useState(false);
+  const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected' | 'failed' | 'disabled'>(
+    WS_ENABLED ? 'disconnected' : 'disabled'
+  );
+
+  // Function to update machine data from printer status
+  const updateMachineFromPrinterStatus = useCallback((printerId: string, status: any) => {
+    setMachines(prevMachines => 
+      prevMachines.map(machine => {
+        if (machine.id === printerId) {
+          // Determine status color based on printer state
+          let statusColor: 'green' | 'yellow' | 'red' = 'red';
+          const stateText = status.state?.text?.toLowerCase() || '';
+          
+          if (status.connected) {
+            if (stateText.includes('ready') || stateText.includes('operational')) {
+              statusColor = 'green';
+            } else if (stateText.includes('printing') || stateText.includes('busy')) {
+              statusColor = 'yellow';
+            } else {
+              statusColor = 'yellow';
+            }
+          }
+          
+          // Build metrics from real data
+          const metrics = [];
+          
+          // Status
+          metrics.push({ 
+            label: 'Status', 
+            value: status.state?.text || 'Unknown' 
+          });
+          
+          // Temperatures
+          if (status.telemetry) {
+            const nozzleTemp = status.telemetry['temp-nozzle'] || 0;
+            const nozzleTarget = status.telemetry['temp-nozzle-target'] || 0;
+            const bedTemp = status.telemetry['temp-bed'] || 0;
+            const bedTarget = status.telemetry['temp-bed-target'] || 0;
+            
+            metrics.push({ 
+              label: 'Nozzle', 
+              value: nozzleTarget > 0 
+                ? `${nozzleTemp.toFixed(1)}°C → ${nozzleTarget}°C`
+                : `${nozzleTemp.toFixed(1)}°C`
+            });
+            
+            metrics.push({ 
+              label: 'Bed', 
+              value: bedTarget > 0
+                ? `${bedTemp.toFixed(1)}°C → ${bedTarget}°C`
+                : `${bedTemp.toFixed(1)}°C`
+            });
+          }
+          
+          // Print job info
+          if (status.job) {
+            metrics.push({ 
+              label: 'Job', 
+              value: status.job.name || 'Printing...' 
+            });
+            
+            if (status.job.progress !== undefined) {
+              metrics.push({ 
+                label: 'Progress', 
+                value: `${status.job.progress.toFixed(1)}%` 
+              });
+            }
+            
+            if (status.job.time_remaining) {
+              const hours = Math.floor(status.job.time_remaining / 3600);
+              const minutes = Math.floor((status.job.time_remaining % 3600) / 60);
+              metrics.push({ 
+                label: 'Time Left', 
+                value: `${hours}h ${minutes}m` 
+              });
+            }
+          }
+          
+          // Position (for serial printers)
+          if (status.position) {
+            metrics.push({ 
+              label: 'Position', 
+              value: `X:${status.position.x?.toFixed(1)} Y:${status.position.y?.toFixed(1)} Z:${status.position.z?.toFixed(1)}` 
+            });
+          }
+          
+          return {
+            ...machine,
+            status: statusColor,
+            metrics: metrics
+          };
+        }
+        return machine;
+      })
+    );
+  }, []);
+
+  // Connect to WebSocket for real-time updates
+  const connectWebSocket = useCallback(() => {
+    // Check if WebSocket is enabled
+    if (!WS_ENABLED) {
+      setWsStatus('disabled');
+      return;
+    }
+
+    // Don't attempt if we've failed too many times
+    if (reconnectAttemptsRef.current >= WS_MAX_RECONNECT_ATTEMPTS) {
+      console.log('[MachinesPage] Max reconnection attempts reached, stopping WebSocket connection');
+      setWsStatus('failed');
+      return;
+    }
+
+    // Don't connect if already connecting or connected
+    if (wsRef.current?.readyState === WebSocket.OPEN || isConnectingWS) {
+      return;
+    }
+    
+    setIsConnectingWS(true);
+    setWsStatus('disconnected');
+    console.log(`[MachinesPage] Connecting to printer WebSocket... (attempt ${reconnectAttemptsRef.current + 1}/${WS_MAX_RECONNECT_ATTEMPTS})`);
+    
+    try {
+      const ws = new WebSocket('ws://localhost:8000/ws/printers');
+      
+      ws.onopen = () => {
+        console.log('[MachinesPage] WebSocket connected successfully');
+        setIsConnectingWS(false);
+        setWsStatus('connected');
+        reconnectAttemptsRef.current = 0; // Reset attempts on successful connection
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'initial') {
+            // Initial printer list - update all matching machines
+            data.printers.forEach((printer: any) => {
+              updateMachineFromPrinterStatus(printer.id, printer);
+            });
+          } else if (data.type === 'printer_update') {
+            // Single printer update
+            updateMachineFromPrinterStatus(data.printer.id, data.printer);
+          } else if (data.type === 'printer_deleted') {
+            // Printer was deleted
+            console.log(`[MachinesPage] Printer ${data.printer_id} deleted`);
+          }
+        } catch (error) {
+          console.error('[MachinesPage] WebSocket message error:', error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('[MachinesPage] WebSocket error:', error);
+        setIsConnectingWS(false);
+        reconnectAttemptsRef.current++;
+      };
+      
+      ws.onclose = () => {
+        console.log('[MachinesPage] WebSocket disconnected');
+        setIsConnectingWS(false);
+        wsRef.current = null;
+        
+        // Only attempt reconnect if we haven't exceeded max attempts
+        if (reconnectAttemptsRef.current < WS_MAX_RECONNECT_ATTEMPTS) {
+          setWsStatus('disconnected');
+          
+          // Clear any existing timeout
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+          }
+          
+          // Schedule reconnection
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connectWebSocket();
+          }, WS_RECONNECT_DELAY);
+        } else {
+          setWsStatus('failed');
+        }
+      };
+      
+      wsRef.current = ws;
+    } catch (error) {
+      console.error('[MachinesPage] Failed to create WebSocket:', error);
+      setIsConnectingWS(false);
+      reconnectAttemptsRef.current++;
+      setWsStatus('failed');
+    }
+  }, [updateMachineFromPrinterStatus]);
+
+  // Connect WebSocket when component mounts
   useEffect(() => {
-    // Check what's in localStorage on every render
-    const stored = localStorage.getItem('wit-machines');
-    console.log('[MachinesPage] Current localStorage:', stored ? 'has data' : 'empty');
-  }, []); // Run once to check initial state
+    if (WS_ENABLED) {
+      connectWebSocket();
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [connectWebSocket]);
+
+  // Function to fetch latest printer status
+  const refreshPrinterStatus = useCallback(async (printerId: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/equipment/printers/${printerId}`, {
+        headers: getAuthHeaders()
+      });
+      
+      if (response.ok) {
+        const status = await response.json();
+        updateMachineFromPrinterStatus(printerId, status);
+      }
+    } catch (error) {
+      console.error('[MachinesPage] Error fetching printer status:', error);
+    }
+  }, [updateMachineFromPrinterStatus]);
+
+  // Poll for printer status updates (backup for WebSocket)
+  useEffect(() => {
+    // Only poll if WebSocket is not connected or has failed
+    if (wsStatus === 'connected') {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      machines.forEach(machine => {
+        if (machine.connectionType.startsWith('network') || machine.connectionType === 'serial') {
+          refreshPrinterStatus(machine.id);
+        }
+      });
+    }, 10000); // Poll every 10 seconds as backup
+    
+    return () => clearInterval(interval);
+  }, [machines, wsStatus, refreshPrinterStatus]);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -153,9 +630,9 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
     name: '',
     connectionType: 'usb' as 'usb' | 'network-prusalink' | 'network-octoprint' | 'serial' | 'bluetooth',
     connectionDetails: '',
-    username: 'maker', // Default PrusaLink username
-    password: '', // PrusaLink password
-    apiKey: '', // OctoPrint API key
+    username: 'maker',
+    password: '',
+    apiKey: '',
     manufacturer: '',
     model: '',
     notes: ''
@@ -186,7 +663,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
     y?: number 
   } | null>(null);
 
-  // Track if an interaction happened
   const interactionStartPosRef = useRef({ x: 0, y: 0 });
   const [canNavigate, setCanNavigate] = useState(true);
 
@@ -212,10 +688,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
   useEffect(() => {
     console.log('[MachinesPage] Saving', machines.length, 'machines to localStorage');
     localStorage.setItem('wit-machines', JSON.stringify(machines));
-    
-    // Verify it saved
-    const saved = localStorage.getItem('wit-machines');
-    console.log('[MachinesPage] Verified save:', saved ? JSON.parse(saved).length + ' machines' : 'null');
   }, [machines]);
 
   // Update machine details when type changes
@@ -227,7 +699,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
         name: prev.name || typeConfig.defaultName,
         connectionType: typeConfig.defaultConnection,
         manufacturer: prev.manufacturer || typeConfig.manufacturers[0],
-        // Reset auth fields when type changes
         username: 'maker',
         password: '',
         apiKey: ''
@@ -335,7 +806,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
     const element = e.currentTarget as HTMLElement;
     const direction = getResizeDirection(e, element);
     
-    // Store initial position for navigation detection
     interactionStartPosRef.current = { x: e.clientX, y: e.clientY };
     setCanNavigate(true);
     
@@ -376,7 +846,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
 
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
-      // Check if we've moved enough to cancel navigation
       const deltaX = Math.abs(e.clientX - interactionStartPosRef.current.x);
       const deltaY = Math.abs(e.clientY - interactionStartPosRef.current.y);
       if (deltaX > 5 || deltaY > 5) {
@@ -390,7 +859,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
         const rect = container.getBoundingClientRect();
         const gap = 16;
         
-        // Calculate new position relative to the container
         const newX = e.clientX - rect.left - dragOffsetRef.current.x;
         const newY = e.clientY - rect.top - dragOffsetRef.current.y;
 
@@ -409,7 +877,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
         const cellsX = Math.round(deltaX / (gridSize.cellWidth + gap));
         const cellsY = Math.round(deltaY / (gridSize.cellHeight + gap));
         
-        // Handle resize based on direction
         if (dir.includes('e')) {
           newWidth = Math.max(1, resizeStartRef.current.width + cellsX);
         }
@@ -427,7 +894,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
           newY = resizeStartRef.current.posY + heightChange;
         }
         
-        // Ensure within bounds
         newWidth = Math.min(newWidth, gridCols - (dir.includes('w') ? newX : resizeStartRef.current.posX));
         newHeight = Math.min(newHeight, gridRows - (dir.includes('n') ? newY : resizeStartRef.current.posY));
         newX = Math.max(0, newX);
@@ -481,7 +947,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
         }
       }
 
-      // Reset states
       isDraggingRef.current = false;
       draggedMachineRef.current = null;
       setDragPosition(null);
@@ -489,7 +954,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
       resizedMachineRef.current = null;
       setResizePreview(null);
       
-      // Small delay to ensure click event doesn't fire on drag end
       setTimeout(() => {
         setCanNavigate(true);
       }, 100);
@@ -538,7 +1002,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
     setConnectionTestResult(null);
 
     try {
-      // Build request for backend API
       const requestBody: any = {
         connection_type: newMachine.connectionType.replace('network-', ''),
       };
@@ -553,6 +1016,7 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
             success: false, 
             message: 'Password is required for PrusaLink' 
           });
+          setTestingConnection(false);
           return;
         }
       } else if (newMachine.connectionType === 'network-octoprint') {
@@ -564,30 +1028,40 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
             success: false, 
             message: 'API key is required for OctoPrint' 
           });
+          setTestingConnection(false);
           return;
         }
       } else {
         requestBody.port = newMachine.connectionDetails;
       }
 
-      // Actually call the backend
-      const response = await fetch('/api/v1/equipment/printers/test', {
+      console.log('[MachinesPage] Testing connection with:', requestBody);
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/equipment/printers/test`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(requestBody)
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[MachinesPage] Test connection failed:', response.status, errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
       const result = await response.json();
+      console.log('[MachinesPage] Test connection result:', result);
+      
       setConnectionTestResult({ 
         success: result.success, 
         message: result.message 
       });
       
     } catch (error: any) {
-      console.error('Connection test error:', error);
+      console.error('[MachinesPage] Connection test error:', error);
       setConnectionTestResult({ 
         success: false, 
-        message: 'Could not reach backend. Is dev_server.py running?' 
+        message: error.message || 'Could not reach backend. Is dev_server.py running?' 
       });
     } finally {
       setTestingConnection(false);
@@ -595,10 +1069,14 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
   };
 
   const handleAddMachine = async () => {
+    if (!AuthTokens.isAuthenticated()) {
+      alert('Please login first to add machines');
+      return;
+    }
+
     const machineId = `M${Date.now()}`;
     const typeConfig = MACHINE_TYPES[newMachine.type];
     
-    // Add to local state for display
     const position = findAvailablePosition(1, 1);
     if (!position) {
       alert('No space available! Please remove machines or increase grid size.');
@@ -609,7 +1087,7 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
       id: machineId,
       name: newMachine.name || typeConfig.defaultName,
       type: newMachine.type,
-      status: 'yellow', // Connecting
+      status: 'yellow',
       metrics: [
         { label: 'Status', value: 'Connecting...' },
         { label: 'Connection', value: CONNECTION_CONFIGS[newMachine.connectionType]?.label || newMachine.connectionType }
@@ -622,7 +1100,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
       dateAdded: new Date().toISOString(),
       position: position,
       size: { width: 1, height: 1 },
-      // Store auth info
       username: newMachine.connectionType === 'network-prusalink' ? newMachine.username : undefined,
       password: newMachine.connectionType === 'network-prusalink' ? newMachine.password : undefined,
       apiKey: newMachine.connectionType === 'network-octoprint' ? newMachine.apiKey : undefined
@@ -634,7 +1111,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
       return newMachines;
     });
     
-    // Reset form
     setNewMachine({
       type: '3d-printer',
       name: '',
@@ -651,10 +1127,8 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
     setShowAddModal(false);
     setConnectionTestResult(null);
 
-    // Try to connect to backend if available (but don't fail if it's not)
     if (newMachine.connectionType.startsWith('network')) {
       try {
-        // Prepare the API request
         const apiRequest: any = {
           printer_id: machineId,
           name: newMachine.name || typeConfig.defaultName,
@@ -664,7 +1138,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
           notes: newMachine.notes
         };
 
-        // Add connection-specific fields
         if (newMachine.connectionType === 'network-prusalink') {
           apiRequest.url = newMachine.connectionDetails;
           apiRequest.username = newMachine.username;
@@ -674,41 +1147,59 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
           apiRequest.api_key = newMachine.apiKey;
         }
 
-        const response = await fetch('/api/v1/equipment/printers', {
+        console.log('[MachinesPage] Adding printer to backend:', apiRequest);
+
+        const response = await fetch(`${API_BASE_URL}/api/v1/equipment/printers`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify(apiRequest)
         });
 
         if (response.ok) {
-          // Update status after connection establishes
-          setTimeout(async () => {
+          const result = await response.json();
+          console.log('[MachinesPage] Printer added to backend:', result);
+          
+          // Start polling for real status immediately
+          const pollStatus = async (attempts = 0) => {
+            if (attempts > 10) return; // Give up after 10 attempts
+            
             try {
-              const statusResponse = await fetch(`/api/v1/equipment/printers/${machineId}`);
+              const statusResponse = await fetch(`${API_BASE_URL}/api/v1/equipment/printers/${machineId}`, {
+                headers: getAuthHeaders()
+              });
+              
               if (statusResponse.ok) {
                 const status = await statusResponse.json();
-                // Update machine status based on response
-                setMachines(prev => prev.map(m => 
-                  m.id === machineId 
-                    ? { 
-                        ...m, 
-                        status: status.connected ? 'green' : 'red',
-                        metrics: [
-                          { label: 'Status', value: status.state || 'Unknown' },
-                          { label: 'Temp', value: `${status.temperatures?.hotend?.current || 0}°C` }
-                        ]
-                      }
-                    : m
-                ));
+                console.log('[MachinesPage] Got printer status:', status);
+                updateMachineFromPrinterStatus(machineId, status);
+                
+                // If still connecting, poll again
+                if (!status.connected && attempts < 10) {
+                  setTimeout(() => pollStatus(attempts + 1), 2000);
+                }
               }
             } catch (error) {
-              console.error('Failed to get printer status:', error);
+              console.error('[MachinesPage] Failed to get printer status:', error);
+              // Retry
+              if (attempts < 10) {
+                setTimeout(() => pollStatus(attempts + 1), 2000);
+              }
             }
-          }, 2000);
+          };
+          
+          // Start polling after a short delay
+          setTimeout(() => pollStatus(), 1000);
+        } else {
+          const errorText = await response.text();
+          console.error('[MachinesPage] Failed to add printer to backend:', response.status, errorText);
+          if (response.status === 401) {
+            alert('Authentication expired. Please login again.');
+            AuthTokens.removeToken();
+            window.location.reload();
+          }
         }
       } catch (error) {
-        console.warn('Backend API not available, machine added locally only:', error);
-        // Update status to show it's offline since backend isn't available
+        console.warn('[MachinesPage] Backend API not available, machine added locally only:', error);
         setTimeout(() => {
           setMachines(prev => prev.map(m => 
             m.id === machineId 
@@ -724,29 +1215,30 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
           ));
         }, 2000);
       }
-    } else {
-      // For USB/Serial connections, mark as ready since they don't need backend
-      setTimeout(() => {
-        setMachines(prev => prev.map(m => 
-          m.id === machineId 
-            ? { 
-                ...m, 
-                status: 'green',
-                metrics: [
-                  { label: 'Status', value: 'Ready' },
-                  { label: 'Connection', value: CONNECTION_CONFIGS[newMachine.connectionType]?.label || newMachine.connectionType }
-                ]
-              }
-            : m
-        ));
-      }, 1000);
     }
   };
 
-  const handleDeleteMachine = (machineId: string) => {
+  const handleDeleteMachine = async (machineId: string) => {
     console.log('[MachinesPage] Deleting machine:', machineId);
+    
+    // Remove from local state immediately
     setMachines(prevMachines => prevMachines.filter(m => m.id !== machineId));
-    // The useEffect will handle saving automatically
+    
+    // Try to delete from backend if connected
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/equipment/printers/${machineId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      
+      if (response.ok) {
+        console.log('[MachinesPage] Machine deleted from backend');
+      } else {
+        console.warn('[MachinesPage] Failed to delete machine from backend:', response.status);
+      }
+    } catch (error) {
+      console.warn('[MachinesPage] Backend API not available, machine deleted locally only:', error);
+    }
   };
 
   const navigateToMachine = (machineId: string) => {
@@ -770,15 +1262,32 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
           <h1 className="text-2xl font-bold text-white mb-4">Machines</h1>
           <button
             onClick={() => setShowAddModal(true)}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors"
+            disabled={!AuthTokens.isAuthenticated()}
+            className={`w-full ${AuthTokens.isAuthenticated() 
+              ? 'bg-blue-600 hover:bg-blue-700' 
+              : 'bg-gray-600 cursor-not-allowed'} 
+              text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors`}
           >
             <FaPlus />
-            Add Machine
+            {AuthTokens.isAuthenticated() ? 'Add Machine' : 'Login to Add Machine'}
           </button>
         </div>
 
         {/* Controls */}
         <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+          {/* Auth Status */}
+          <AuthSection />
+
+          {/* Connection Status */}
+          <div className="bg-gray-700 rounded p-3">
+            <WebSocketStatus status={wsStatus} />
+            {wsStatus === 'failed' && (
+              <p className="text-xs text-gray-400 mt-1">
+                Polling for updates instead
+              </p>
+            )}
+          </div>
+
           {/* Filter */}
           <div>
             <div className="flex items-center gap-2 text-gray-300 mb-3">
@@ -1186,11 +1695,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
                       <span className="text-sm">{connectionTestResult.message}</span>
                     </div>
                   )}
-                  
-                  {/* Backend status note */}
-                  <p className="text-xs text-gray-500 mt-2">
-                    Note: Connection test is simulated. Backend API integration pending.
-                  </p>
                 </div>
               )}
 
