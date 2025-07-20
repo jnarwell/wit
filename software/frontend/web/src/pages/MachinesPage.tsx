@@ -74,7 +74,29 @@ const MACHINE_TYPES: Record<string, MachineTypeConfig> = {
 
 const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [machines, setMachines] = useState<Machine[]>([]);
+  const [machines, setMachines] = useState<Machine[]>(() => {
+  // Initialize from localStorage to prevent race condition
+  const saved = localStorage.getItem('wit-machines');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      console.log('[MachinesPage] Initial state from localStorage:', parsed.length, 'machines');
+      return parsed;
+    } catch (e) {
+      console.error('[MachinesPage] Failed to parse initial state:', e);
+      return [];
+    }
+  }
+  console.log('[MachinesPage] No saved machines, starting with empty array');
+  return [];
+});
+
+  useEffect(() => {
+  // Check what's in localStorage on every render
+  const stored = localStorage.getItem('wit-machines');
+  console.log('[MachinesPage] Current localStorage:', stored ? 'has data' : 'empty');
+}, []); // Run once to check initial state
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [gridSize, setGridSize] = useState({ cellWidth: 0, cellHeight: 0 });
@@ -91,6 +113,7 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
     model: '',
     notes: ''
   });
+  
 
   // Drag state
   const isDraggingRef = useRef(false);
@@ -123,24 +146,31 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
 
   // Load saved machines on mount
   useEffect(() => {
-    const saved = localStorage.getItem('wit-machines');
-    if (saved) {
-      try {
-        const parsedMachines = JSON.parse(saved);
-        setMachines(parsedMachines);
-      } catch (error) {
-        console.error('Failed to parse saved machines:', error);
-        localStorage.removeItem('wit-machines');
-      }
+  console.log('[MachinesPage] Component mounted, checking localStorage...');
+  const saved = localStorage.getItem('wit-machines');
+  
+  if (saved) {
+    try {
+      const parsedMachines = JSON.parse(saved);
+      console.log('[MachinesPage] Found', parsedMachines.length, 'saved machines');
+      setMachines(parsedMachines);
+    } catch (error) {
+      console.error('[MachinesPage] Failed to parse saved machines:', error);
+      localStorage.removeItem('wit-machines');
     }
-  }, []);
+  } else {
+    console.log('[MachinesPage] No saved machines found');
+  }
+}, []);
 
-  // Save machines to localStorage whenever they change
-  useEffect(() => {
-    // Always save the current state, even if empty
-    localStorage.setItem('wit-machines', JSON.stringify(machines));
-  }, [machines]);
-
+useEffect(() => {
+  console.log('[MachinesPage] Saving', machines.length, 'machines to localStorage');
+  localStorage.setItem('wit-machines', JSON.stringify(machines));
+  
+  // Verify it saved
+  const saved = localStorage.getItem('wit-machines');
+  console.log('[MachinesPage] Verified save:', saved ? JSON.parse(saved).length + ' machines' : 'null');
+}, [machines]);
   // Update machine details when type changes
   useEffect(() => {
     const typeConfig = MACHINE_TYPES[newMachine.type];
@@ -481,7 +511,11 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
       size: { width: 1, height: 1 }
     };
 
-    setMachines([...machines, newMachineData]);
+    setMachines(prevMachines => {
+    const newMachines = [...prevMachines, newMachineData];
+    console.log('[MachinesPage] Adding machine, new total:', newMachines.length);
+    return newMachines;
+  });
     
     // Reset form
     setNewMachine({
@@ -498,13 +532,10 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
   };
 
   const handleDeleteMachine = (machineId: string) => {
-    setMachines(prevMachines => {
-      const newMachines = prevMachines.filter(m => m.id !== machineId);
-      // Force immediate localStorage update
-      localStorage.setItem('wit-machines', JSON.stringify(newMachines));
-      return newMachines;
-    });
-  };
+  console.log('[MachinesPage] Deleting machine:', machineId);
+  setMachines(prevMachines => prevMachines.filter(m => m.id !== machineId));
+  // The useEffect will handle saving automatically
+};
 
   const navigateToMachine = (machineId: string) => {
     if (onNavigateToDetail) {

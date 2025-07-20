@@ -1,6 +1,9 @@
 // src/App.tsx
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
 import MachinesPage from './pages/MachinesPage';
@@ -9,6 +12,7 @@ import SensorsPage from './pages/SensorsPage';
 import MachineDetailPage from './pages/MachineDetailPage';
 import SensorDetailPage from './pages/SensorDetailPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
+import LoginPage from './pages/LoginPage';
 
 type Page = 'dashboard' | 'machines' | 'projects' | 'sensors' | 'wit' | 
            'machine-detail' | 'sensor-detail' | 'project-detail';
@@ -18,7 +22,7 @@ interface DetailPageState {
   previousPage: Page;
 }
 
-function App() {
+function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [detailPageState, setDetailPageState] = useState<DetailPageState | null>(null);
 
@@ -114,14 +118,29 @@ function App() {
   const showNavigation = !['machine-detail', 'sensor-detail', 'project-detail'].includes(currentPage);
 
   return (
-    <div className="App h-screen flex flex-col">
-      {showNavigation && (
-        <Navigation currentPage={currentPage} onNavigate={handleNavigate} />
-      )}
-      <main className="flex-1 overflow-auto">
-        {renderPage()}
-      </main>
-    </div>
+    <ProtectedRoute>
+      <div className="App h-screen flex flex-col">
+        {showNavigation && (
+          <Navigation currentPage={currentPage} onNavigate={handleNavigate} />
+        )}
+        <main className="flex-1 overflow-auto">
+          {renderPage()}
+        </main>
+      </div>
+    </ProtectedRoute>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/*" element={<AppContent />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
