@@ -367,30 +367,55 @@ async def test_serial_connection(port: str, baudrate: int = 115200) -> Dict[str,
 async def fetch_prusalink_data(printer_info: Dict[str, Any]) -> Dict[str, Any]:
     """Fetch real data from PrusaLink printer with enhanced status"""
     try:
-        # Log what we're trying to connect to
-        logger.info(f"Fetching PrusaLink data for printer {printer_info.get('id', 'unknown')}")
-        logger.info(f"URL: {printer_info.get('url', 'NO URL')}, Username: {printer_info.get('username', 'NO USERNAME')}")
+        # Comprehensive safety checks
+        if printer_info is None:
+            logger.error("printer_info is None in fetch_prusalink_data")
+            return {
+                "connected": False,
+                "state": {"text": "Invalid Configuration", "color": "red"},
+                "telemetry": {},
+                "error": "No printer configuration"
+            }
         
-        # Ensure we have required fields
-        if not printer_info.get("url"):
-            logger.error("No URL provided for PrusaLink printer")
+        if not isinstance(printer_info, dict):
+            logger.error(f"printer_info is not a dict: {type(printer_info)}")
+            return {
+                "connected": False,
+                "state": {"text": "Invalid Configuration Type", "color": "red"},
+                "telemetry": {},
+                "error": "Invalid configuration type"
+            }
+        
+        # Check required fields
+        url = printer_info.get("url")
+        if not url:
+            logger.error("No URL in printer_info")
+            return {
+                "connected": False,
+                "state": {"text": "No URL Configured", "color": "red"},
+                "telemetry": {},
+                "error": "Missing printer URL"
+            }
+            
+        password = printer_info.get("password")
+        if not password:
+            logger.warning("No password in printer_info")
+            return {
+                "connected": False,
+                "state": {"text": "No Password Configured", "color": "red"},
+                "telemetry": {},
+                "error": "Missing printer password"
+            }
+        
+        url = printer_info.get("url", "")
+        if not url:
             return {
                 "connected": False,
                 "state": {"text": "No URL configured", "color": "red"},
                 "telemetry": {},
                 "error": "Missing URL"
             }
-        
-        if not printer_info.get("password"):
-            logger.error("No password provided for PrusaLink printer")
-            return {
-                "connected": False,
-                "state": {"text": "No password configured", "color": "red"},
-                "telemetry": {},
-                "error": "Missing password"
-            }
-        
-        url = printer_info["url"].replace("http://", "").replace("https://", "").strip("/")
+        url = url.replace("http://", "").replace("https://", "").strip("/")
         auth = HTTPDigestAuth(printer_info.get("username", "maker"), printer_info["password"])
         
         logger.info(f"Connecting to PrusaLink at http://{url}/api/printer")
@@ -404,7 +429,6 @@ async def fetch_prusalink_data(printer_info: Dict[str, Any]) -> Dict[str, Any]:
         
         # Fetch job status
         job_data = None
-        job_response = None
         try:
             job_response = requests.get(
                 f"http://{url}/api/job",
@@ -418,16 +442,28 @@ async def fetch_prusalink_data(printer_info: Dict[str, Any]) -> Dict[str, Any]:
         
         if printer_response.status_code == 200:
             data = printer_response.json()
+            
+            # Validate response data
             if data is None:
                 logger.error("Printer API returned None")
                 return {
                     "connected": False,
                     "state": {"text": "Invalid API Response", "color": "red"},
-                    "telemetry": {}
+                    "telemetry": {},
+                    "error": "API returned None"
                 }
             
-            telemetry = data.get("telemetry", {}) if isinstance(data, dict) else {}
-            state = data.get("state", {}) if isinstance(data, dict) else {}
+            if not isinstance(data, dict):
+                logger.error(f"Printer API returned non-dict: {type(data)}")
+                return {
+                    "connected": False,
+                    "state": {"text": "Invalid API Response Type", "color": "red"},
+                    "telemetry": {},
+                    "error": f"API returned {type(data).__name__}"
+                }
+            
+            telemetry = data.get("telemetry", {})
+            state = data.get("state", {})
             
             # Parse state with job info
             state_text = state.get("text", "Unknown")
@@ -480,14 +516,30 @@ async def fetch_prusalink_data(printer_info: Dict[str, Any]) -> Dict[str, Any]:
             }
             
     except Exception as e:
-        logger.error(f"Error fetching PrusaLink data for {printer_info.get('id', 'unknown')}: {e}")
-        logger.error(f"URL was: {printer_info.get('url', 'NO URL')}")
-        logger.error(f"Full error: {type(e).__name__}: {str(e)}")
+        # Enhanced error handling to find NoneType issues
+        printer_id = "unknown"
+        try:
+            if printer_info and isinstance(printer_info, dict):
+                printer_id = printer_info.get('id', 'unknown')
+        except:
+            pass
+            
+        error_msg = str(e)
+        logger.error(f"Error fetching PrusaLink data for {printer_id}: {error_msg}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        logger.error(f"Printer info type: {type(printer_info)}")
+        
+        # Safe error response
         return {
             "connected": False,
-            "state": {"text": f"Connection Error: {str(e)[:50]}", "color": "red"},
-            "telemetry": {},
-            "error": str(e)
+            "state": {"text": f"Connection Error: {error_msg[:50]}", "color": "red"},
+            "telemetry": {
+                "temp-nozzle": 0,
+                "temp-bed": 0,
+                "temp-nozzle-target": 0,
+                "temp-bed-target": 0
+            },
+            "error": error_msg
         }
 
 async def get_real_printer_status(printer_id: str) -> Dict[str, Any]:
@@ -584,7 +636,18 @@ async def get_real_printer_status(printer_id: str) -> Dict[str, Any]:
             }
         }
     
-    return None
+    # Return a safe default status instead of None
+    return {
+        "connected": False,
+        "state": {"text": "Not Found", "color": "red"},
+        "telemetry": {
+            "temp-nozzle": 0,
+            "temp-bed": 0,
+            "temp-nozzle-target": 0,
+            "temp-bed-target": 0
+        },
+        "error": f"Printer {printer_id} not found"
+    }
 
 # ============== PRINTER ENDPOINTS ==============
 
@@ -800,32 +863,40 @@ async def list_printers():
 @app.get("/api/v1/equipment/printers/{printer_id}")
 async def get_printer_status(printer_id: str):
     """Get printer status - No auth required for read access"""
-    status = await get_real_printer_status(printer_id)
-    
-    if status is None:
-        logger.error(f"get_real_printer_status returned None for {printer_id}")
-        raise HTTPException(status_code=404, detail="Printer not found")
-    
-    if status:
-        # Get additional info from storage
-        printer_info = prusalink_printers.get(printer_id) or simulated_printers.get(printer_id, {})
+    try:
+        status = await get_real_printer_status(printer_id)
         
-        # Log printer_info for debugging
-        logger.info(f"Building response for printer {printer_id}, printer_info type: {type(printer_info)}")
+        # Ensure status is never None
+        if status is None:
+            logger.error(f"get_real_printer_status returned None for {printer_id}")
+            status = {
+                "connected": False,
+                "state": {"text": "Not Found", "color": "red"},
+                "telemetry": {},
+                "error": "Printer not found"
+            }
+            
+        # Get additional info from storage
+        printer_info = prusalink_printers.get(printer_id) or simulated_printers.get(printer_id) or {}
+        
+        # Ensure printer_info is always a dict
         if printer_info is None:
             logger.error(f"printer_info is None for {printer_id}")
             printer_info = {}
+        elif not isinstance(printer_info, dict):
+            logger.error(f"printer_info is not a dict for {printer_id}: {type(printer_info)}")
+            printer_info = {}
         
-        # Build the proper response for the frontend
+        # Build the proper response for the frontend - FIXED DICTIONARY
         response = {
             "id": printer_id,
-            "name": printer_info.get("name", "Unknown") if isinstance(printer_info, dict) else "Unknown",
+            "name": printer_info.get("name", "Unknown"),
             "manufacturer": printer_info.get("manufacturer", "Unknown"),
             "model": printer_info.get("model", "Unknown"),
             "connection_type": printer_info.get("connection_type", "unknown"),
             "connected": status.get("connected", False),
-            "state": status.get("state", {}).get("text", "Unknown"),
-            "state_color": status.get("state", {}).get("color", "red"),
+            "state": status.get("state", {}).get("text", "Unknown") if isinstance(status.get("state"), dict) else str(status.get("state", "Unknown")),
+            "state_color": status.get("state", {}).get("color", "red") if isinstance(status.get("state"), dict) else "red",
             "temperatures": {
                 "nozzle": {
                     "current": status.get("telemetry", {}).get("temp-nozzle", 0),
@@ -851,8 +922,10 @@ async def get_printer_status(printer_id: str):
         response["raw_telemetry"] = status.get("telemetry", {})
         
         return response
-    else:
-        raise HTTPException(status_code=404, detail="Printer not found")
+        
+    except Exception as e:
+        logger.error(f"Error getting printer status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/v1/equipment/printers/{printer_id}")
 async def delete_printer(
@@ -924,6 +997,37 @@ async def websocket_printer_updates(websocket: WebSocket):
         logger.error(f"WebSocket error: {e}")
         if websocket in active_websockets:
             active_websockets.remove(websocket)
+
+@app.websocket("/ws/printers/{printer_id}")
+async def websocket_printer_endpoint(websocket: WebSocket, printer_id: str):
+    """WebSocket endpoint for real-time printer updates"""
+    await websocket.accept()
+    logger.info(f"WebSocket connected for printer {printer_id}")
+    
+    try:
+        while True:
+            # Get printer status
+            status = await get_real_printer_status(printer_id)
+            
+            if status:
+                # Send status update
+                await websocket.send_json({
+                    "type": "status_update",
+                    "printer_id": printer_id,
+                    "data": status
+                })
+            
+            # Wait before next update
+            await asyncio.sleep(2)
+            
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for printer {printer_id}")
+    except Exception as e:
+        logger.error(f"WebSocket error for printer {printer_id}: {e}")
+        try:
+            await websocket.close()
+        except:
+            pass
 
 async def broadcast_printer_update(printer_id: str, deleted: bool = False):
     """Broadcast printer update to all WebSocket clients"""
