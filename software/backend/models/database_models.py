@@ -133,6 +133,28 @@ class Project(Base):
     jobs = relationship("Job", back_populates="project")
 
 
+
+
+class Task(Base):
+    """Task model for project tasks"""
+    __tablename__ = "tasks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    assigned_to = Column(Integer, ForeignKey("users.id"), nullable=True)
+    status = Column(String(50), default="pending")
+    priority = Column(String(20), default="medium")
+    due_date = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+    
+    # Relationships (add these to Project and User models too)
+    # project = relationship("Project", back_populates="tasks")
+    # assigned_user = relationship("User", back_populates="tasks")
+
 class Job(Base):
     """Manufacturing jobs/tasks"""
     __tablename__ = "jobs"
@@ -312,4 +334,122 @@ class SafetyEvent(Base):
     __table_args__ = (
         Index("idx_safety_severity_timestamp", "severity", "timestamp"),
         Index("idx_safety_resolved_timestamp", "resolved", "timestamp"),
+    )
+
+class Team(Base):
+    """Team model"""
+    __tablename__ = "teams"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False, unique=True)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    members = relationship("TeamMember", back_populates="team", cascade="all, delete-orphan")
+
+
+class TeamMember(Base):
+    """Team member association model"""
+    __tablename__ = "team_members"
+    
+    id = Column(Integer, primary_key=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    role = Column(String(50), default="member")
+    joined_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    team = relationship("Team", back_populates="members")
+    user = relationship("User", backref="team_memberships")
+    
+    # Unique constraint
+    __table_args__ = (
+        UniqueConstraint('team_id', 'user_id', name='_team_user_uc'),
+    )
+
+class ProjectMaterial(Base):
+    """Association between projects and materials"""
+    __tablename__ = "project_materials"
+    
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    material_id = Column(Integer, ForeignKey("materials.id"), nullable=False)
+    quantity_allocated = Column(Float, default=0.0)
+    quantity_used = Column(Float, default=0.0)
+    allocated_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    project = relationship("Project", backref="material_allocations")
+    material = relationship("Material", back_populates="projects")
+    
+    __table_args__ = (
+        UniqueConstraint('project_id', 'material_id', name='_project_material_uc'),
+    )
+
+
+class MaterialUsage(Base):
+    """Track material usage history"""
+    __tablename__ = "material_usage"
+    
+    id = Column(Integer, primary_key=True)
+    material_id = Column(Integer, ForeignKey("materials.id"), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    quantity = Column(Float, nullable=False)
+    action = Column(String(20), nullable=False)  # 'add', 'remove', 'adjust'
+    reason = Column(String(200), nullable=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    material = relationship("Material", back_populates="usage_history")
+    project = relationship("Project", backref="material_usage")
+    user = relationship("User", backref="material_actions")
+
+# File management models
+class ProjectFile(Base):
+    """Project file model"""
+    __tablename__ = "project_files"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    filename = Column(String(255), nullable=False)
+    file_path = Column(String(500), nullable=False)
+    file_type = Column(String(50), nullable=False)
+    file_size = Column(Integer, nullable=False)
+    mime_type = Column(String(100), nullable=True)
+    description = Column(Text, nullable=True)
+    uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+    file_metadata = Column(JSONB, default={})
+    
+    # Relationships
+    project = relationship("Project", backref="files")
+    uploader = relationship("User", backref="uploaded_files")
+    versions = relationship("FileVersion", back_populates="file", cascade="all, delete-orphan")
+
+
+class FileVersion(Base):
+    """File version history"""
+    __tablename__ = "file_versions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    file_id = Column(Integer, ForeignKey("project_files.id"), nullable=False)
+    version_number = Column(Integer, nullable=False)
+    file_path = Column(String(500), nullable=False)
+    file_size = Column(Integer, nullable=False)
+    checksum = Column(String(64), nullable=True)
+    uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    change_notes = Column(Text, nullable=True)
+    is_current = Column(Boolean, default=True)
+    
+    # Relationships
+    file = relationship("ProjectFile", back_populates="versions")
+    uploader = relationship("User", backref="file_versions")
+    
+    __table_args__ = (
+        UniqueConstraint('file_id', 'version_number', name='_file_version_uc'),
     )

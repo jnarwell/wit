@@ -9,7 +9,7 @@ from sqlalchemy import select, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .database_services import DatabaseService
-from ..models.database_models import (
+from models.database_models import (
     User, Equipment, Project, Job, Material, 
     CommandHistory, Telemetry, SafetyEvent
 )

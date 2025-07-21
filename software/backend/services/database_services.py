@@ -549,3 +549,21 @@ async def main():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
+
+# Imports for dependency injection
+from typing import AsyncGenerator
+import os
+
+# Create a global database service instance
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./wit.db")
+db_service = DatabaseService(DATABASE_URL)
+
+# Standalone get_session function for FastAPI dependency injection
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    """Get database session - FastAPI dependency"""
+    # Initialize if needed
+    if not db_service.connected:
+        await db_service.connect()
+    
+    async with db_service.get_session() as session:
+        yield session

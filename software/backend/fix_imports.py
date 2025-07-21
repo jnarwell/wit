@@ -1,98 +1,51 @@
 #!/usr/bin/env python3
-"""
-Fix imports and dependencies for SQLite mode
-
-File: software/backend/fix_imports.py
-"""
+"""Fix the imports in dev_server.py"""
 
 import os
-import sys
-import subprocess
 
-def main():
-    print("=== Fixing imports and dependencies ===\n")
-    
-    # First, ensure we have pip
-    try:
-        import pip
-    except ImportError:
-        print("Installing pip...")
-        subprocess.check_call([sys.executable, "-m", "ensurepip"])
-    
-    # Install critical dependencies one by one
-    critical_deps = [
-        "pydantic==2.5.0",
-        "pydantic-settings==2.1.0",
-        "python-dotenv==1.0.0",
-        "sqlalchemy==2.0.23",
-        "aiosqlite==0.19.0"
-    ]
-    
-    for dep in critical_deps:
-        print(f"Installing {dep}...")
-        try:
-            subprocess.check_call([
-                sys.executable, "-m", "pip", "install", dep
-            ])
-            print(f"✓ {dep} installed successfully")
-        except subprocess.CalledProcessError as e:
-            print(f"✗ Failed to install {dep}: {e}")
-    
-    # Create a minimal config.py if needed
-    if not os.path.exists("config.py"):
-        print("\nCreating minimal config.py...")
-        with open("config.py", "w") as f:
-            f.write('''"""
-Minimal W.I.T. Configuration for SQLite
-"""
-import os
-from pathlib import Path
+# Read the current dev_server.py
+with open("dev_server.py", "r") as f:
+    content = f.read()
 
-class Settings:
-    # Application
-    APP_NAME = "W.I.T. Terminal"
-    APP_VERSION = "0.1.0"
-    DEBUG = True
-    
-    # API
-    API_V1_STR = "/api/v1"
-    PROJECT_NAME = "W.I.T. Terminal API"
-    
-    # Security
-    SECRET_KEY = os.getenv("WIT_SECRET_KEY", "change-this-secret-key")
-    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "change-this-jwt-secret")
-    JWT_ALGORITHM = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
-    
-    # Database - SQLite
-    DATABASE_URL = f"sqlite:///{Path(__file__).parent}/data/wit_local.db"
-    STORAGE_MODE = "local"
-    
-    # File Storage
-    FILE_STORAGE_PATH = "storage/files"
-    MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
-    
-    # CORS
-    BACKEND_CORS_ORIGINS = ["http://localhost:3000", "http://localhost:5173"]
+# Check if fix already applied
+if "sys.path.insert" in content:
+    print("✅ Import fix already applied!")
+    exit(0)
 
-settings = Settings()
-''')
-        print("✓ Created minimal config.py")
-    
-    # Create necessary __init__.py files
-    dirs_needing_init = ["auth", "models", "services", "routers", "schemas"]
-    for dir_name in dirs_needing_init:
-        os.makedirs(dir_name, exist_ok=True)
-        init_file = os.path.join(dir_name, "__init__.py")
-        if not os.path.exists(init_file):
-            with open(init_file, "w") as f:
-                f.write("")
-            print(f"✓ Created {init_file}")
-    
-    print("\n✓ Import fixes completed!")
-    print("\nNow run:")
-    print("  chmod +x quick_setup_sqlite.sh")
-    print("  ./quick_setup_sqlite.sh")
+# Find where to insert (after the docstring)
+lines = content.split('\n')
+insert_index = 0
 
-if __name__ == "__main__":
-    main()
+# Skip shebang and docstring
+for i, line in enumerate(lines):
+    if i == 0 and line.startswith("#!"):
+        continue
+    if line.strip().startswith('"""') and i > 0:
+        # Find the closing docstring
+        for j in range(i+1, len(lines)):
+            if '"""' in lines[j]:
+                insert_index = j + 1
+                break
+        break
+    elif not line.strip().startswith('"""') and not line.startswith("#!"):
+        insert_index = i
+        break
+
+# Insert the fix
+fix_code = [
+    "",
+    "import sys",
+    "import os",
+    "# Fix imports by adding current directory to Python path",
+    "sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))",
+    ""
+]
+
+lines[insert_index:insert_index] = fix_code
+
+# Write back
+with open("dev_server.py", "w") as f:
+    f.write('\n'.join(lines))
+
+print("✅ Fixed imports in dev_server.py!")
+print("🚀 Now run: python dev_server.py")

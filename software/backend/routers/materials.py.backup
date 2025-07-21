@@ -14,10 +14,10 @@ from sqlalchemy import select, and_, or_, func, update
 from uuid import UUID
 from decimal import Decimal
 
-from services.database_services import get_session
-from models.database_models import Project, User, Material, ProjectMaterial, MaterialUsage
-from auth.dependencies import get_current_user
-from schemas.material_schemas import (
+from ..services.database_services import get_session
+from ..models.database_models import Project, User, Material, ProjectMaterial, MaterialUsage
+from ..auth.dependencies import get_current_user
+from ..schemas.material_schemas import (
     MaterialCreate,
     MaterialUpdate,
     MaterialResponse,
