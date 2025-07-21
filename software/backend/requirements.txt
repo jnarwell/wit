@@ -1,29 +1,71 @@
+# W.I.T. Backend Requirements
+# File: software/backend/requirements.txt
+
+# Core Framework
 fastapi==0.104.1
-uvicorn==0.24.0
+uvicorn[standard]==0.24.0
 pydantic==2.5.0
-sqlalchemy==2.0.23
-asyncpg==0.29.0
-redis==5.0.1
-paho-mqtt==1.6.1
-numpy==1.26.2
-opencv-python==4.8.1
-torch==2.1.1
-onnxruntime==1.16.3
-whisper==1.1.10
-pytest==7.4.3
-pytest-asyncio==0.21.1
-black==23.11.0
-flake8==6.1.0
-alembic==1.12.1
+pydantic-settings==2.1.0
 python-multipart==0.0.6
+
+# Database
+sqlalchemy==2.0.23
+asyncpg==0.29.0           # PostgreSQL async driver
+aiosqlite==0.19.0         # SQLite async driver
+alembic==1.13.1           # Database migrations
+psycopg2-binary==2.9.9    # PostgreSQL driver for Alembic
+
+# Authentication & Security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+python-dotenv==1.0.0
 
-# Database dependencies
-aiosqlite==0.19.0
-asyncpg==0.29.0
-alembic==1.13.1
+# Redis & Caching
+redis==5.0.1
+aiocache==0.12.2
 
-# MQTT dependencies
+# MQTT for IoT
+paho-mqtt==1.6.1
 asyncio-mqtt==0.16.2
+
+# HTTP & Networking
 aiohttp==3.9.1
+httpx==0.25.2
+
+# File Handling
+aiofiles==23.2.1
+python-magic==0.4.27
+
+# Data Processing
+numpy==1.26.2
+pandas==2.1.4
+
+# Computer Vision (optional, for vision features)
+opencv-python==4.8.1
+# torch==2.1.1            # Uncomment for PyTorch support
+# onnxruntime==1.16.3     # Uncomment for ONNX support
+
+# Voice Processing (optional, for voice features)
+# whisper==1.1.10         # Uncomment for voice transcription
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3
+click==8.1.7
+
+# Development & Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+black==23.11.0
+flake8==6.1.0
+mypy==1.7.1
+pre-commit==3.5.0
+
+# Logging & Monitoring
+loguru==0.7.2
+sentry-sdk==1.39.1        # Optional, for error tracking
+
+# API Documentation
+mkdocs==1.5.3
+mkdocs-material==9.5.3

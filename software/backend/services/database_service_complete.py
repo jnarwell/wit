@@ -1,9 +1,9 @@
 """
-W.I.T. Database Service - SQLite Compatible
+W.I.T. Database Service
 
-File: software/backend/services/database_service.py
+File: software/backend/services/database_service_complete.py
 
-Database initialization and session management for SQLite
+Complete database initialization and session management
 """
 
 import os
@@ -14,10 +14,10 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine, AsyncSession, async_sessionmaker, AsyncEngine
 )
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.pool import NullPool
 from sqlalchemy import text, event
+import asyncpg
 from datetime import datetime
-
-# Don't import asyncpg for SQLite!
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +38,12 @@ class DatabaseService:
         
         try:
             # Convert URL for async
-            if database_url.startswith("sqlite://"):
+            if database_url.startswith("postgresql://"):
+                database_url = database_url.replace("postgresql://", "postgresql+asyncpg://")
+            elif database_url.startswith("sqlite://"):
                 database_url = database_url.replace("sqlite://", "sqlite+aiosqlite://")
             
-            # Create engine with SQLite settings
+            # Create engine with appropriate settings
             if "sqlite" in database_url:
                 # SQLite settings
                 self.engine = create_async_engine(
@@ -49,19 +51,27 @@ class DatabaseService:
                     echo=echo,
                     connect_args={
                         "check_same_thread": False,
+                        "timeout": 30
                     }
                 )
-                
-                # Enable foreign keys for SQLite
-                @event.listens_for(self.engine.sync_engine, "connect")
-                def set_sqlite_pragma(dbapi_conn, connection_record):
-                    cursor = dbapi_conn.cursor()
-                    cursor.execute("PRAGMA foreign_keys=ON")
-                    cursor.close()
-                    
             else:
-                # PostgreSQL settings (if needed later)
-                raise ValueError("Only SQLite is supported in this version")
+                # PostgreSQL settings
+                self.engine = create_async_engine(
+                    database_url,
+                    echo=echo,
+                    pool_size=20,
+                    max_overflow=10,
+                    pool_pre_ping=True,
+                    pool_recycle=3600,
+                    connect_args={
+                        "server_settings": {
+                            "application_name": "wit_backend",
+                            "jit": "off"
+                        },
+                        "command_timeout": 60,
+                        "timeout": 30
+                    }
+                )
             
             # Create session factory
             self.async_session = async_sessionmaker(
@@ -86,6 +96,11 @@ class DatabaseService:
             from models.database_models_extended import Base
             
             async with self.engine.begin() as conn:
+                # Enable extensions for PostgreSQL
+                if "postgresql" in str(self.engine.url):
+                    await conn.execute(text("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"))
+                    await conn.execute(text("CREATE EXTENSION IF NOT EXISTS \"pg_trgm\";"))
+                
                 # Create all tables
                 await conn.run_sync(Base.metadata.create_all)
                 
@@ -101,23 +116,23 @@ class DatabaseService:
     async def create_initial_data(self):
         """Create initial data like default admin user"""
         try:
-            async with self.session() as session:
+            async with self.get_session() as session:
                 from models.database_models_extended import User, Tag
                 from auth.security import get_password_hash
-                from sqlalchemy import select
                 
                 # Check if admin exists
-                result = await session.execute(
-                    select(User).where(User.username == "admin")
+                admin_query = await session.execute(
+                    text("SELECT COUNT(*) FROM users WHERE username = :username"),
+                    {"username": "admin"}
                 )
-                admin_exists = result.scalar_one_or_none()
+                admin_exists = admin_query.scalar() > 0
                 
                 if not admin_exists:
                     # Create admin user
                     admin = User(
                         username="admin",
                         email="admin@wit.local",
-                        hashed_password=get_password_hash("changeme123"),
+                        hashed_password=get_password_hash("admin123"),
                         is_admin=True,
                         is_active=True
                     )
@@ -134,13 +149,8 @@ class DatabaseService:
                     ]
                     
                     for tag_data in default_tags:
-                        # Check if tag exists
-                        tag_result = await session.execute(
-                            select(Tag).where(Tag.name == tag_data["name"])
-                        )
-                        if not tag_result.scalar_one_or_none():
-                            tag = Tag(**tag_data)
-                            session.add(tag)
+                        tag = Tag(**tag_data)
+                        session.add(tag)
                     
                     await session.commit()
                     logger.info("Initial data created successfully")
@@ -170,7 +180,7 @@ class DatabaseService:
     async def health_check(self) -> bool:
         """Check database health"""
         try:
-            async with self.session() as session:
+            async with self.get_session() as session:
                 result = await session.execute(text("SELECT 1"))
                 return result.scalar() == 1
         except Exception as e:
@@ -224,44 +234,58 @@ class DatabaseUtils:
         """Get database table statistics"""
         stats = {}
         
-        # SQLite query for table stats
-        query = """
-            SELECT 
-                name as tablename,
-                (SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=m.name) as row_count
-            FROM sqlite_master m
-            WHERE type='table' AND name NOT LIKE 'sqlite_%'
-            ORDER BY name;
-        """
+        if "postgresql" in str(db_service.engine.url):
+            query = """
+                SELECT 
+                    tablename,
+                    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size,
+                    n_live_tup as row_count
+                FROM pg_stat_user_tables
+                ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+            """
+        else:
+            # SQLite query
+            query = """
+                SELECT 
+                    name as tablename,
+                    '' as size,
+                    (SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=m.name) as row_count
+                FROM sqlite_master m
+                WHERE type='table' AND name NOT LIKE 'sqlite_%'
+                ORDER BY name;
+            """
         
         results = await DatabaseUtils.execute_query(query)
         
         for row in results:
-            # For each table, get actual row count
-            count_query = f"SELECT COUNT(*) FROM {row[0]}"
-            count_result = await DatabaseUtils.execute_query(count_query)
             stats[row[0]] = {
-                "row_count": count_result[0][0] if count_result else 0
+                "size": row[1],
+                "row_count": row[2]
             }
         
         return stats
     
     @staticmethod
     async def backup_database(backup_path: str):
-        """Backup the SQLite database"""
-        import shutil
-        db_path = "data/wit_local.db"
-        if os.path.exists(db_path):
+        """Backup the database"""
+        if "sqlite" in str(db_service.engine.url):
+            # SQLite backup
+            import shutil
+            db_path = str(db_service.engine.url).replace("sqlite+aiosqlite:///", "")
             shutil.copy2(db_path, backup_path)
             logger.info(f"Database backed up to {backup_path}")
         else:
-            logger.error("Database file not found")
+            # PostgreSQL backup would require pg_dump
+            logger.warning("PostgreSQL backup not implemented - use pg_dump")
     
     @staticmethod
     async def vacuum_database():
         """Vacuum/optimize the database"""
         async with db_service.session() as session:
-            await session.execute(text("VACUUM;"))
+            if "postgresql" in str(db_service.engine.url):
+                await session.execute(text("VACUUM ANALYZE;"))
+            else:
+                await session.execute(text("VACUUM;"))
             logger.info("Database vacuumed successfully")
 
 

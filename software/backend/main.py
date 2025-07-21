@@ -24,6 +24,14 @@ from .api.workspace_api import router as workspace_router
 from .api.system_api import router as system_router
 from .api.network_api import router as network_router
 
+from .routers import projects, tasks, teams, materials, files
+
+app.include_router(projects.router)
+app.include_router(tasks.router)
+app.include_router(teams.router)
+app.include_router(materials.router)
+app.include_router(files.router)
+
 
 # Import services with relative imports
 from .services.database_services import DatabaseService

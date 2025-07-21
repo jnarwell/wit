@@ -1,0 +1,47 @@
+# W.I.T. Backend Requirements - SQLite Mode
+# File: software/backend/requirements-sqlite.txt
+
+# Core Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+python-multipart==0.0.6
+
+# Database - SQLite only
+sqlalchemy==2.0.23
+aiosqlite==0.19.0         # SQLite async driver
+alembic==1.13.1           # Database migrations
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.0
+
+# Redis & Caching (optional)
+# redis==5.0.1
+# aiocache==0.12.2
+
+# MQTT for IoT (optional)
+# paho-mqtt==1.6.1
+# asyncio-mqtt==0.16.2
+
+# HTTP & Networking
+aiohttp==3.9.1
+httpx==0.25.2
+
+# File Handling
+aiofiles==23.2.1
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3
+click==8.1.7
+
+# Development & Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+
+# Logging
+loguru==0.7.2
