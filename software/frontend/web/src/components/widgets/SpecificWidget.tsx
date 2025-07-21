@@ -1,6 +1,6 @@
 // src/components/widgets/SpecificWidget.tsx
 import React from 'react';
-import { FaTimes, FaCog, FaProjectDiagram, FaMicrochip } from 'react-icons/fa';
+import { FaTimes, FaCog, FaProjectDiagram, FaMicrochip, FaThermometerHalf, FaCube, FaPrint, FaClock } from 'react-icons/fa';
 
 interface SpecificWidgetProps {
   type: 'project' | 'machine' | 'sensor';
@@ -36,6 +36,16 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
       case 'green': return 'bg-green-500';
       case 'yellow': return 'bg-yellow-500';
       case 'red': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  const getStatusGlow = () => {
+    switch (widgetData.status) {
+      case 'green': return 'shadow-green-500/50';
+      case 'yellow': return 'shadow-yellow-500/50';
+      case 'red': return 'shadow-red-500/50';
+      default: return '';
     }
   };
 
@@ -62,20 +72,72 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
       .join(' ');
   };
 
+  // Get icon for metric based on label
+  const getMetricIcon = (label: string) => {
+    switch (label.toLowerCase()) {
+      case 'nozzle':
+      case 'bed':
+        return <FaThermometerHalf className="w-3 h-3" />;
+      case 'status':
+        return <FaCube className="w-3 h-3" />;
+      case 'job':
+        return <FaPrint className="w-3 h-3" />;
+      case 'time left':
+        return <FaClock className="w-3 h-3" />;
+      default:
+        return null;
+    }
+  };
+
+  // Get metric color based on content and status
+  const getMetricValueColor = (metric: { label: string; value: string }) => {
+    const label = metric.label.toLowerCase();
+    const value = metric.value.toLowerCase();
+    
+    // Status-based coloring
+    if (label === 'status') {
+      if (value.includes('printing') || value.includes('busy')) {
+        return 'text-yellow-400';
+      } else if (value.includes('ready') || value.includes('idle') || value.includes('operational')) {
+        return 'text-green-400';
+      } else if (value.includes('offline') || value.includes('error') || value.includes('disconnected')) {
+        return 'text-red-400';
+      } else if (value.includes('paused') || value.includes('attention')) {
+        return 'text-orange-400';
+      }
+    }
+    
+    // Temperature coloring
+    if (label === 'nozzle' || label === 'bed') {
+      const temp = parseFloat(value);
+      if (temp > 100) {
+        return 'text-orange-400';
+      } else if (temp > 50) {
+        return 'text-yellow-400';
+      }
+    }
+    
+    // Progress coloring
+    if (label === 'progress') {
+      const progress = parseFloat(value);
+      if (progress >= 90) {
+        return 'text-green-400';
+      } else if (progress >= 50) {
+        return 'text-yellow-400';
+      }
+    }
+    
+    return 'text-white';
+  };
+
   // Get relevant details based on type
   const getRelevantDetails = () => {
     const details: { label: string; value: string }[] = [];
     
     if (type === 'machine' && widgetData) {
-      if (widgetData.manufacturer) {
-        details.push({ label: 'Manufacturer', value: widgetData.manufacturer });
-      }
-      if (widgetData.model) {
-        details.push({ label: 'Model', value: widgetData.model });
-      }
-      if (widgetData.connectionType) {
-        details.push({ label: 'Connection', value: widgetData.connectionType.toUpperCase() });
-      }
+      // For machines, we'll use the metrics array instead
+      // as it contains the real-time data
+      return [];
     } else if (type === 'sensor' && widgetData) {
       if (widgetData.manufacturer) {
         details.push({ label: 'Manufacturer', value: widgetData.manufacturer });
@@ -134,11 +196,28 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
   const relevantDetails = getRelevantDetails();
   const allMetrics = [...(widgetData.metrics || []), ...relevantDetails];
 
+  // For machines, prioritize specific metrics
+  const prioritizedMetrics = type === 'machine' 
+    ? allMetrics.filter(m => ['status', 'nozzle', 'bed', 'progress', 'job', 'time left'].includes(m.label.toLowerCase()))
+    : allMetrics;
+
+  // Ensure we show the most important metrics first
+  const sortedMetrics = type === 'machine'
+    ? prioritizedMetrics.sort((a, b) => {
+        const order = ['status', 'nozzle', 'bed', 'progress', 'job', 'time left'];
+        const aIndex = order.indexOf(a.label.toLowerCase());
+        const bIndex = order.indexOf(b.label.toLowerCase());
+        if (aIndex === -1) return 1;
+        if (bIndex === -1) return -1;
+        return aIndex - bIndex;
+      })
+    : prioritizedMetrics;
+
   return (
     <div className="h-full relative group" style={{ position: 'relative', ...style }}>
       {/* Main content */}
       <div 
-        className="h-full bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden hover:border-gray-600 transition-all cursor-pointer select-none"
+        className={`h-full bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden hover:border-gray-600 transition-all cursor-pointer select-none ${getStatusGlow()} shadow-lg`}
         onClick={handleContentClick}
       >
         {/* Widget header */}
@@ -152,7 +231,7 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
                 {widgetData.name}
               </h3>
             </div>
-            <div className={`w-3 h-3 rounded-full ${getStatusColor()}`} />
+            <div className={`w-3 h-3 rounded-full ${getStatusColor()} animate-pulse`} />
           </div>
         </div>
         
@@ -165,25 +244,32 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
         
         {/* Widget body */}
         <div className="px-4 pb-4">
-          {allMetrics.length > 0 && (
+          {sortedMetrics.length > 0 && (
             <div className="space-y-1.5 mt-3">
-              {allMetrics.slice(0, 4).map((metric, index) => (
+              {sortedMetrics.slice(0, 5).map((metric, index) => (
                 <div key={index} className="flex justify-between items-center">
-                  <span className="text-gray-400 text-xs">{metric.label}:</span>
-                  <span className="text-white text-xs font-medium truncate ml-2" style={{ maxWidth: '60%' }}>
+                  <div className="flex items-center gap-1.5">
+                    {getMetricIcon(metric.label) && (
+                      <span className="text-gray-400">
+                        {getMetricIcon(metric.label)}
+                      </span>
+                    )}
+                    <span className="text-gray-400 text-xs">{metric.label}:</span>
+                  </div>
+                  <span className={`text-xs font-medium truncate ml-2 ${getMetricValueColor(metric)}`} style={{ maxWidth: '60%' }}>
                     {metric.value}
                   </span>
                 </div>
               ))}
-              {allMetrics.length > 4 && (
+              {sortedMetrics.length > 5 && (
                 <div className="text-center text-gray-500 text-xs mt-1">
-                  +{allMetrics.length - 4} more...
+                  +{sortedMetrics.length - 5} more...
                 </div>
               )}
             </div>
           )}
           
-          {allMetrics.length === 0 && (
+          {sortedMetrics.length === 0 && (
             <div className="text-center text-gray-500 text-sm mt-3">
               No data available
             </div>

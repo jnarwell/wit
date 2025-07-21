@@ -385,13 +385,15 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
         if (machine.id === printerId) {
           // Determine status color based on printer state
           let statusColor: 'green' | 'yellow' | 'red' = 'red';
-          const stateText = status.state?.text?.toLowerCase() || '';
+          const stateText = (status.state?.text || status.state || '').toLowerCase();
           
           if (status.connected) {
-            if (stateText.includes('ready') || stateText.includes('operational')) {
+            if (stateText.includes('ready') || stateText.includes('operational') || stateText.includes('idle')) {
               statusColor = 'green';
             } else if (stateText.includes('printing') || stateText.includes('busy')) {
               statusColor = 'yellow';
+            } else if (stateText.includes('error') || stateText.includes('offline')) {
+              statusColor = 'red';
             } else {
               statusColor = 'yellow';
             }
@@ -403,16 +405,19 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
           // Status
           metrics.push({ 
             label: 'Status', 
-            value: status.state?.text || 'Unknown' 
+            value: status.state?.text || status.state || 'Unknown' 
           });
           
-          // Temperatures
-          if (status.telemetry) {
-            const nozzleTemp = status.telemetry['temp-nozzle'] || 0;
-            const nozzleTarget = status.telemetry['temp-nozzle-target'] || 0;
-            const bedTemp = status.telemetry['temp-bed'] || 0;
-            const bedTarget = status.telemetry['temp-bed-target'] || 0;
-            
+          // Temperatures - check multiple possible locations
+          const telemetry = status.telemetry || status.raw_telemetry || {};
+          const temps = status.temperatures || {};
+          
+          const nozzleTemp = telemetry['temp-nozzle'] || temps.nozzle?.current || 0;
+          const nozzleTarget = telemetry['temp-nozzle-target'] || temps.nozzle?.target || 0;
+          const bedTemp = telemetry['temp-bed'] || temps.bed?.current || 0;
+          const bedTarget = telemetry['temp-bed-target'] || temps.bed?.target || 0;
+          
+          if (nozzleTemp !== undefined || bedTemp !== undefined) {
             metrics.push({ 
               label: 'Nozzle', 
               value: nozzleTarget > 0 
@@ -589,7 +594,18 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
       });
       
       if (response.ok) {
-        const status = await response.json();
+        const data = await response.json();
+        console.log('[MachinesPage] Got printer status:', data);
+        
+        // Map the response to the expected format
+        const status = {
+          connected: data.connected,
+          state: { text: data.state || 'Unknown' },
+          telemetry: data.raw_telemetry || {},
+          job: data.job,
+          temperatures: data.temperatures
+        };
+        
         updateMachineFromPrinterStatus(printerId, status);
       }
     } catch (error) {
