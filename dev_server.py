@@ -69,6 +69,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
+
 
 # ============== AUTH MODELS ==============
 
@@ -88,6 +90,14 @@ class UserInDB(User):
 class UserLogin(BaseModel):
     username: str
     password: str
+
+class SetTemperatureRequest(BaseModel):
+    temperature: float
+    target: str  # "nozzle" or "bed"
+class PrusaConnectCommand(BaseModel):
+    command: str
+    kwargs: Dict[str, Any] = {}
+    
 
 # ============== USER DATABASE ==============
 
@@ -162,6 +172,23 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
     return User(**user_dict)
 
+async def get_current_user_optional(token: str = Depends(oauth2_scheme_optional)):
+    """Get current user if token provided, otherwise return None"""
+    if not token:
+        return None
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            return None
+    except JWTError:
+        return None
+    
+    user = get_user(fake_users_db, username=username)
+    return user
+
+# Also add this optional OAuth2 scheme
 async def get_current_active_user(current_user: User = Depends(get_current_user)):
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
@@ -227,21 +254,26 @@ class PrinterAddRequest(BaseModel):
 
 # ============== STATUS PARSING FUNCTIONS ==============
 
+# Replace the parse_printer_state function in dev_server.py with this version
+
 def parse_printer_state(state_text: str, job_data: Dict[str, Any] = None) -> str:
-    """Parse printer state to standard format with progress"""
+    """Parse printer state to display format, preserving actual states"""
+    if not state_text:
+        return "Unknown"
+        
     state_lower = state_text.lower()
     
-    # If printing, include progress
+    # Special handling for printing state with progress
     if "printing" in state_lower and job_data:
         progress = job_data.get("progress", {}).get("completion", 0)
         if progress is not None and progress > 0:
             return f"Printing {int(progress)}%"
     
-    # Map PrusaLink states to our standard states
+    # Map states to more user-friendly terms
     state_map = {
-        "idle": "Ready",
-        "ready": "Ready",
-        "operational": "Ready",
+        "idle": "Idle",
+        "ready": "Idle",  # Map ready to idle for consistency
+        "operational": "Idle",  # Map operational to idle for clarity
         "busy": "Busy",
         "printing": "Printing",
         "paused": "Paused",
@@ -251,31 +283,75 @@ def parse_printer_state(state_text: str, job_data: Dict[str, Any] = None) -> str
         "stopped": "Stopped",
         "error": "Error",
         "attention": "Attention Required",
-        "offline": "Offline"
+        "offline": "Offline",
+        "finishing": "Finishing",
+        "changing": "Changing Filament",
+        "connecting": "Connecting",
+        "disconnected": "Disconnected",
+        "closed": "Connection Closed",
+        "transferring file": "Transferring File",
+        "maintenance": "Maintenance Mode",
+        "calibrating": "Calibrating",
+        "heating": "Heating",
+        "cooling": "Cooling",
+        "sd_ready": "SD Card Ready",
+        "sd_printing": "Printing from SD",
+        "loading filament": "Loading Filament",
+        "unloading filament": "Unloading Filament"
     }
     
-    for key, value in state_map.items():
-        if key in state_lower:
-            return value
-    
-    # Return original if no match
-    return state_text
-
+    # Return mapped state or original with title case
+    return state_map.get(state_lower, state_text.title())
+# Keep the get_status_color function the same but update it to handle more states
 def get_status_color(state: str) -> str:
     """Determine status color based on printer state"""
     state_lower = state.lower()
     
-    # Green states - printer is ready or successfully printing
-    if any(s in state_lower for s in ["ready", "idle", "printing", "operational"]):
+    # Green states - printer is ready
+    if any(s in state_lower for s in ["ready", "idle", "operational", "finished", "sd_ready"]):
         return "green"
     
-    # Yellow states - printer needs attention or is in transition
-    elif any(s in state_lower for s in ["paused", "pausing", "busy", "attention", "finished", "cancelling"]):
+    # Yellow states - printer is active or needs attention  
+    elif any(s in state_lower for s in ["printing", "busy", "paused", "pausing", "attention", 
+                                        "heating", "cooling", "calibrating", "changing", 
+                                        "loading", "unloading", "maintenance", "finishing",
+                                        "transferring"]):
         return "yellow"
     
     # Red states - printer has error or is offline
-    elif any(s in state_lower for s in ["error", "offline", "stopped", "disconnected"]):
+    elif any(s in state_lower for s in ["error", "offline", "stopped", "disconnected", 
+                                        "closed", "cancelling"]):
         return "red"
+    
+    # Gray states - printer is in transition
+    elif any(s in state_lower for s in ["connecting", "detecting"]):
+        return "gray"
+    
+    # Default to yellow for unknown states
+    return "yellow"
+def get_status_color(state: str) -> str:
+    """Determine status color based on printer state"""
+    state_lower = state.lower()
+    
+    # Green states - printer is ready or successfully completed
+    if any(s in state_lower for s in ["ready", "idle", "operational", "finished", "sd_ready"]):
+        return "green"
+    
+    # Yellow states - printer is active or needs attention
+    elif any(s in state_lower for s in ["printing", "busy", "paused", "pausing", "attention", 
+                                        "heating", "cooling", "calibrating", "changing", 
+                                        "loading", "unloading", "maintenance", "finishing",
+                                        "transferring"]):
+        return "yellow"
+    
+    # Red states - printer has error or is offline
+    elif any(s in state_lower for s in ["error", "offline", "stopped", "disconnected", 
+                                        "closed", "cancelling"]):
+        return "red"
+    
+    # Gray states - printer is in transition
+    elif any(s in state_lower for s in ["connecting", "detecting"]):
+        return "gray"
     
     # Default to yellow for unknown states
     return "yellow"
@@ -710,7 +786,8 @@ async def get_real_printer_status(printer_id: str) -> Dict[str, Any]:
                 base_temp = min(base_temp + random.uniform(0.5, 2), printer.get("target_temp", 200))
                 printer["base_temp"] = base_temp
             
-            state_text = printer.get("state", "Ready")
+            state_text = printer.get("state", "Idle")
+            
             
             return {
                 "connected": True,
@@ -725,7 +802,16 @@ async def get_real_printer_status(printer_id: str) -> Dict[str, Any]:
                     "temp-bed-target": 0
                 }
             }
-        
+        if printer_id in simulated_printers:
+            sim_data = simulated_printers[printer_id]
+            
+            # Update telemetry with target temps if they exist
+            if "target_nozzle" in sim_data:
+                status["telemetry"]["temp-nozzle-target"] = sim_data["target_nozzle"]
+            if "target_bed" in sim_data:
+                status["telemetry"]["temp-bed-target"] = sim_data["target_bed"]
+                
+            return status
         # Return a safe default status instead of None
         logger.warning(f"Printer {printer_id} not found in any storage")
         return {
@@ -753,6 +839,7 @@ async def get_real_printer_status(printer_id: str) -> Dict[str, Any]:
             },
             "error": str(e)
         }
+    
 # ============== PRINTER ENDPOINTS ==============
 
 @app.get("/api/v1/equipment/printers/discover")
@@ -877,18 +964,18 @@ async def add_printer(
         else:
             # Fallback to simulated
             simulated_printers[request.printer_id] = {
-                "id": request.printer_id,
-                "name": request.name,
-                "connection_type": request.connection_type,
-                "state": "Ready",
-                "base_temp": 25,
-                "heating": False,
-                "target_temp": 0,
-                "manufacturer": request.manufacturer,
-                "model": request.model,
-                "added_by": current_user.username,
-                "added_at": datetime.now().isoformat()
-            }
+    "id": request.printer_id,
+    "name": request.name,
+    "connection_type": request.connection_type,
+    "state": "Idle",  # Changed from "Ready" to "Idle"
+    "base_temp": 25,
+    "heating": False,
+    "target_temp": 0,
+    "manufacturer": request.manufacturer,
+    "model": request.model,
+    "added_by": current_user.username,
+    "added_at": datetime.now().isoformat()
+}
             success = True
             
     except Exception as e:
@@ -1130,6 +1217,129 @@ async def delete_printer(
         return {"message": f"Printer deleted successfully"}
     else:
         raise HTTPException(status_code=404, detail="Printer not found")
+    
+@app.post("/api/v1/equipment/printers/{printer_id}/commands")
+@app.post("/api/v1/equipment/printers/{printer_id}/commands/sync")  # Support both URLs
+async def send_printer_command(
+    printer_id: str,
+    command: PrusaConnectCommand,
+    current_user: Optional[User] = Depends(get_current_user_optional)
+):
+    """Send command to printer using PrusaConnect-style API"""
+    
+    logger.info(f"Received command: {command.command} with kwargs: {command.kwargs}")
+    
+    # Check if printer exists
+    if printer_id not in prusalink_printers and printer_id not in simulated_printers:
+        raise HTTPException(status_code=404, detail="Printer not found")
+    
+    # Handle temperature commands with CORRECT kwargs names
+    if command.command == "SET_NOZZLE_TEMPERATURE":
+        temp = command.kwargs.get("nozzle_temperature", 0)
+        
+        # Validate temperature
+        if temp < 0 or temp > 250:
+            raise HTTPException(status_code=400, detail="Nozzle temperature must be between 0 and 250°C")
+        
+        # Store target temp for display
+        if printer_id not in simulated_printers:
+            simulated_printers[printer_id] = {}
+        
+        simulated_printers[printer_id]["target_nozzle"] = temp
+        simulated_printers[printer_id]["heating_nozzle"] = temp > 0
+        
+        logger.info(f"Set nozzle temperature to {temp}°C for printer {printer_id}")
+        
+        # If it's a real PrusaLink printer, try to forward command
+        if printer_id in prusalink_printers:
+            # Note: Local PrusaLink doesn't have commands API, so we simulate
+            # In a real implementation, you might forward to PrusaConnect cloud
+            pass
+        
+        return {
+            "status": "success",
+            "command": command.command,
+            "kwargs": command.kwargs,
+            "message": f"Setting nozzle to {temp}°C"
+        }
+    
+    elif command.command == "SET_HEATBED_TEMPERATURE":
+        temp = command.kwargs.get("bed_temperature", 0)
+        
+        # Validate temperature  
+        if temp < 0 or temp > 80:
+            raise HTTPException(status_code=400, detail="Bed temperature must be between 0 and 80°C")
+        
+        # Store target temp
+        if printer_id not in simulated_printers:
+            simulated_printers[printer_id] = {}
+            
+        simulated_printers[printer_id]["target_bed"] = temp
+        simulated_printers[printer_id]["heating_bed"] = temp > 0
+        
+        logger.info(f"Set bed temperature to {temp}°C for printer {printer_id}")
+        
+        return {
+            "status": "success",
+            "command": command.command,
+            "kwargs": command.kwargs,
+            "message": f"Setting bed to {temp}°C"
+        }
+    
+    elif command.command == "HOME":
+        axis = command.kwargs.get("axis", "XYZ")
+        logger.info(f"Homing axis: {axis}")
+        
+        return {
+            "status": "success",
+            "command": command.command,
+            "kwargs": command.kwargs,
+            "message": f"Homing {axis} axis"
+        }
+    
+    elif command.command == "MOVE":
+        # Handle movement commands
+        x = command.kwargs.get("x", 0)
+        y = command.kwargs.get("y", 0)
+        z = command.kwargs.get("z", 0)
+        feedrate = command.kwargs.get("feedrate", 3000)
+        
+        return {
+            "status": "success",
+            "command": command.command,
+            "kwargs": command.kwargs,
+            "message": f"Moving to X:{x} Y:{y} Z:{z} at F{feedrate}"
+        }
+    
+    elif command.command == "SET_FLOW":
+        flow = command.kwargs.get("flow", 100)
+        
+        return {
+            "status": "success",
+            "command": command.command,
+            "kwargs": command.kwargs,
+            "message": f"Setting flow to {flow}%"
+        }
+    
+    elif command.command == "SET_SPEED":
+        speed = command.kwargs.get("speed", 100)
+        
+        return {
+            "status": "success",
+            "command": command.command,
+            "kwargs": command.kwargs,
+            "message": f"Setting speed to {speed}%"
+        }
+    
+    # Other commands
+    else:
+        logger.warning(f"Unknown command: {command.command}")
+        return {
+            "status": "unknown",
+            "command": command.command,
+            "kwargs": command.kwargs,
+            "message": f"Command '{command.command}' not implemented"
+        }
 
 # ============== WEBSOCKET FOR REAL-TIME UPDATES ==============
 
@@ -1260,6 +1470,197 @@ async def broadcast_printer_update(printer_id: str, deleted: bool = False):
     for ws in disconnected:
         active_websockets.remove(ws)
 
+# Add this endpoint to dev_server.py after the other printer endpoints
+@app.post("/api/v1/equipment/printers/{printer_id}/temperature")
+async def set_printer_temperature(
+    printer_id: str,
+    request: SetTemperatureRequest,
+    current_user: Optional[User] = Depends(get_current_user_optional)
+):
+    """Set target temperature for nozzle or bed - Auth optional for development"""
+    
+    # Log who is making the request
+    if current_user:
+        logger.info(f"User {current_user.username} setting temperature")
+    else:
+        logger.warning("Temperature set without authentication")
+    
+    # Validate temperature ranges
+    if request.target == "nozzle":
+        if request.temperature < 0 or request.temperature > 250:
+            raise HTTPException(
+                status_code=400,
+                detail="Nozzle temperature must be between 0 and 250°C"
+            )
+    elif request.target == "bed":
+        if request.temperature < 0 or request.temperature > 80:
+            raise HTTPException(
+                status_code=400,
+                detail="Bed temperature must be between 0 and 80°C"
+            )
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Target must be 'nozzle' or 'bed'"
+        )
+    
+    # Check if printer exists
+    printer_exists = False
+    
+    if printer_id in prusalink_printers:
+        printer_info = prusalink_printers[printer_id]
+        printer_exists = True
+        
+        try:
+            # Send temperature command to PrusaLink printer
+            url = printer_info.get("url", "")
+            if not url.startswith('http'):
+                url = f'http://{url}'
+            
+            # PrusaLink uses different API endpoints
+            # For PrusaLink, we need to use the correct endpoint structure
+            auth = HTTPDigestAuth(
+                printer_info.get("username", "maker"),
+                printer_info.get("password", "")
+            )
+            
+            # First, let's check printer status to ensure it's connected
+            status_response = requests.get(
+                f"{url}/api/v1/status",
+                auth=auth,
+                timeout=5
+            )
+            
+            if status_response.status_code != 200:
+                logger.error(f"Printer not accessible: {status_response.status_code}")
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Cannot connect to printer: HTTP {status_response.status_code}"
+                )
+            
+            # PrusaLink temperature setting endpoints
+            if request.target == "nozzle":
+                # For nozzle/tool temperature
+                endpoint = f"{url}/api/v1/printer/tools/0/target"
+                data = {"target": request.temperature}
+            else:  # bed
+                # For bed temperature  
+                endpoint = f"{url}/api/v1/printer/bed/target"
+                data = {"target": request.temperature}
+            
+            # Send PUT request (PrusaLink uses PUT for temperature)
+            response = requests.put(
+                endpoint,
+                json=data,
+                auth=auth,
+                timeout=5
+            )
+            
+            # Alternative: Try POST if PUT fails
+            if response.status_code not in [200, 201, 204]:
+                logger.warning(f"PUT failed with {response.status_code}, trying POST")
+                response = requests.post(
+                    endpoint,
+                    json=data,
+                    auth=auth,
+                    timeout=5
+                )
+            
+            # Also try the OctoPrint-style API if both fail
+            if response.status_code not in [200, 201, 204]:
+                logger.warning(f"Trying OctoPrint-style API")
+                if request.target == "nozzle":
+                    endpoint = f"{url}/api/printer/tool"
+                    data = {
+                        "command": "target",
+                        "targets": {"tool0": request.temperature}
+                    }
+                else:
+                    endpoint = f"{url}/api/printer/bed"
+                    data = {
+                        "command": "target",
+                        "target": request.temperature
+                    }
+                
+                response = requests.post(
+                    endpoint,
+                    json=data,
+                    auth=auth,
+                    timeout=5
+                )
+            
+            if response.status_code in [200, 201, 204]:
+                logger.info(f"Set {request.target} temperature to {request.temperature}°C for printer {printer_id}")
+                
+                return {
+                    "status": "success",
+                    "message": f"Setting {request.target} temperature to {request.temperature}°C",
+                    "printer_id": printer_id,
+                    "target": request.target,
+                    "temperature": request.temperature
+                }
+            else:
+                logger.error(f"Failed to set temperature: HTTP {response.status_code}, Response: {response.text}")
+                
+                # If it's a 404, the printer might not support temperature control via API
+                if response.status_code == 404:
+                    raise HTTPException(
+                        status_code=501,
+                        detail="This printer may not support temperature control via API. Try using the printer's web interface."
+                    )
+                else:
+                    raise HTTPException(
+                        status_code=502,
+                        detail=f"Printer returned error: HTTP {response.status_code}"
+                    )
+                
+        except requests.exceptions.ConnectionError:
+            logger.error(f"Cannot connect to printer at {url}")
+            raise HTTPException(
+                status_code=502,
+                detail="Cannot connect to printer. Check if printer is online."
+            )
+        except requests.exceptions.Timeout:
+            logger.error("Printer request timed out")
+            raise HTTPException(
+                status_code=504,
+                detail="Printer request timed out"
+            )
+        except HTTPException:
+            raise  # Re-raise HTTP exceptions
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Unexpected error: {str(e)}"
+            )
+    
+    # Check simulated printers
+    elif printer_id in simulated_printers:
+        printer_exists = True
+        
+        # Update simulated printer state
+        if request.target == "nozzle":
+            simulated_printers[printer_id]["target_temp"] = request.temperature
+            simulated_printers[printer_id]["heating"] = request.temperature > 0
+        # Note: for bed temperature, you'd need to add bed_temp tracking to simulated printers
+        
+        logger.info(f"Set {request.target} temperature to {request.temperature}°C for simulated printer {printer_id}")
+        
+        return {
+            "status": "success",
+            "message": f"Setting {request.target} temperature to {request.temperature}°C (simulated)",
+            "printer_id": printer_id,
+            "target": request.target,
+            "temperature": request.temperature
+        }
+    
+    if not printer_exists:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Printer {printer_id} not found"
+        )
+    
 # ============== BACKGROUND TASKS ==============
 
 async def printer_status_updater():

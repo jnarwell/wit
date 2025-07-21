@@ -1,6 +1,6 @@
 // src/components/widgets/SpecificWidget.tsx
-import React from 'react';
-import { FaTimes, FaCog, FaProjectDiagram, FaMicrochip, FaThermometerHalf, FaCube, FaPrint, FaClock } from 'react-icons/fa';
+import React, { useState, useRef, useEffect } from 'react';
+import { FaTimes, FaCog, FaProjectDiagram, FaMicrochip, FaThermometerHalf, FaHome, FaPrint, FaPowerOff, FaCheck, FaPause, FaExclamationTriangle } from 'react-icons/fa';
 
 interface SpecificWidgetProps {
   type: 'project' | 'machine' | 'sensor';
@@ -11,6 +11,13 @@ interface SpecificWidgetProps {
 }
 
 const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, onNavigate, style }) => {
+  // State for temperature editing
+  const [editingTemp, setEditingTemp] = useState<'nozzle' | 'bed' | null>(null);
+  const [tempValue, setTempValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [tempControlSupported, setTempControlSupported] = useState(true);
+  const [showTempMessage, setShowTempMessage] = useState(false);
+
   // Default data if none provided
   const widgetData = data || {
     id: '001',
@@ -18,10 +25,19 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
     type: type === 'project' ? 'software' : type === 'machine' ? '3d-printer' : 'temperature',
     status: 'green' as const,
     metrics: [
-      { label: 'Uptime', value: '99.9%' },
-      { label: 'Efficiency', value: '87%' }
+      { label: 'Status', value: 'Idle' },
+      { label: 'Nozzle', value: '0°C' },
+      { label: 'Bed', value: '0°C' }
     ]
   };
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editingTemp && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingTemp]);
 
   const getIcon = () => {
     switch (type) {
@@ -31,7 +47,38 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
     }
   };
 
+  // Get status icon based on actual printer state
+  const getStatusIcon = () => {
+    const statusMetric = widgetData.metrics?.find((m: any) => m.label.toLowerCase() === 'status');
+    const statusValue = statusMetric?.value?.toLowerCase() || '';
+    
+    if (statusValue.includes('printing') || statusValue.includes('busy')) {
+      return <FaPrint className="w-3 h-3 animate-pulse" />;
+    } else if (statusValue.includes('ready') || statusValue.includes('idle') || statusValue.includes('operational')) {
+      return <FaCheck className="w-3 h-3" />;
+    } else if (statusValue.includes('paused') || statusValue.includes('attention')) {
+      return <FaPause className="w-3 h-3" />;
+    } else if (statusValue.includes('error') || statusValue.includes('offline')) {
+      return <FaExclamationTriangle className="w-3 h-3" />;
+    }
+    return null;
+  };
+
+  // Get status color based on printer state
   const getStatusColor = () => {
+    const statusMetric = widgetData.metrics?.find((m: any) => m.label.toLowerCase() === 'status');
+    const statusValue = statusMetric?.value?.toLowerCase() || '';
+    
+    // Use actual printer states for color determination
+    if (statusValue.includes('error') || statusValue.includes('offline') || statusValue.includes('disconnected')) {
+      return 'bg-red-500';
+    } else if (statusValue.includes('printing') || statusValue.includes('busy') || statusValue.includes('paused') || statusValue.includes('attention')) {
+      return 'bg-yellow-500';
+    } else if (statusValue.includes('ready') || statusValue.includes('idle') || statusValue.includes('operational')) {
+      return 'bg-green-500';
+    }
+    
+    // Fall back to the status color from data
     switch (widgetData.status) {
       case 'green': return 'bg-green-500';
       case 'yellow': return 'bg-yellow-500';
@@ -41,6 +88,18 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
   };
 
   const getStatusGlow = () => {
+    const statusMetric = widgetData.metrics?.find((m: any) => m.label.toLowerCase() === 'status');
+    const statusValue = statusMetric?.value?.toLowerCase() || '';
+    
+    if (statusValue.includes('error') || statusValue.includes('offline')) {
+      return 'shadow-red-500/50';
+    } else if (statusValue.includes('printing') || statusValue.includes('busy')) {
+      return 'shadow-yellow-500/50';
+    } else if (statusValue.includes('ready') || statusValue.includes('idle')) {
+      return 'shadow-green-500/50';
+    }
+    
+    // Fall back to the status color from data
     switch (widgetData.status) {
       case 'green': return 'shadow-green-500/50';
       case 'yellow': return 'shadow-yellow-500/50';
@@ -72,57 +131,19 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
       .join(' ');
   };
 
-  // Get icon for metric based on label
-  const getMetricIcon = (label: string) => {
-    switch (label.toLowerCase()) {
-      case 'nozzle':
-      case 'bed':
-        return <FaThermometerHalf className="w-3 h-3" />;
-      case 'status':
-        return <FaCube className="w-3 h-3" />;
-      case 'job':
-        return <FaPrint className="w-3 h-3" />;
-      case 'time left':
-        return <FaClock className="w-3 h-3" />;
-      default:
-        return null;
-    }
-  };
-
-  // Get metric color based on content and status
+  // Get metric color based on content
   const getMetricValueColor = (metric: { label: string; value: string }) => {
     const label = metric.label.toLowerCase();
-    const value = metric.value.toLowerCase();
-    
-    // Status-based coloring
-    if (label === 'status') {
-      if (value.includes('printing') || value.includes('busy')) {
-        return 'text-yellow-400';
-      } else if (value.includes('ready') || value.includes('idle') || value.includes('operational')) {
-        return 'text-green-400';
-      } else if (value.includes('offline') || value.includes('error') || value.includes('disconnected')) {
-        return 'text-red-400';
-      } else if (value.includes('paused') || value.includes('attention')) {
-        return 'text-orange-400';
-      }
-    }
+    const value = metric.value;
     
     // Temperature coloring
     if (label === 'nozzle' || label === 'bed') {
       const temp = parseFloat(value);
-      if (temp > 100) {
+      if (temp > 180) {
+        return 'text-red-400';
+      } else if (temp > 100) {
         return 'text-orange-400';
       } else if (temp > 50) {
-        return 'text-yellow-400';
-      }
-    }
-    
-    // Progress coloring
-    if (label === 'progress') {
-      const progress = parseFloat(value);
-      if (progress >= 90) {
-        return 'text-green-400';
-      } else if (progress >= 50) {
         return 'text-yellow-400';
       }
     }
@@ -130,172 +151,380 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
     return 'text-white';
   };
 
-  // Get relevant details based on type
-  const getRelevantDetails = () => {
-    const details: { label: string; value: string }[] = [];
+  // Get status display text
+  const getStatusDisplayText = () => {
+    const statusMetric = widgetData.metrics?.find((m: any) => m.label.toLowerCase() === 'status');
+    return statusMetric?.value || 'Unknown';
+  };
+
+  // Get temperature metrics for machines
+  const getTemperatureMetrics = () => {
+    if (type !== 'machine') return [];
     
-    if (type === 'machine' && widgetData) {
-      // For machines, we'll use the metrics array instead
-      // as it contains the real-time data
-      return [];
-    } else if (type === 'sensor' && widgetData) {
-      if (widgetData.manufacturer) {
-        details.push({ label: 'Manufacturer', value: widgetData.manufacturer });
-      }
-      if (widgetData.connectionType) {
-        const connectionLabels: Record<string, string> = {
-          'i2c': 'I²C',
-          'spi': 'SPI',
-          'analog': 'Analog',
-          'digital': 'Digital',
-          'uart': 'UART',
-          'wireless': 'Wireless'
+    const nozzleMetric = widgetData.metrics?.find((m: any) => m.label.toLowerCase() === 'nozzle');
+    const bedMetric = widgetData.metrics?.find((m: any) => m.label.toLowerCase() === 'bed');
+    
+    const temps = [];
+    if (nozzleMetric) temps.push(nozzleMetric);
+    if (bedMetric) temps.push(bedMetric);
+    
+    return temps;
+  };
+
+  // Handle temperature click
+  const handleTempClick = (e: React.MouseEvent, tempType: 'nozzle' | 'bed', currentValue: string) => {
+    e.stopPropagation();
+    setEditingTemp(tempType);
+    // Extract numeric value from string like "25.0°C" or "200°C → 210°C"
+    let numericValue = 0;
+    if (currentValue.includes('→')) {
+      // Extract target temperature if heating
+      const parts = currentValue.split('→');
+      numericValue = parseFloat(parts[1]);
+    } else {
+      numericValue = parseFloat(currentValue);
+    }
+    setTempValue(isNaN(numericValue) ? '0' : numericValue.toString());
+  };
+
+  // Handle temperature input change
+  const handleTempChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow only numbers and one decimal point
+    if (/^\d*\.?\d*$/.test(value) || value === '') {
+      setTempValue(value);
+    }
+  };
+
+  // Handle temperature submission
+const handleTempSubmit = async () => {
+  if (editingTemp && tempValue !== '') {
+    const temp = parseFloat(tempValue);
+    const maxTemp = editingTemp === 'nozzle' ? 250 : 80;
+    
+    if (temp >= 0 && temp <= maxTemp) {
+      console.log(`Setting ${editingTemp} temperature to ${temp}°C for ${widgetData.name}`);
+      
+      try {
+        // Get auth token from localStorage
+        let token = null;
+        const authData = localStorage.getItem('wit-auth');
+        if (authData) {
+          try {
+            const parsed = JSON.parse(authData);
+            token = parsed.access_token || parsed.token;
+          } catch (e) {
+            console.error('Error parsing auth data:', e);
+          }
+        }
+        
+        const headers: any = {
+          'Content-Type': 'application/json'
         };
-        details.push({ 
-          label: 'Connection', 
-          value: connectionLabels[widgetData.connectionType] || widgetData.connectionType?.toUpperCase() 
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        // Use PrusaConnect-style commands API with CORRECT kwargs
+        const commandBody = {
+          command: editingTemp === 'nozzle' ? 'SET_NOZZLE_TEMPERATURE' : 'SET_HEATBED_TEMPERATURE',
+          kwargs: editingTemp === 'nozzle' 
+            ? { nozzle_temperature: temp }
+            : { bed_temperature: temp }
+        };
+        
+        console.log('Sending command:', commandBody);
+        
+        // Try commands endpoint
+        const response = await fetch(`http://localhost:8000/api/v1/equipment/printers/${widgetData.id}/commands`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(commandBody)
         });
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log('Temperature command sent successfully:', result);
+          
+          // Show success feedback
+          setEditingTemp(null);
+          setTempValue('');
+          
+          // Optional: Show a success message
+          // You could add a toast notification here
+          
+        } else {
+          const errorText = await response.text();
+          console.error('Failed to send command:', errorText);
+          
+          // Only show error for non-501 status codes
+          if (response.status !== 501) {
+            alert(`Failed to set temperature: ${response.status}`);
+          }
+        }
+      } catch (error) {
+        console.error('Error setting temperature:', error);
+        alert('Failed to connect to printer. Make sure the backend is running.');
       }
-      if (widgetData.connectionDetails) {
-        details.push({ label: 'Address', value: widgetData.connectionDetails });
-      }
-    } else if (type === 'project' && widgetData) {
-      if (widgetData.team) {
-        details.push({ label: 'Team', value: widgetData.team });
-      }
-      if (widgetData.priority) {
-        details.push({ 
-          label: 'Priority', 
-          value: widgetData.priority.charAt(0).toUpperCase() + widgetData.priority.slice(1) 
-        });
-      }
-      if (widgetData.deadline) {
-        const deadline = new Date(widgetData.deadline);
-        const today = new Date();
-        const daysUntil = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        details.push({ 
-          label: 'Deadline', 
-          value: daysUntil > 0 ? `${daysUntil} days` : 'Overdue' 
-        });
-      }
+    } else {
+      alert(`Temperature must be between 0 and ${maxTemp}°C`);
     }
-    
-    return details;
+  } else {
+    setEditingTemp(null);
+    setTempValue('');
+  }
+};
+
+  // Handle temperature input key press
+  const handleTempKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleTempSubmit();
+    } else if (e.key === 'Escape') {
+      setEditingTemp(null);
+      setTempValue('');
+    }
   };
 
-  const handleContentClick = (e: React.MouseEvent) => {
-    // Check if clicking on interactive element
-    const target = e.target as HTMLElement;
-    const isInteractive = target.closest('button, a, input, select, textarea, [role="button"]');
+  // Handle control button clicks
+const handleHomeClick = async (e: React.MouseEvent) => {
+  e.stopPropagation();
+  console.log('Home clicked for', widgetData.name);
+  
+  try {
+    const authData = localStorage.getItem('wit-auth');
+    const token = authData ? JSON.parse(authData).access_token : null;
     
-    if (!isInteractive && onNavigate) {
-      onNavigate();
+    const headers: any = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
-  };
-
-  const relevantDetails = getRelevantDetails();
-  const allMetrics = [...(widgetData.metrics || []), ...relevantDetails];
-
-  // For machines, prioritize specific metrics
-  const prioritizedMetrics = type === 'machine' 
-    ? allMetrics.filter(m => ['status', 'nozzle', 'bed', 'progress', 'job', 'time left'].includes(m.label.toLowerCase()))
-    : allMetrics;
-
-  // Ensure we show the most important metrics first
-  const sortedMetrics = type === 'machine'
-    ? prioritizedMetrics.sort((a, b) => {
-        const order = ['status', 'nozzle', 'bed', 'progress', 'job', 'time left'];
-        const aIndex = order.indexOf(a.label.toLowerCase());
-        const bIndex = order.indexOf(b.label.toLowerCase());
-        if (aIndex === -1) return 1;
-        if (bIndex === -1) return -1;
-        return aIndex - bIndex;
+    
+    const response = await fetch(`http://localhost:8000/api/v1/equipment/printers/${widgetData.id}/commands`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        command: 'HOME',
+        kwargs: { axis: 'XYZ' }  // Home all axes
       })
-    : prioritizedMetrics;
+    });
+    
+    if (response.ok) {
+      console.log('Home command sent successfully');
+      // Optional: Show feedback
+    } else {
+      console.error('Failed to home printer');
+    }
+  } catch (error) {
+    console.error('Error sending home command:', error);
+  }
+};
+
+  const handlePrintClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log('Print clicked for', widgetData.name);
+    // TODO: Implement print functionality
+  };
+
+  const handlePowerClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log('Power clicked for', widgetData.name);
+    // TODO: Implement power on/off functionality
+  };
 
   return (
-    <div className="h-full relative group" style={{ position: 'relative', ...style }}>
-      {/* Main content */}
-      <div 
-        className={`h-full bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden hover:border-gray-600 transition-all cursor-pointer select-none ${getStatusGlow()} shadow-lg`}
-        onClick={handleContentClick}
-      >
-        {/* Widget header */}
-        <div className={`bg-gradient-to-r ${getTypeColor()} p-3`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="text-white opacity-90">
-                {getIcon()}
-              </div>
-              <h3 className="text-white font-medium truncate">
-                {widgetData.name}
-              </h3>
-            </div>
-            <div className={`w-3 h-3 rounded-full ${getStatusColor()} animate-pulse`} />
+    <div 
+      className="h-full bg-gray-800 rounded-lg overflow-hidden flex flex-col group hover:ring-2 hover:ring-gray-600 transition-all cursor-pointer"
+      onClick={(e) => {
+        // Don't navigate if clicking the remove button or control buttons
+        if (!(e.target as HTMLElement).closest('.remove-button') && 
+            !(e.target as HTMLElement).closest('.control-button') &&
+            !(e.target as HTMLElement).closest('.temp-control')) {
+          onNavigate?.();
+        }
+      }}
+      style={style}
+    >
+      {/* Header */}
+      <div className={`px-4 py-3 bg-gradient-to-r ${getTypeColor()} flex items-center justify-between`}>
+        <div className="flex items-center gap-3">
+          {getIcon()}
+          <div>
+            <h3 className="text-white font-medium truncate">{widgetData.name}</h3>
+            <p className="text-xs text-white/70">{formatTypeName(widgetData.type)}</p>
           </div>
         </div>
-        
-        {/* Type Badge */}
-        <div className="px-4 pt-3 pb-1">
-          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-300">
-            {formatTypeName(widgetData.type)}
-          </div>
-        </div>
-        
-        {/* Widget body */}
-        <div className="px-4 pb-4">
-          {sortedMetrics.length > 0 && (
-            <div className="space-y-1.5 mt-3">
-              {sortedMetrics.slice(0, 5).map((metric, index) => (
-                <div key={index} className="flex justify-between items-center">
-                  <div className="flex items-center gap-1.5">
-                    {getMetricIcon(metric.label) && (
-                      <span className="text-gray-400">
-                        {getMetricIcon(metric.label)}
-                      </span>
-                    )}
-                    <span className="text-gray-400 text-xs">{metric.label}:</span>
-                  </div>
-                  <span className={`text-xs font-medium truncate ml-2 ${getMetricValueColor(metric)}`} style={{ maxWidth: '60%' }}>
-                    {metric.value}
-                  </span>
-                </div>
-              ))}
-              {sortedMetrics.length > 5 && (
-                <div className="text-center text-gray-500 text-xs mt-1">
-                  +{sortedMetrics.length - 5} more...
-                </div>
-              )}
-            </div>
-          )}
-          
-          {sortedMetrics.length === 0 && (
-            <div className="text-center text-gray-500 text-sm mt-3">
-              No data available
-            </div>
-          )}
-        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          className="remove-button p-1.5 hover:bg-white/20 rounded transition-colors"
+        >
+          <FaTimes className="w-4 h-4 text-white/80" />
+        </button>
       </div>
-      
-      {/* Delete button - absolute positioned overlay */}
+
+      {/* Status Bar */}
+      <div className="px-4 py-2 bg-gray-700/50 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className={`w-3 h-3 rounded-full ${getStatusColor()} ${getStatusGlow()} shadow-lg animate-pulse`} />
+          <span className="text-sm text-gray-300">{getStatusDisplayText()}</span>
+        </div>
+        {type === 'machine' && widgetData.metrics?.find((m: any) => m.label.toLowerCase() === 'progress') && (
+          <div className="text-xs text-gray-400">
+            {widgetData.metrics.find((m: any) => m.label.toLowerCase() === 'progress').value}
+          </div>
+        )}
+      </div>
+
+      {/* Temperature Metrics (for machines only) */}
+      {type === 'machine' && (
+        <div className="flex-1 p-4 space-y-3">
+          {getTemperatureMetrics().map((metric: any, index: number) => {
+            const tempType = metric.label.toLowerCase() as 'nozzle' | 'bed';
+            const isEditing = editingTemp === tempType;
+            
+            return (
+              <div key={index} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FaThermometerHalf className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm text-gray-400">{metric.label}</span>
+                </div>
+                {isEditing ? (
+                  <div className="temp-control flex items-center gap-2">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={tempValue}
+                      onChange={handleTempChange}
+                      onKeyDown={handleTempKeyPress}
+                      onBlur={handleTempSubmit}
+                      className="w-16 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="0"
+                    />
+                    <span className="text-gray-400 text-sm">°C</span>
+                  </div>
+                ) : (
+                  <button
+  onClick={(e) => tempControlSupported ? handleTempClick(e, tempType, metric.value) : null}
+  className={`temp-control text-lg font-medium ${getMetricValueColor(metric)} ${tempControlSupported ? 'hover:text-blue-400 cursor-pointer' : 'cursor-default opacity-75'} transition-colors flex items-center gap-1 group/temp`}
+  title={tempControlSupported 
+    ? `Click to set ${metric.label.toLowerCase()} temperature (max ${tempType === 'nozzle' ? '250' : '80'}°C)`
+    : 'Temperature control not available - use printer interface'
+  }
+>
+  {metric.value}
+  {/* Show heating indicator if value contains arrow */}
+  {metric.value.includes('→') && (
+    <span className="text-xs text-orange-400 animate-pulse">●</span>
+  )}
+  {/* Show edit hint on hover only if supported */}
+  {tempControlSupported && (
+    <span className="text-xs text-gray-500 opacity-0 group-hover/temp:opacity-100 transition-opacity ml-1">
+      ✏️
+    </span>
+  )}
+  {/* Show lock icon if not supported */}
+  {!tempControlSupported && (
+    <span className="text-xs text-gray-500 ml-1">
+      🔒
+    </span>
+  )}
+</button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {showTempMessage && (
+  <div className="absolute inset-0 bg-gray-800/95 flex items-center justify-center p-4 z-10">
+    <div className="bg-gray-700 rounded-lg p-4 text-center max-w-sm">
+      <p className="text-yellow-400 text-sm mb-2">⚠️ Temperature Control Unavailable</p>
+      <p className="text-gray-300 text-xs mb-3">
+        This printer doesn't support temperature control via API.
+      </p>
+      <p className="text-gray-400 text-xs mb-3">
+        Use the printer's web interface at:
+      </p>
+      <a 
+        href={`http://${widgetData.url || 'printer.local'}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-400 hover:text-blue-300 text-xs underline"
+        onClick={(e) => e.stopPropagation()}
+      >
+        Open Printer Interface
+      </a>
       <button
         onClick={(e) => {
           e.stopPropagation();
-          e.preventDefault();
-          onRemove();
+          setShowTempMessage(false);
         }}
-        onMouseDown={(e) => {
-          // Prevent drag from starting on button
-          e.stopPropagation();
-        }}
-        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-red-600 hover:bg-red-700 text-white rounded p-1.5 shadow-lg"
-        style={{
-          zIndex: 50,
-        }}
-        aria-label="Delete widget"
+        className="mt-3 block w-full py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs text-gray-300"
       >
-        <FaTimes className="w-3 h-3" />
+        Close
       </button>
+    </div>
+  </div>
+)}
+
+      {/* Other widget types - show default metrics */}
+      {type !== 'machine' && (
+        <div className="flex-1 p-4 space-y-2">
+          {widgetData.metrics?.filter((m: any) => m.label.toLowerCase() !== 'status').map((metric: any, index: number) => (
+            <div key={index} className="flex items-center justify-between">
+              <span className="text-sm text-gray-400">{metric.label}</span>
+              <span className="text-sm font-medium text-white">{metric.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Control Buttons (for machines only) */}
+      {type === 'machine' && (
+        <div className="px-4 pb-4">
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={handleHomeClick}
+              className="control-button flex items-center justify-center gap-1 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300 transition-colors"
+              title="Home All Axes"
+            >
+              <FaHome className="w-4 h-4" />
+              <span>Home</span>
+            </button>
+            <button
+              onClick={handlePrintClick}
+              className="control-button flex items-center justify-center gap-1 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300 transition-colors"
+              title="Print Controls"
+            >
+              <FaPrint className="w-4 h-4" />
+              <span>Print</span>
+            </button>
+            <button
+              onClick={handlePowerClick}
+              className="control-button flex items-center justify-center gap-1 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300 transition-colors"
+              title="Power On/Off"
+            >
+              <FaPowerOff className="w-4 h-4" />
+              <span>Power</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* View Details (visible on hover for non-machine widgets) */}
+      {type !== 'machine' && (
+        <div className="px-4 pb-3 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300 transition-colors">
+            View Details
+          </button>
+        </div>
+      )}
     </div>
   );
 };
