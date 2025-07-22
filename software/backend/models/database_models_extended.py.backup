@@ -82,7 +82,7 @@ class User(Base):
     tasks_created = relationship("Task", foreign_keys="Task.created_by", back_populates="creator")
     tasks_assigned = relationship("Task", foreign_keys="Task.assignee_id", back_populates="assignee")
     team_memberships = relationship("TeamMember", back_populates="user")
-    files_uploaded = relationship("ProjectFile", back_populates="uploaded_by_user", foreign_keys="[ProjectFile.uploaded_by]")
+    files_uploaded = relationship("ProjectFile", back_populates="uploaded_by_user")
     material_usage = relationship("MaterialUsage", back_populates="used_by_user")
 
 

@@ -220,25 +220,13 @@ class DatabaseService:
         """Connect to database"""
         try:
             # Create async engine
-            # Check if using SQLite
-            if self.database_url.startswith('sqlite'):
-                # SQLite doesn't support pooling
-                self.engine = create_async_engine(
-                    self.database_url,
-                    echo=False,
-                    future=True
-                )
-            else:
-                # PostgreSQL/MySQL support pooling
-                self.engine = create_async_engine(
-                    self.database_url,
-                    echo=False,
-                    future=True,
-                    pool_size=10,
-                    max_overflow=20,
-                    pool_pre_ping=True,
-                    pool_recycle=3600
-                )
+            self.engine = create_async_engine(
+                self.database_url,
+                echo=False,  # Set to True for SQL logging
+                pool_pre_ping=True,
+                pool_size=10,
+                max_overflow=20
+            )
             
             # Create session factory
             self.session_factory = async_sessionmaker(
