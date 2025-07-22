@@ -66,9 +66,9 @@ pydantic_core==2.33.2
 pyflakes==3.4.0
 Pygments==2.19.2
 pyserial==3.5
-pytest==8.4.1
-pytest-asyncio==1.0.0
-pytest-benchmark==5.1.0
+pytest==7.4.0
+pytest-asyncio==0.21.0
+pytest-benchmark==4.0.0
 pytest-cov==6.2.1
 python-jose==3.5.0
 python-multipart==0.0.20

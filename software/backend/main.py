@@ -16,23 +16,6 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 from datetime import datetime
 
-# Import routers with relative imports
-from .api.voice_api import router as voice_router
-from .api.vision_api import router as vision_router
-from .api.equipment_api import router as equipment_router
-from .api.workspace_api import router as workspace_router
-from .api.system_api import router as system_router
-from .api.network_api import router as network_router
-
-from .routers import projects, tasks, teams, materials, files
-
-app.include_router(projects.router)
-app.include_router(tasks.router)
-app.include_router(teams.router)
-app.include_router(materials.router)
-app.include_router(files.router)
-
-
 # Import services with relative imports
 from .services.database_services import DatabaseService
 from .services.mqtt_service import MQTTService
@@ -120,6 +103,16 @@ async def lifespan(app: FastAPI):
     logger.info("W.I.T. Backend stopped")
 
 
+# Import routers with relative imports
+from .api.voice_api import router as voice_router
+from .api.vision_api import router as vision_router
+from .api.equipment_api import router as equipment_router
+from .api.workspace_api import router as workspace_router
+from .api.system_api import router as system_router
+from .api.network_api import router as network_router
+
+from .routers import projects, tasks, teams, materials, files
+
 # Create FastAPI app
 app = FastAPI(
     title="W.I.T. Terminal API",
@@ -128,130 +121,8 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Mount static files for dashboard
-try:
-    from fastapi.staticfiles import StaticFiles
-    import os
-    dashboard_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "dashboard")
-    if os.path.exists(dashboard_path):
-        app.mount("/dashboard", StaticFiles(directory=dashboard_path), name="dashboard")
-except Exception as e:
-    logger.warning(f"Could not mount dashboard: {e}")
-
-
-# Add CORS middleware - ALLOW ALL ORIGINS FOR DEVELOPMENT
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "*"],  # Add * for development
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-# Exception handlers
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    """Global exception handler"""
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
-    return JSONResponse(
-        status_code=500,
-        content={
-            "detail": "Internal server error",
-            "type": type(exc).__name__
-        }
-    )
-
-
-# Include routers
-app.include_router(auth_router)
-app.include_router(voice_router)
-app.include_router(vision_router)
-app.include_router(equipment_router)
-app.include_router(workspace_router)
-app.include_router(system_router)
-app.include_router(network_router)
-
-
-
-# Root endpoint
-@app.get("/")
-async def root():
-    """Root endpoint"""
-    return {
-        "message": "W.I.T. Terminal API",
-        "version": "1.0.0",
-        "status": "operational",
-        "docs": "/docs",
-        "timestamp": datetime.now().isoformat()
-    }
-
-
-# Health check endpoint
-@app.get("/health")
-async def health_check():
-    """Basic health check"""
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat()
-    }
-
-
-# Static files (if needed for web UI)
-# app.mount("/static", StaticFiles(directory="static"), name="static")
-
-
-# Middleware to add request ID
-@app.middleware("http")
-async def add_request_id(request: Request, call_next):
-    """Add request ID to all requests"""
-    import uuid
-    request_id = str(uuid.uuid4())
-    request.state.request_id = request_id
-    
-    response = await call_next(request)
-    response.headers["X-Request-ID"] = request_id
-    
-    return response
-
-
-# Middleware to log requests
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    """Log all requests"""
-    start_time = datetime.now()
-    
-    # Log request
-    logger.info(f"Request: {request.method} {request.url.path}")
-    
-    response = await call_next(request)
-    
-    # Log response
-    duration = (datetime.now() - start_time).total_seconds()
-    logger.info(
-        f"Response: {request.method} {request.url.path} "
-        f"- Status: {response.status_code} - Duration: {duration:.3f}s"
-    )
-    
-    return response
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    from api.equipment_api import shutdown_equipment
-    await shutdown_equipment()
-
-
-def create_app() -> FastAPI:
-    """Factory function to create the app"""
-    return app
-
-
-if __name__ == "__main__":
-    # Development server
-    uvicorn.run(
-        "main:app",
-        host=os.getenv("HOST", "0.0.0.0"),
-        port=int(os.getenv("PORT", 8000)),
-        reload=os.getenv("RELOAD", "true").lower() == "true",
-        log_level=os.getenv("LOG_LEVEL", "info").lower()
-    )
+app.include_router(projects.router)
+app.include_router(tasks.router)
+app.include_router(teams.router)
+app.include_router(materials.router)
+app.include_router(files.router)

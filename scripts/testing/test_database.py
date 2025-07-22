@@ -6,6 +6,8 @@ File: software/backend/test_database.py
 Test database connections and basic operations
 """
 
+import pytest
+import os
 import asyncio
 import logging
 from datetime import datetime
@@ -13,13 +15,12 @@ from pathlib import Path
 import sys
 
 # Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent))
 
-from config import settings
-from services.database_service_complete import db_service, init_database
-from models.database_models_extended import (
-    User, Project, Task, Team, TeamMember, 
-    Material, ProjectMaterial, ProjectFile
+
+from software.backend.config import settings
+from software.backend.services.database_service_complete import db_service, init_database
+from software.backend.models.database_models_extended import (
+    User, Project, Task, Material, Team, Equipment, Job, Tag, Comment, TeamMember, ProjectMaterial, MaterialUsage, ProjectFile, FileVersion
 )
 from sqlalchemy import select, func
 
@@ -28,7 +29,26 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-async def test_database_connection():
+@pytest.fixture(scope="module")
+async def db_session():
+    """Fixture for database session"""
+    logger.info("Initializing database for tests...")
+    db_url = settings.DATABASE_URL
+    if not os.getenv("TEST_DATABASE", "false").lower() == "true":
+        db_url = "sqlite+aiosqlite:///:memory:"
+    await init_database(db_url, echo=False)
+    logger.info("Database initialized.")
+    
+    async with db_service.session() as session:
+        yield session
+    
+    logger.info("Closing database connections...")
+    await db_service.close()
+    logger.info("Database connections closed.")
+
+
+@pytest.mark.asyncio
+async def test_database_connection(db_session):
     """Test basic database connection"""
     logger.info("Testing database connection...")
     
@@ -45,11 +65,12 @@ async def test_database_connection():
         return False
 
 
-async def test_user_operations():
+@pytest.mark.asyncio
+async def test_user_operations(db_session):
     """Test user CRUD operations"""
-    logger.info("\nTesting user operations...")
+    logger.info("Testing user operations...")
     
-    async with db_service.session() as session:
+    async with db_session as session:
         try:
             # Create test user
             test_user = User(
@@ -90,11 +111,12 @@ async def test_user_operations():
             return False
 
 
-async def test_project_operations():
+@pytest.mark.asyncio
+async def test_project_operations(db_session):
     """Test project and related operations"""
-    logger.info("\nTesting project operations...")
+    logger.info("Testing project operations...")
     
-    async with db_service.session() as session:
+    async with db_session as session:
         try:
             # Get admin user
             result = await session.execute(
@@ -192,11 +214,12 @@ async def test_project_operations():
             return False
 
 
-async def test_statistics():
+@pytest.mark.asyncio
+async def test_statistics(db_session):
     """Test database statistics"""
-    logger.info("\nGathering database statistics...")
+    logger.info("Gathering database statistics...")
     
-    async with db_service.session() as session:
+    async with db_session as session:
         try:
             # Count records in each table
             tables = [
@@ -221,52 +244,4 @@ async def test_statistics():
             return False
 
 
-async def main():
-    """Run all tests"""
-    logger.info("=== W.I.T. Database Tests ===\n")
-    
-    # Initialize database
-    try:
-        await init_database(settings.DATABASE_URL, echo=False)
-        logger.info("✓ Database initialized")
-    except Exception as e:
-        logger.error(f"✗ Failed to initialize database: {e}")
-        return 1
-    
-    # Run tests
-    tests = [
-        ("Connection Test", test_database_connection),
-        ("User Operations", test_user_operations),
-        ("Project Operations", test_project_operations),
-        ("Statistics", test_statistics)
-    ]
-    
-    results = []
-    for test_name, test_func in tests:
-        try:
-            result = await test_func()
-            results.append((test_name, result))
-        except Exception as e:
-            logger.error(f"✗ {test_name} failed with error: {e}")
-            results.append((test_name, False))
-    
-    # Summary
-    logger.info("\n=== Test Summary ===")
-    passed = sum(1 for _, result in results if result)
-    total = len(results)
-    
-    for test_name, result in results:
-        status = "✓ PASSED" if result else "✗ FAILED"
-        logger.info(f"{test_name}: {status}")
-    
-    logger.info(f"\nTotal: {passed}/{total} tests passed")
-    
-    # Close database
-    await db_service.close()
-    
-    return 0 if passed == total else 1
 
-
-if __name__ == "__main__":
-    exit_code = asyncio.run(main())
-    sys.exit(exit_code)

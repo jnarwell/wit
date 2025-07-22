@@ -1,29 +1,7 @@
 {
   "voice_processing": {
-    "anthropic_api_key": "${ANTHROPIC_API_KEY}",
-    "claude_model": "claude-3-5-sonnet-20241022",
-    "language": "en",
-    "sample_rate": 16000,
-    "energy_threshold": 4000,
-    "silence_duration": 1.0,
-    "max_recording_duration": 30.0,
-    "enable_wake_word": true,
-    "wake_words": ["hey wit", "okay wit", "workshop", "computer"]
-  },
-  "workshop_commands": {
-    "equipment": {
-      "3d_printer": {
-        "aliases": ["printer", "3d", "prusa", "ender"],
-        "commands": ["start", "stop", "pause", "resume", "heat", "cool", "status"]
-      },
-      "laser_cutter": {
-        "aliases": ["laser", "cutter", "engraver"],
-        "commands": ["start", "stop", "pause", "focus", "power", "status"]
-      },
-      "cnc_mill": {
-        "aliases": ["cnc", "mill", "router"],
-        "commands": ["start", "stop", "pause", "home", "zero", "status"]
-      }
-    }
+    "model": "tiny",
+    "device": "cpu",
+    "enable_npu": false
   }
 }

@@ -93,7 +93,7 @@ class DatabaseService:
     async def create_tables(self):
         """Create all tables if they don't exist"""
         try:
-            from models.database_models_extended import Base
+            from ..models.database_models_extended import Base
             
             async with self.engine.begin() as conn:
                 # Enable extensions for PostgreSQL

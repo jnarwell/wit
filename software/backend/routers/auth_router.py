@@ -10,9 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
 
-from models.database_models import User
-from services.database_services import get_session
-from auth.security import verify_password, create_access_token
+from ..services.database_services import get_session
+from ..models.database_models import User
+from ..auth.security import verify_password, create_access_token
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")

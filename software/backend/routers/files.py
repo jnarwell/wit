@@ -18,11 +18,11 @@ import aiofiles
 import mimetypes
 from pathlib import Path
 
-from services.database_services import get_session
-from models.database_models import Project, User, ProjectFile, FileVersion
-from auth.dependencies import get_current_user
-from config import settings
-from schemas.file_schemas import (
+from ..services.database_services import get_session
+from ..models.database_models import Project, User, ProjectFile, FileVersion
+from ..auth.dependencies import get_current_user
+from ..config import settings
+from ..schemas.file_schemas import (
     FileResponse as FileResponseSchema,
     FileVersionResponse,
     FileMoveRequest,
