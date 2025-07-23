@@ -48,10 +48,25 @@ class Project(Base):
     project_id = Column(String(50), unique=True, nullable=False, index=True)
     name = Column(String(200), nullable=False)
     description = Column(Text)
+    type = Column(String(50))
+    status = Column(String(50), default="planning")
     owner_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
+    extra_data = Column(JSON, default={})
 
     owner = relationship("User", back_populates="projects")
+    tasks = relationship("Task", back_populates="project")
+
+class Task(Base):
+    __tablename__ = "tasks"
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(200), nullable=False)
+    description = Column(Text)
+    status = Column(String(50), default="pending")
+    project_id = Column(PG_UUID(as_uuid=True), ForeignKey("projects.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    project = relationship("Project", back_populates="tasks")
 
 
 engine: AsyncEngine = create_async_engine(DATABASE_URL, echo=False, future=True)

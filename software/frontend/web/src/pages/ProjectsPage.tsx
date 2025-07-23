@@ -182,6 +182,8 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ onNavigateToDetail }) => {
   // and interactions call the new handler functions.
   // I will omit the unchanged parts for brevity, but they are assumed to be present.
 
+  const gridRef = useRef<HTMLDivElement>(null);
+
   // A simplified render to show the core changes:
   return (
     <div className="h-full bg-gray-900 flex">
@@ -207,7 +209,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ onNavigateToDetail }) => {
         ) : error ? (
           <div className="text-red-500">{error}</div>
         ) : (
-          <div ref={useRef<HTMLDivElement>(null)} className="relative h-full">
+          <div ref={gridRef} className="relative h-full">
             {projects.map((project) => (
               <div key={project.id} /* ... style and event handlers ... */>
                 <SpecificWidget

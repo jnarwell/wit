@@ -14,7 +14,8 @@ from software.backend.services.database_services import create_db_and_tables, cl
 from software.frontend.web.routers import (
     auth_router, 
     users_router,
-    projects_router
+    projects_router,
+    tasks_router
 )
 
 # --- Lifespan Management ---
@@ -49,19 +50,10 @@ app.add_middleware(
 )
 
 # Include all API routers
-# app.include_router(projects_router, prefix="/api/v1/projects", tags=["projects"])
-# app.include_router(tasks_router, prefix="/api/v1/tasks", tags=["tasks"])
-# app.include_router(teams_router, prefix="/api/v1/teams", tags=["teams"])
-# app.include_router(materials_router, prefix="/api/v1/materials", tags=["materials"])
-# app.include_router(files_router, prefix="/api/v1/files", tags=["files"])
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
-# app.include_router(voice_router, prefix="/api/v1/voice", tags=["voice"])
-# app.include_router(vision_router, prefix="/api/v1/vision", tags=["vision"])
-# app.include_router(equipment_router, prefix="/api/v1/equipment", tags=["equipment"])
-# app.include_router(workspace_router, prefix="/api/v1/workspace", tags=["workspace"])
-# app.include_router(system_router, prefix="/api/v1/system", tags=["system"])
-# app.include_router(network_router, prefix="/api/v1/network", tags=["network"])
 app.include_router(users_router, prefix="/api/v1/users", tags=["users"])
+app.include_router(projects_router, prefix="/api/v1/projects", tags=["projects"])
+app.include_router(tasks_router, prefix="/api/v1", tags=["tasks"])
 
 # --- Root Endpoint ---
 @app.get("/")
