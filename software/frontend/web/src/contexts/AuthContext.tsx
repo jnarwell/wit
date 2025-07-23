@@ -175,14 +175,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Set authorization header
           axios.defaults.headers.common['Authorization'] = `Bearer ${storedTokens.access_token}`;
           
-          // Skip broken /me endpoint - just set default user
-          setUser({
-            id: 'demo-admin-id',
-            username: 'admin',
-            email: 'admin@wit.local',
-            is_admin: true,
-            is_active: true
-          });
+          // Fetch user info
+          const userInfo = await fetchUserInfo(storedTokens.access_token);
+          setUser(userInfo);
         }
       } catch (error) {
         console.error('Auth initialization error:', error);

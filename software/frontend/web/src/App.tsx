@@ -125,6 +125,17 @@ function AppContent() {
     }
   };
 
+  const handleProjectNotFound = () => {
+    console.warn('[App] Project not found, navigating back.');
+    if (detailPageState) {
+      setCurrentPage(detailPageState.previousPage);
+      setDetailPageState(null);
+    } else {
+      // Fallback if state is inconsistent
+      setCurrentPage('dashboard');
+    }
+  };
+
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
@@ -154,6 +165,7 @@ function AppContent() {
           <ProjectDetailPage 
             projectId={detailPageState.id} 
             onClose={handleDetailClose} 
+            onNotFound={handleProjectNotFound}
           />
         ) : null;
       case 'wit':
@@ -190,7 +202,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<LoginPage redirectTo="/dashboard" />} />
           <Route path="/create-user" element={<CreateUserPage />} />
           <Route path="/*" element={<AppContent />} />
         </Routes>

@@ -1,28 +1,22 @@
-"""
-Equipment Router Router
-"""
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional
-from datetime import datetime
+# software/frontend/web/routers/equipment_router.py
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
-router = APIRouter(
-    prefix="/api/v1/equipment",
-    tags=["equipment"]
-)
+router = APIRouter()
 
-@router.get("/")
-async def get_equipment():
-    """Get equipment information"""
-    return {
-        "status": "operational",
-        "timestamp": datetime.now().isoformat(),
-        "message": "Equipment API"
-    }
+class Printer(BaseModel):
+    id: str
+    name: str
+    status: str
 
-@router.get("/status")
-async def get_equipment_status():
-    """Get equipment status"""
-    return {
-        "status": "online",
-        "version": "1.0.0"
-    }
+# In-memory storage for printers for now
+printers_db: List[Printer] = []
+
+@router.get("/equipment/printers/{printer_id}", response_model=Printer)
+async def get_printer(printer_id: str):
+    """Get a single printer by its ID."""
+    printer = next((p for p in printers_db if p.id == printer_id), None)
+    if not printer:
+        raise HTTPException(status_code=404, detail="Printer not found")
+    return printer

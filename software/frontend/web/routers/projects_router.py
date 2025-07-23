@@ -1,14 +1,15 @@
 # software/frontend/web/routers/projects_router.py
 from typing import List
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-
-from software.backend.services.database_services import get_session, Project, User
-# We will need a way to get the current user, let's assume a dependency for it exists
-# from software.backend.auth.dependencies import get_current_user 
 from pydantic import BaseModel
+from fastapi.security import OAuth2PasswordBearer
+
+from software.backend.services.database_services import get_session, Project, User, TeamMember
+from software.backend.auth.security import decode_access_token
+from software.backend.services.database_services import get_user_by_username
 
 # --- Pydantic Schemas for Projects ---
 class ProjectBase(BaseModel):
@@ -30,23 +31,29 @@ class ProjectResponse(ProjectBase):
         orm_mode = True
 
 router = APIRouter()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
-# Note: We need a get_current_user dependency. For now, we'll simulate it.
-# This should be replaced with a proper JWT token decoding dependency.
-async def get_current_user(db: AsyncSession = Depends(get_session)) -> User:
-    user = await db.execute(select(User).where(User.username == "admin"))
-    user = user.scalar_one_or_none()
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_session)
+) -> User:
+    username = decode_access_token(token)
+    if not username:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user = await get_user_by_username(db, username=username)
     if not user:
-        # As a fallback for testing, create the admin user if not present
-        from software.backend.auth.security import get_password_hash
-        hashed_password = get_password_hash("admin")
-        user = User(username="admin", email="admin@example.com", hashed_password=hashed_password, is_admin=True)
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="User not found"
+        )
     return user
 
-@router.post("/", response_model=ProjectResponse, status_code=201)
+@router.post("", response_model=ProjectResponse, status_code=201)
+@router.post("/", response_model=ProjectResponse, status_code=201, include_in_schema=False)
 async def create_project(
     project: ProjectCreate,
     db: AsyncSession = Depends(get_session),
@@ -65,9 +72,21 @@ async def create_project(
     db.add(new_project)
     await db.commit()
     await db.refresh(new_project)
+
+    # Add the creator as the owner
+    new_member = TeamMember(
+        project_id=new_project.id,
+        user_id=current_user.id,
+        role="owner"
+    )
+    db.add(new_member)
+    await db.commit()
+    await db.refresh(new_project)
+    
     return new_project
 
-@router.get("/", response_model=List[ProjectResponse])
+@router.get("", response_model=List[ProjectResponse])
+@router.get("/", response_model=List[ProjectResponse], include_in_schema=False)
 async def get_projects(
     db: AsyncSession = Depends(get_session),
     skip: int = 0,

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from software.backend.services.database_services import get_session, Task, Project
+from software.backend.schemas.task_schemas import TaskCreate, TaskResponse, TaskUpdate
 from pydantic import BaseModel
 
 # --- Pydantic Schemas for Tasks ---
@@ -69,3 +70,37 @@ async def get_tasks_for_project(
     )
     tasks = result.scalars().all()
     return tasks
+
+@router.put("/tasks/{task_id}", response_model=TaskResponse)
+async def update_task(
+    task_id: uuid.UUID,
+    task_update: TaskUpdate,
+    db: AsyncSession = Depends(get_session),
+):
+    """Update a task."""
+    result = await db.execute(select(Task).where(Task.id == task_id))
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    for key, value in task_update.dict(exclude_unset=True).items():
+        setattr(task, key, value)
+    
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+@router.delete("/tasks/{task_id}", status_code=204)
+async def delete_task(
+    task_id: uuid.UUID,
+    db: AsyncSession = Depends(get_session),
+):
+    """Delete a task."""
+    result = await db.execute(select(Task).where(Task.id == task_id))
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    await db.delete(task)
+    await db.commit()
+    return

@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import AsyncGenerator, Optional
 
 from fastapi import HTTPException
-from sqlalchemy import (Column, String, Integer, Float, Boolean, DateTime, JSON, Text, ForeignKey, Index, select, event)
+from sqlalchemy import (Column, String, Integer, Float, Boolean, DateTime, JSON, Text, ForeignKey, Index, select, event, UniqueConstraint)
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker, create_async_engine, AsyncEngine)
 from sqlalchemy.orm import declarative_base, relationship
@@ -56,6 +56,21 @@ class Project(Base):
 
     owner = relationship("User", back_populates="projects")
     tasks = relationship("Task", back_populates="project")
+    members = relationship("TeamMember", back_populates="project")
+
+class TeamMember(Base):
+    __tablename__ = "team_members"
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(PG_UUID(as_uuid=True), ForeignKey("projects.id"))
+    user_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.id"))
+    role = Column(String(50), default="viewer")  # owner, admin, editor, viewer
+
+    project = relationship("Project", back_populates="members")
+    user = relationship("User")
+
+    __table_args__ = (
+        UniqueConstraint('project_id', 'user_id', name='_project_user_uc'),
+    )
 
 class Task(Base):
     __tablename__ = "tasks"
@@ -67,6 +82,26 @@ class Task(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     project = relationship("Project", back_populates="tasks")
+
+class Team(Base):
+    __tablename__ = "teams"
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), nullable=False)
+    project_id = Column(PG_UUID(as_uuid=True), ForeignKey("projects.id"))
+
+    project = relationship("Project")
+
+class File(Base):
+    __tablename__ = "files"
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    filename = Column(String(200), nullable=False)
+    filepath = Column(String(500), nullable=False)
+    filesize = Column(Integer)
+    filetype = Column(String(100))
+    project_id = Column(PG_UUID(as_uuid=True), ForeignKey("projects.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    project = relationship("Project")
 
 
 engine: AsyncEngine = create_async_engine(DATABASE_URL, echo=False, future=True)

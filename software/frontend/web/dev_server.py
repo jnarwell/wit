@@ -15,7 +15,11 @@ from software.frontend.web.routers import (
     auth_router, 
     users_router,
     projects_router,
-    tasks_router
+    tasks_router,
+    teams_router,
+    equipment_router,
+    files_router,
+    members_router
 )
 
 # --- Lifespan Management ---
@@ -54,6 +58,10 @@ app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(users_router, prefix="/api/v1/users", tags=["users"])
 app.include_router(projects_router, prefix="/api/v1/projects", tags=["projects"])
 app.include_router(tasks_router, prefix="/api/v1", tags=["tasks"])
+app.include_router(teams_router, prefix="/api/v1", tags=["teams"])
+app.include_router(equipment_router, prefix="/api/v1", tags=["equipment"])
+app.include_router(files_router, prefix="/api/v1", tags=["files"])
+app.include_router(members_router, prefix="/api/v1", tags=["members"])
 
 # --- Root Endpoint ---
 @app.get("/")
