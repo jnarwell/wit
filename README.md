@@ -11,6 +11,10 @@ A clean, industrial-style workshop terminal interface built with React, TypeScri
 - **Machine & Sensor Management**: Track workshop equipment status
 - **Project Tracking**: Monitor ongoing projects
 
+## Known Issues
+
+*   **Projects API**: The projects API router (`/api/v1/projects`) is currently disabled. Re-enabling it in its current state breaks the dev server and authentication. This needs further investigation before it can be re-enabled.
+
 ## Setup
 
 1. Install dependencies:

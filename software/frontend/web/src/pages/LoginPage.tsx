@@ -218,8 +218,8 @@ const LoginPage: React.FC = () => {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-400">
               Don't have an account?{' '}
-              <a href="#" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">
-                Contact administrator
+              <a href="/create-user" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">
+                Create one now
               </a>
             </p>
           </div>

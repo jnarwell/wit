@@ -13,6 +13,7 @@ import MachineDetailPage from './pages/MachineDetailPage';
 import SensorDetailPage from './pages/SensorDetailPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import LoginPage from './pages/LoginPage';
+import CreateUserPage from './pages/CreateUserPage';
 
 type Page = 'dashboard' | 'machines' | 'projects' | 'sensors' | 'wit' | 
            'machine-detail' | 'sensor-detail' | 'project-detail';
@@ -190,6 +191,7 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/create-user" element={<CreateUserPage />} />
           <Route path="/*" element={<AppContent />} />
         </Routes>
       </AuthProvider>

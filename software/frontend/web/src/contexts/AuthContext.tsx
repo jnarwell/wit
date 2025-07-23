@@ -67,26 +67,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('Auth tokens cleared, app data preserved');
   };
 
-  // Fetch user info - with fallback for broken endpoint
+  // Fetch user info
   const fetchUserInfo = async (accessToken: string): Promise<User> => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/api/v1/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
-      return response.data;
-    } catch (error: any) {
-      console.log('Failed to fetch user info, using fallback data');
-      // Return fallback user data when /me endpoint fails
-      return {
-        id: 'demo-admin-id',
-        username: 'admin',
-        email: 'admin@wit.local',
-        is_admin: true,
-        is_active: true
-      };
-    }
+    const response = await axios.get(`${API_BASE_URL}/api/v1/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+    return response.data;
   };
 
   // Login function
