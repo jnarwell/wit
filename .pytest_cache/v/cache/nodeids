@@ -1,4 +1,6 @@
 [
+  "scripts/testing/debug_integration_tests.py::TestDebugIntegration::test_database_service",
+  "scripts/testing/debug_integration_tests.py::TestDebugIntegration::test_mqtt_service",
   "scripts/testing/quick_test.py::test_audio_processing",
   "scripts/testing/quick_test.py::test_basic_imports",
   "scripts/testing/quick_test.py::test_project_structure",

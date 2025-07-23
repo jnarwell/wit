@@ -18,7 +18,7 @@ import sys
 
 
 from software.backend.config import settings
-from software.backend.services.database_service_complete import db_service, init_database
+from software.backend.services.database_services import db_service, init_database
 from software.backend.models.database_models_extended import (
     User, Project, Task, Material, Team, Equipment, Job, Tag, Comment, TeamMember, ProjectMaterial, MaterialUsage, ProjectFile, FileVersion
 )
@@ -39,7 +39,7 @@ async def db_session():
     await init_database(db_url, echo=False)
     logger.info("Database initialized.")
     
-    async with db_service.session() as session:
+    async with db_service.get_session() as session:
         yield session
     
     logger.info("Closing database connections...")

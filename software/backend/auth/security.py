@@ -7,7 +7,7 @@ Password hashing and JWT token management
 """
 
 from datetime import datetime, timedelta
-from typing import Optional, Any
+from typing import Optional, Any, Union
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
@@ -31,7 +31,7 @@ def get_password_hash(password: str) -> str:
 
 
 def create_access_token(
-    subject: str | Any,
+    subject: Union[str, Any],
     expires_delta: Optional[timedelta] = None
 ) -> str:
     """Create a JWT access token"""

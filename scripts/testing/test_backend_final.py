@@ -10,7 +10,7 @@ import sys
 print("🎯 Final Backend Test")
 print("=" * 50)
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://backend:8000"
 
 # Test 1: Check server
 print("\n1️⃣ Server Check...")

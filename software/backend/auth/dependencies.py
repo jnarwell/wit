@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import JWTError
 
-from ..services.database_service_complete import get_session
+from ..services.database_services import get_session
 from ..models.database_models_extended import User
 from .security import decode_access_token
 

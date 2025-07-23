@@ -35,7 +35,6 @@ from software.integrations.octoprint_integration import OctoPrintManager
 from software.integrations.grbl_integration import GRBLController
 
 
-@pytest.mark.skip(reason="Skipping due to persistent import issues")
 class TestWITIntegration:
     """Integration tests for W.I.T. system"""
     
@@ -63,7 +62,8 @@ class TestWITIntegration:
         if not os.getenv("TEST_DATABASE", "false").lower() == "true":
             pytest.skip("Database tests disabled (set TEST_DATABASE=true)")
         
-        db = DatabaseService(test_config["database_url"])
+        db = DatabaseService()
+        await db.initialize(test_config["database_url"])
         
         try:
             # Test connection
@@ -232,29 +232,49 @@ class TestWITIntegration:
         except Exception as e:
             logger.warning(f"  ! Vision test partial: {e}")
     
-    def test_fastapi_app(self):
+    @pytest.mark.asyncio
+    async def test_fastapi_app(self):
         """Test FastAPI application"""
         logger.info("Testing FastAPI Application...")
         
-        from fastapi.testclient import TestClient
-        
+        from httpx import AsyncClient
+        import requests
+        import time
+
         # Create test client
-        client = TestClient(app)
-        
-        # Test root endpoint
-        response = client.get("/")
-        assert response.status_code == 200
-        assert response.json()["message"] == "W.I.T. Terminal API"
-        logger.info("  ✓ Root endpoint works")
-        
-        # Test health endpoint
-        response = client.get("/health")
-        assert response.status_code == 200
-        assert response.json()["status"] == "healthy"
-        logger.info("  ✓ Health endpoint works")
-        
-        # Test API documentation
-        response = client.get("/docs")
+        async with AsyncClient(base_url="http://backend:8000") as client:
+
+            # Retry mechanism for FastAPI startup
+            max_retries = 10
+            retry_delay = 1  # seconds
+
+            for i in range(max_retries):
+                try:
+                    # Test root endpoint
+                    response = await client.get("/")
+                    response.raise_for_status()  # Raise an exception for HTTP errors
+                    assert response.status_code == 200
+                    assert response.json()["message"] == "W.I.T. Terminal API"
+                    logger.info("  ✓ Root endpoint works")
+
+                    # Test health endpoint
+                    response = await client.get("/api/v1/system/health")
+                    response.raise_for_status()
+                    assert response.status_code == 200
+                    assert response.json()["status"] == "healthy"
+                    logger.info("  ✓ Health endpoint works")
+                    break  # Exit loop if successful
+                except requests.exceptions.ConnectionError as e:
+                    logger.warning(f"Connection refused, retrying... ({i + 1}/{max_retries}) - {e}")
+                    time.sleep(retry_delay)
+                except Exception as e:
+                    logger.error(f"FastAPI app test failed: {e}")
+                    raise
+            else:
+                raise Exception(f"FastAPI app did not become available after {max_retries} retries.")
+
+            # Test API documentation
+            response = await client.get("/docs")
         assert response.status_code == 200
         logger.info("  ✓ API documentation available")
     

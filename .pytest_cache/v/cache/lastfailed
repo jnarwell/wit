@@ -8,5 +8,15 @@
   "tests/test_voice_system.py::TestVoiceAPI::test_status_endpoint": true,
   "tests/test_voice_system.py::TestVoiceAPI::test_health_check": true,
   "tests/test_voice_system.py::TestVoiceAPI::test_commands_list": true,
-  "tests/test_voice_system.py::TestSafetyFeatures::test_emergency_stop": true
+  "tests/test_voice_system.py::TestSafetyFeatures::test_emergency_stop": true,
+  "scripts/testing/test_database.py::test_database_connection": true,
+  "scripts/testing/test_database.py::test_user_operations": true,
+  "scripts/testing/test_database.py::test_project_operations": true,
+  "scripts/testing/test_database.py::test_statistics": true,
+  "scripts/testing/test_integration.py::TestWITIntegration::test_database_service": true,
+  "scripts/testing/test_integration.py::TestWITIntegration::test_mqtt_service": true,
+  "scripts/testing/test_integrations.py::TestWITIntegration::test_database_service": true,
+  "scripts/testing/test_integrations.py::TestWITIntegration::test_mqtt_service": true,
+  "scripts/testing/debug_integration_tests.py::TestDebugIntegration::test_database_service": true,
+  "scripts/testing/debug_integration_tests.py::TestDebugIntegration::test_mqtt_service": true
 }

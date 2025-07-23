@@ -70,12 +70,12 @@ class Settings(BaseSettings):
     MAX_TEMPERATURE_C: float = 85.0
     
     # File Storage
-    UPLOAD_PATH: str = "/data/uploads"
+    UPLOAD_PATH: str = "storage/uploads"
     MAX_UPLOAD_SIZE_MB: int = 1000
     
     # Logging
     LOG_LEVEL: str = "INFO"
-    LOG_FILE: str = "/var/log/wit/backend.log"
+    LOG_FILE: str = "wit_server.log"
     
     # Hardware
     NPU_ENABLED: bool = True
@@ -86,6 +86,19 @@ class Settings(BaseSettings):
     DEFAULT_WORKSPACE_NAME: str = "Main Workshop"
     DEFAULT_TEMPERATURE_UNIT: str = "celsius"
     DEFAULT_MEASUREMENT_UNIT: str = "metric"
+
+    # Added from environment
+    ANTHROPIC_API_KEY: Optional[str] = None
+    PRUSALINK_HOST: Optional[str] = None
+    PRUSALINK_USERNAME: Optional[str] = None
+    PRUSALINK_PASSWORD: Optional[str] = None
+    PRUSALINK_HOSTNAME: Optional[str] = None
+    MQTT_HOST: Optional[str] = None
+    MQTT_PORT: Optional[str] = None
+    MQTT_USERNAME: Optional[str] = None
+    MQTT_PASSWORD: Optional[str] = None
+    DB_PASSWORD: Optional[str] = None
+    GEMINI_API_KEY: Optional[str] = None
     
     class Config:
         env_file = ".env"

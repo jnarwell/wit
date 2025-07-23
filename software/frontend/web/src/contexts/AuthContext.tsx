@@ -12,6 +12,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  tokens: AuthTokens | null;
   loading: boolean;
   login: (username: string, password: string, rememberMe?: boolean) => Promise<void>;
   logout: () => void;
@@ -39,26 +40,29 @@ const getApiBaseUrl = () => {
 const API_BASE_URL = getApiBaseUrl();
 console.log('API Base URL:', API_BASE_URL);
 
+// Get stored tokens
+const getStoredTokens = (): AuthTokens | null => {
+  const storedTokens = localStorage.getItem('wit-auth-tokens') || sessionStorage.getItem('wit-auth-tokens');
+  return storedTokens ? JSON.parse(storedTokens) : null;
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [tokens, setTokens] = useState<AuthTokens | null>(getStoredTokens());
   const [loading, setLoading] = useState(true);
 
-  // Get stored tokens
-  const getStoredTokens = (): AuthTokens | null => {
-    const tokens = localStorage.getItem('wit-auth-tokens') || sessionStorage.getItem('wit-auth-tokens');
-    return tokens ? JSON.parse(tokens) : null;
-  };
-
   // Store tokens
-  const storeTokens = (tokens: AuthTokens, rememberMe: boolean = true) => {
+  const storeTokens = (newTokens: AuthTokens, rememberMe: boolean = true) => {
     const storage = rememberMe ? localStorage : sessionStorage;
-    storage.setItem('wit-auth-tokens', JSON.stringify(tokens));
+    storage.setItem('wit-auth-tokens', JSON.stringify(newTokens));
+    setTokens(newTokens);
   };
 
   // Clear tokens
   const clearTokens = () => {
     localStorage.removeItem('wit-auth-tokens');
     sessionStorage.removeItem('wit-auth-tokens');
+    setTokens(null);
     // Don't clear other localStorage items!
     console.log('Auth tokens cleared, app data preserved');
   };
@@ -177,10 +181,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const tokens = getStoredTokens();
-        if (tokens) {
+        const storedTokens = getStoredTokens();
+        if (storedTokens) {
+          setTokens(storedTokens);
           // Set authorization header
-          axios.defaults.headers.common['Authorization'] = `Bearer ${tokens.access_token}`;
+          axios.defaults.headers.common['Authorization'] = `Bearer ${storedTokens.access_token}`;
           
           // Skip broken /me endpoint - just set default user
           setUser({
@@ -237,6 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value: AuthContextType = {
     user,
+    tokens,
     loading,
     login,
     logout,

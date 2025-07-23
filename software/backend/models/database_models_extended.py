@@ -45,16 +45,16 @@ def get_fk_column(table_name):
 project_tags = Table(
     'project_tags',
     Base.metadata,
-    Column('project_id', String(36), ForeignKey('projects.id')),
-    Column('tag_id', String(36), ForeignKey('tags.id')),
+    Column('project_id', get_id_column().type, ForeignKey('projects.id')),
+    Column('tag_id', get_id_column().type, ForeignKey('tags.id')),
     UniqueConstraint('project_id', 'tag_id')
 )
 
 task_dependencies = Table(
     'task_dependencies',
     Base.metadata,
-    Column('task_id', String(36), ForeignKey('tasks.id')),
-    Column('depends_on_id', String(36), ForeignKey('tasks.id')),
+    Column('task_id', get_id_column().type, ForeignKey('tasks.id')),
+    Column('depends_on_id', get_id_column().type, ForeignKey('tasks.id')),
     UniqueConstraint('task_id', 'depends_on_id')
 )
 
@@ -147,7 +147,7 @@ class Task(Base):
     id = get_id_column()
     task_id = Column(String(50), unique=True, nullable=False, index=True)
     project_id = get_fk_column("projects")
-    parent_id = Column(String(36), ForeignKey("tasks.id"))
+    parent_id = get_fk_column("tasks")
     
     # Core fields
     title = Column(String(200), nullable=False)
@@ -431,7 +431,7 @@ class Comment(Base):
     commentable_id = Column(String(36))
     
     # Parent comment for threading
-    parent_id = Column(String(36), ForeignKey("comments.id"))
+    parent_id = get_fk_column("comments")
     
     # Relationships
     author = relationship("User")

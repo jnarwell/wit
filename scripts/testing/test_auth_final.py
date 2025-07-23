@@ -10,7 +10,7 @@ import time
 print("🔐 Final Authentication Test")
 print("=" * 40)
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://backend:8000"
 
 # Test 1: Server health
 print("\n1️⃣ Checking server health...")

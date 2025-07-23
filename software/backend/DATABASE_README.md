@@ -143,13 +143,13 @@ alembic downgrade -1
 python3 test_database.py
 
 # Check database health
-python3 -c "from services.database_service_complete import db_service; import asyncio; print(asyncio.run(db_service.health_check()))"
+python3 -c "from services.database_services import db_service; import asyncio; print(asyncio.run(db_service.health_check()))"
 ```
 
 ### Database Utilities
 
 ```python
-from services.database_service_complete import DatabaseUtils
+from services.database_services import DatabaseUtils
 
 # Get table statistics
 stats = await DatabaseUtils.get_table_stats()
@@ -199,7 +199,7 @@ await DatabaseUtils.vacuum_database()
 2. **Table Already Exists**
    ```bash
    # Drop all tables (CAUTION: Data loss!)
-   python3 -c "from models.database_models_extended import Base; from services.database_service_complete import db_service; import asyncio; asyncio.run(db_service.engine.drop_all())"
+   python3 -c "from models.database_models_extended import Base; from services.database_services import db_service; import asyncio; asyncio.run(db_service.engine.drop_all())"
    ```
 
 ## Performance Tips

@@ -11,8 +11,8 @@ import json
 import logging
 from typing import Optional, Dict, Any, Callable, List
 from datetime import datetime
-import asyncio_mqtt as aiomqtt
-from asyncio_mqtt import Client, MqttError
+import aiomqtt
+from aiomqtt import Client, MqttError
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 
@@ -76,7 +76,7 @@ class MQTTService:
             logger.info(f"Connecting to MQTT broker at {self.config.host}:{self.config.port}")
             
             # Create client
-            self.client = Client(
+            self.client = aiomqtt.Client(
                 hostname=self.config.host,
                 port=self.config.port,
                 username=self.config.username,
@@ -145,9 +145,9 @@ class MQTTService:
             except:
                 pass
                 
-        # Disconnect client
+        # Explicitly exit the context manager
         if self.client:
-            await self.client.disconnect()
+            await self.client.__aexit__(None, None, None)
             
         self.connected = False
         logger.info("Disconnected from MQTT broker")
