@@ -8,6 +8,7 @@ from .tasks_router import router as tasks_router
 from .equipment_router import router as equipment_router
 from .files_router import router as files_router
 from .members_router import router as members_router
+from .team_members_router import router as team_members_router
 
 __all__ = [
     "auth_router",
@@ -17,4 +18,5 @@ __all__ = [
     "equipment_router",
     "files_router",
     "members_router",
+    "team_members_router",
 ]

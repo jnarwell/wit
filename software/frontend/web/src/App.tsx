@@ -11,7 +11,7 @@ import ProjectsPage from './pages/ProjectsPage';
 import SensorsPage from './pages/SensorsPage';
 import MachineDetailPage from './pages/MachineDetailPage';
 import SensorDetailPage from './pages/SensorDetailPage';
-import ProjectDetailPage from './pages/ProjectDetailPage';
+import ProjectDetailPageNew from './pages/ProjectDetailPageNew';
 import LoginPage from './pages/LoginPage';
 import CreateUserPage from './pages/CreateUserPage';
 import Terminal from './components/Terminal';
@@ -164,7 +164,7 @@ function AppContent() {
         ) : null;
       case 'project-detail':
         return detailPageState ? (
-          <ProjectDetailPage 
+          <ProjectDetailPageNew 
             projectId={detailPageState.id} 
             onClose={handleDetailClose} 
             onNotFound={handleProjectNotFound}

@@ -26,7 +26,8 @@ from software.frontend.web.routers import (
     members_router,
     terminal_router,
     files_api,
-    file_operations_router
+    file_operations_router,
+    team_members_router
 )
 from software.frontend.web.routers.file_operations_router import active_file_connections
 
@@ -68,6 +69,7 @@ app.include_router(tasks_router, prefix="/api/v1", tags=["tasks"])
 app.include_router(equipment_router, prefix="/api/v1", tags=["equipment"])
 app.include_router(files_router, prefix="/api/v1", tags=["files"])
 app.include_router(members_router, prefix="/api/v1", tags=["members"])
+app.include_router(team_members_router, prefix="/api/v1", tags=["team_members"])
 app.include_router(terminal_router.router, prefix="/api/v1/terminal", tags=["terminal"])
 app.include_router(files_api.router, prefix="/api/v1", tags=["files_api"])
 app.include_router(file_operations_router.router, prefix="/api/v1", tags=["file_operations"])
