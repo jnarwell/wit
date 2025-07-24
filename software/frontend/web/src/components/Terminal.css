@@ -1,0 +1,86 @@
+/* software/frontend/web/src/components/Terminal.css */
+.terminal-container {
+    display: flex;
+    height: 100%;
+    width: 100%;
+}
+
+.terminal {
+    flex-grow: 1;
+    min-width: 0; /* Allow terminal to shrink */
+    background-color: #1a1a1a;
+    color: #f0f0f0;
+    font-family: 'Courier New', Courier, monospace;
+    height: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    cursor: text;
+}
+
+.terminal:focus {
+    outline: none;
+}
+
+.terminal-output {
+    flex-grow: 1;
+}
+
+.terminal-line {
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.terminal-line .terminal-prompt {
+    color: #888;
+    margin-right: 8px;
+}
+
+.terminal-input-line {
+    display: flex;
+    align-items: center;
+    white-space: pre;
+    min-height: 1.2em; /* Ensure line doesn't collapse when empty */
+}
+
+.terminal-prompt {
+    color: #888;
+    margin-right: 8px;
+}
+
+.terminal-input-text {
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.terminal-cursor {
+    background-color: #f0f0f0;
+    width: 8px;
+    height: 1em;
+    display: inline-block;
+    vertical-align: middle;
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+    from, to {
+        background-color: transparent;
+    }
+    50% {
+        background-color: #f0f0f0;
+    }
+}
+
+.hidden-input {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    border: none;
+    padding: 0;
+    margin: 0;
+}

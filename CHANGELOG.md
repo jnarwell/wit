@@ -1,5 +1,27 @@
 # Changelog
 
+## [Unreleased] - 2025-07-24
+
+### Added
+- **AI Terminal & File Browser**: Implemented a new primary "WIT" page featuring an interactive terminal and a file browser.
+- **Resizable Panes**: Added a draggable divider to allow resizing of the terminal and file browser panes.
+- **File Operations**: Implemented a right-click context menu in the file browser for creating, renaming, and deleting files and folders.
+- **AI Capabilities**:
+    - Integrated the terminal with the Claude API for natural language command processing.
+    - Enabled the AI to perform actions ("tools") like managing projects and equipment.
+    - Provided the AI with database context for user-specific responses.
+- **Chat Persistence**: The terminal now saves chat history and maintains conversational context between page loads.
+
+### Fixed
+- **UI Bugs**:
+    - Corrected a bug where the browser's default context menu would appear over the custom file browser menu.
+    - Fixed an issue where creating files/folders inside a directory would incorrectly place them at the root.
+    - Resolved a visual bug where the resizer handle would "jump" when dragged.
+- **Backend Stability**:
+    - Fixed multiple `ImportError` and `NameError` issues by removing unused routers and correcting dependencies.
+    - Resolved a critical `AttributeError` in the Claude service by switching to the official `anthropic` library.
+    - Corrected an API error caused by referencing a non-existent AI model.
+
 ## [Unreleased] - 2025-07-23
 
 ### Added

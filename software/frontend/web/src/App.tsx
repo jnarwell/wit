@@ -14,6 +14,8 @@ import SensorDetailPage from './pages/SensorDetailPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import LoginPage from './pages/LoginPage';
 import CreateUserPage from './pages/CreateUserPage';
+import Terminal from './components/Terminal';
+import './components/Terminal.css';
 
 type Page = 'dashboard' | 'machines' | 'projects' | 'sensors' | 'wit' | 
            'machine-detail' | 'sensor-detail' | 'project-detail';
@@ -169,12 +171,7 @@ function AppContent() {
           />
         ) : null;
       case 'wit':
-        return (
-          <div className="p-8 bg-gray-800 text-white h-full">
-            <h1 className="text-3xl font-bold mb-4">W.I.T. System</h1>
-            <p>Workshop Integrated Terminal - System Overview</p>
-          </div>
-        );
+        return <Terminal />;
       default:
         return <Dashboard />;
     }

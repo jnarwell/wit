@@ -5,21 +5,28 @@ W.I.T. Development Server - REWRITTEN for stability
 import logging
 import asyncio
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Adjust imports to match the new structure
-from software.backend.services.database_services import create_db_and_tables, close_db_connection
+from software.backend.services.database_services import create_db_and_tables
+from software.backend.services.claude_service import claude_terminal_service
 from software.frontend.web.routers import (
     auth_router, 
     users_router,
     projects_router,
     tasks_router,
-    teams_router,
     equipment_router,
     files_router,
-    members_router
+    members_router,
+    terminal_router,
+    files_api,
+    file_operations_router
 )
 
 # --- Lifespan Management ---
@@ -36,7 +43,6 @@ async def lifespan(app: FastAPI):
     yield
     
     logging.info("--- Server Shutting Down ---")
-    await close_db_connection()
 
 # --- FastAPI App Initialization ---
 app = FastAPI(
@@ -58,10 +64,12 @@ app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(users_router, prefix="/api/v1/users", tags=["users"])
 app.include_router(projects_router, prefix="/api/v1/projects", tags=["projects"])
 app.include_router(tasks_router, prefix="/api/v1", tags=["tasks"])
-app.include_router(teams_router, prefix="/api/v1", tags=["teams"])
 app.include_router(equipment_router, prefix="/api/v1", tags=["equipment"])
 app.include_router(files_router, prefix="/api/v1", tags=["files"])
 app.include_router(members_router, prefix="/api/v1", tags=["members"])
+app.include_router(terminal_router.router, prefix="/api/v1/terminal", tags=["terminal"])
+app.include_router(files_api.router, prefix="/api/v1", tags=["files_api"])
+app.include_router(file_operations_router.router, prefix="/api/v1", tags=["file_operations"])
 
 # --- Root Endpoint ---
 @app.get("/")

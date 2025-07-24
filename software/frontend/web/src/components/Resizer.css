@@ -1,0 +1,12 @@
+/* software/frontend/web/src/components/Resizer.css */
+.resizer {
+    width: 5px;
+    cursor: col-resize;
+    background-color: #444;
+    height: 100%;
+    transition: background-color 0.2s ease;
+}
+
+.resizer:hover {
+    background-color: #666;
+}
