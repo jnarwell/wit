@@ -25,7 +25,7 @@ const Terminal: React.FC = () => {
     const [input, setInput] = useState('');
     const [cursorPosition, setCursorPosition] = useState(0);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [sidebarWidth, setSidebarWidth] = useState(250);
+    const [sidebarWidth, setSidebarWidth] = useState(window.innerWidth / 4);
     const [isResizing, setIsResizing] = useState(false);
     
     const terminalEndRef = useRef<HTMLDivElement>(null);

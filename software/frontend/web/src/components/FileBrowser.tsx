@@ -1,5 +1,5 @@
 // software/frontend/web/src/components/FileBrowser.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import './FileBrowser.css';
 import ContextMenu from './ContextMenu';
@@ -25,7 +25,9 @@ const FileBrowser: React.FC = () => {
     const [projectFiles, setProjectFiles] = useState<FileNode[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-    const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const folderInputRef = useRef<HTMLInputElement>(null);
+    const uploadInfoRef = useRef<{ basePath: string; baseDir: string; projectId?: string } | null>(null);
 
     const fetchFiles = async () => {
         if (!tokens) return;
@@ -48,34 +50,22 @@ const FileBrowser: React.FC = () => {
         fetchFiles();
     }, [tokens]);
 
-    const toggleFolder = (path: string) => {
-        setExpandedFolders(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(path)) {
-                newSet.delete(path);
-            } else {
-                newSet.add(path);
-            }
-            return newSet;
-        });
-    };
-
     const handleContextMenu = (e: React.MouseEvent, node?: FileNode, baseDir?: string, projectId?: string) => {
         e.preventDefault();
         e.stopPropagation();
 
         const items = [];
+        const basePath = node ? (node.is_dir ? node.path : node.path.substring(0, node.path.lastIndexOf('/'))) : (baseDir === 'user' ? `storage/users/${user?.id}` : `storage/projects/${projectId}`);
+
         if (node) {
             items.push({ label: 'Rename', action: () => handleRename(node, baseDir, projectId) });
             items.push({ label: 'Delete', action: () => handleDelete(node, baseDir, projectId) });
-            if (node.is_dir) {
-                items.push({ label: 'New File', action: () => handleCreate('file', node.path, baseDir, projectId) });
-                items.push({ label: 'New Folder', action: () => handleCreate('folder', node.path, baseDir, projectId) });
-            }
-        } else {
-            items.push({ label: 'New File', action: () => handleCreate('file', baseDir, baseDir, projectId) });
-            items.push({ label: 'New Folder', action: () => handleCreate('folder', baseDir, baseDir, projectId) });
         }
+        
+        items.push({ label: 'New File', action: () => handleCreate('file', basePath, baseDir, projectId) });
+        items.push({ label: 'New Folder', action: () => handleCreate('folder', basePath, baseDir, projectId) });
+        items.push({ label: 'Upload File', action: () => handleUpload('file', basePath, baseDir, projectId) });
+        items.push({ label: 'Upload Folder', action: () => handleUpload('folder', basePath, baseDir, projectId) });
 
         setContextMenu({ x: e.clientX, y: e.clientY, items });
     };
@@ -110,8 +100,11 @@ const FileBrowser: React.FC = () => {
 
     const handleCreate = async (type: 'file' | 'folder', basePath: string, baseDir: string, projectId?: string) => {
         closeContextMenu();
-        const name = prompt(`Enter name for new ${type}:`);
+        let name = prompt(`Enter name for new ${type}:`);
         if (name) {
+            if (type === 'file' && !name.includes('.')) {
+                name += '.md'; // Default to markdown if no extension
+            }
             const path = `${basePath}/${name}${type === 'folder' ? '/' : ''}`;
             await fetch(`${API_BASE_URL}/api/v1/files/create`, {
                 method: 'POST',
@@ -122,27 +115,64 @@ const FileBrowser: React.FC = () => {
         }
     };
 
+    const handleUpload = (type: 'file' | 'folder', basePath: string, baseDir: string, projectId?: string) => {
+        closeContextMenu();
+        uploadInfoRef.current = { basePath, baseDir, projectId };
+        if (type === 'file') {
+            fileInputRef.current?.click();
+        } else {
+            folderInputRef.current?.click();
+        }
+    };
+
+    const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !uploadInfoRef.current) return;
+
+        const { basePath, baseDir, projectId } = uploadInfoRef.current;
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('path', basePath);
+        formData.append('base_dir', baseDir);
+        if (projectId) formData.append('project_id', projectId);
+
+        await fetch(`${API_BASE_URL}/api/v1/files/upload`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${tokens.access_token}` },
+            body: formData
+        });
+        fetchFiles();
+    };
+
+    const handleFolderSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0 || !uploadInfoRef.current) return;
+
+        const { basePath, baseDir, projectId } = uploadInfoRef.current;
+        const formData = new FormData();
+        
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files', files[i], files[i].webkitRelativePath);
+        }
+        
+        formData.append('base_path', basePath);
+        formData.append('base_dir', baseDir);
+        if (projectId) formData.append('project_id', projectId);
+
+        await fetch(`${API_BASE_URL}/api/v1/files/upload-folder`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${tokens.access_token}` },
+            body: formData
+        });
+        fetchFiles();
+    };
+
     const renderTree = (nodes: FileNode[], baseDir: string, projectId?: string) => (
         <ul>
             {nodes.map(node => (
                 <li key={node.path}>
-                    <div className="file-entry">
-                        {node.is_dir && (
-                            <span 
-                                className={`arrow ${expandedFolders.has(node.path) ? 'expanded' : ''}`}
-                                onClick={() => toggleFolder(node.path)}
-                            >
-                                &#9654;
-                            </span>
-                        )}
-                        <span 
-                            className={node.is_dir ? 'folder' : 'file'} 
-                            onContextMenu={(e) => handleContextMenu(e, node, baseDir, projectId)}
-                        >
-                            {node.name}
-                        </span>
-                    </div>
-                    {node.is_dir && expandedFolders.has(node.path) && node.children.length > 0 && renderTree(node.children, baseDir, projectId)}
+                    <span className={node.is_dir ? 'folder' : 'file'} onContextMenu={(e) => handleContextMenu(e, node, baseDir, projectId)}>{node.name}</span>
+                    {node.is_dir && node.children.length > 0 && renderTree(node.children, baseDir, projectId)}
                 </li>
             ))}
         </ul>
@@ -151,12 +181,11 @@ const FileBrowser: React.FC = () => {
     if (isLoading) return <div className="file-browser">Loading files...</div>;
     if (!user) return <div className="file-browser">User not found.</div>;
 
-    const userBasePath = `storage/users/${user.id}`;
-    const projectBasePath = `storage/projects/PROJ-551C12CB`;
-
     return (
-        <div className="file-browser" onContextMenu={(e) => handleContextMenu(e, undefined, 'user')}>
-            <div className="file-section">
+        <div className="file-browser">
+            <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelected} />
+            <input type="file" ref={folderInputRef} style={{ display: 'none' }} webkitdirectory="" onChange={handleFolderSelected} />
+            <div className="file-section" onContextMenu={(e) => handleContextMenu(e, undefined, 'user')}>
                 <h3>My Files</h3>
                 {renderTree(userFiles, 'user')}
             </div>

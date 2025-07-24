@@ -1,5 +1,20 @@
 # Changelog
 
+## [Unreleased] - 2025-07-24 (Afternoon)
+
+### Added
+- **Folder Uploads**: Implemented the ability to upload entire folders with their contents from the file browser.
+- **Folder Content Management**: Users can now right-click on folders to create new files and subfolders within them.
+- **Visual Indentation**: Added visual indentation to the file browser to clearly represent the file hierarchy.
+- **File Extension Validation**: New files created through the UI now default to `.md` if no extension is provided.
+
+### Fixed
+- **File Operations**:
+    - Corrected a bug that prevented file deletion and renaming.
+    - Fixed an issue where creating files inside a folder would incorrectly place them at the root.
+    - Resolved a path validation error that was causing 403 Forbidden errors on file operations.
+- **UI Layout**: Adjusted the default width of the file browser to 1/4 of the screen for a better layout.
+
 ## [Unreleased] - 2025-07-24
 
 ### Added

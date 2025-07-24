@@ -1,9 +1,9 @@
 # software/frontend/web/routers/file_operations_router.py
 import os
 import shutil
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File, Form
 from pydantic import BaseModel
-from typing import Annotated
+from typing import Annotated, List
 
 from software.backend.services.database_services import User
 from software.frontend.web.routers.projects_router import get_current_user
@@ -33,6 +33,54 @@ def validate_path(base_dir: str, path: str):
     if not abs_path.startswith(abs_base_dir):
         raise HTTPException(status_code=403, detail="Forbidden: Access denied.")
     return abs_path
+
+@router.post("/files/upload-folder")
+async def upload_folder(
+    files: List[UploadFile] = File(...),
+    base_path: str = Form(...),
+    base_dir: str = Form(...),
+    project_id: str = Form(None),
+    current_user: User = Depends(get_current_user)
+):
+    """Handles folder uploads."""
+    base_directory = get_base_dir(base_dir, current_user, project_id)
+    
+    for file in files:
+        # The filename from the client includes the relative path
+        upload_path = os.path.join(base_directory, base_path, file.filename)
+        validate_path(base_directory, upload_path)
+        
+        try:
+            os.makedirs(os.path.dirname(upload_path), exist_ok=True)
+            with open(upload_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Could not upload {file.filename}: {e}")
+            
+    return {"message": "Folder uploaded successfully."}
+
+@router.post("/files/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    path: str = Form(...),
+    base_dir: str = Form(...),
+    project_id: str = Form(None),
+    current_user: User = Depends(get_current_user)
+):
+    """Handles file uploads."""
+    base_directory = get_base_dir(base_dir, current_user, project_id)
+    upload_path = os.path.join(base_directory, file.filename)
+    
+    # Validate the final path
+    validate_path(base_directory, upload_path)
+
+    try:
+        os.makedirs(os.path.dirname(upload_path), exist_ok=True)
+        with open(upload_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        return {"message": f"File '{file.filename}' uploaded successfully to '{path}'."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/files/create")
 async def create_file_or_folder(
