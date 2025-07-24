@@ -15,7 +15,6 @@ from software.frontend.web.routers.file_operations_router import (
 )
 from sqlalchemy import select
 from software.backend.services.database_services import User, get_session
-from software.frontend.web.routers.files_api import get_file_structure
 
 # --- File System Tools ---
 

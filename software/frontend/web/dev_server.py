@@ -74,7 +74,7 @@ app.include_router(team_members_router, prefix="/api/v1", tags=["team_members"])
 app.include_router(terminal_router.router, prefix="/api/v1/terminal", tags=["terminal"])
 app.include_router(files_api.router, prefix="/api/v1", tags=["files_api"])
 app.include_router(file_operations_router.router, prefix="/api/v1", tags=["file_operations"])
-app.include_router(project_files_router.router, prefix="/api/v1", tags=["project_files"])
+app.include_router(project_files_router, prefix="/api/v1", tags=["project_files"])
 
 @app.websocket("/api/v1/files/ws/files")
 async def websocket_endpoint(websocket: WebSocket):

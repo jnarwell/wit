@@ -17,7 +17,7 @@ class FileNode(BaseModel):
     is_dir: bool
     children: List['FileNode'] = []
 
-def get_file_structure(path: str) -> List[FileNode]:
+def build_tree(path: str) -> List[FileNode]:
     """Recursively builds a file tree from a given path."""
     nodes = []
     if not os.path.exists(path):

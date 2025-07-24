@@ -6,7 +6,30 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from software.backend.services.database_services import get_session, Project, User
 from software.frontend.web.routers.files_api import FileNode, build_tree
-from software.frontend.web.routers.auth_router import get_current_user
+from software.backend.auth.security import decode_access_token
+from software.backend.services.database_services import get_user_by_username
+from fastapi.security import OAuth2PasswordBearer
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_session)
+) -> User:
+    username = decode_access_token(token)
+    if not username:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user = await get_user_by_username(db, username=username)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="User not found"
+        )
+    return user
 
 router = APIRouter()
 

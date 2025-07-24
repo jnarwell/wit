@@ -20,4 +20,4 @@ class TaskResponse(TaskBase):
     project_id: uuid.UUID
 
     class Config:
-        orm_mode = True
+        from_attributes = True

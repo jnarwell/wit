@@ -19,7 +19,7 @@ class FileResponse(BaseModel):
     filetype: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 router = APIRouter()
 

@@ -29,7 +29,7 @@ class TeamMemberResponse(BaseModel):
     avatar: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")

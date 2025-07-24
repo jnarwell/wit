@@ -26,7 +26,7 @@ class EquipmentResponse(EquipmentBase):
     owner_id: uuid.UUID
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 @router.post("/equipment", response_model=EquipmentResponse, status_code=201)
 async def create_equipment(
