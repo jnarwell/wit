@@ -2,9 +2,10 @@
 import os
 import shutil
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File, Form
+import logging
+from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File, Form, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -12,6 +13,24 @@ from software.backend.services.database_services import User, TeamMember, Projec
 from software.frontend.web.routers.projects_router import get_current_user
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+# --- WebSocket Connection Manager ---
+active_file_connections: List[WebSocket] = []
+
+async def broadcast_file_update():
+    """Broadcast a file system update to all connected WebSocket clients."""
+    if active_file_connections:
+        message = {"type": "refresh_files"}
+        disconnected_clients = []
+        for connection in active_file_connections:
+            try:
+                await connection.send_json(message)
+            except Exception:
+                disconnected_clients.append(connection)
+        
+        for client in disconnected_clients:
+            active_file_connections.remove(client)
 
 class FileContentResponse(BaseModel):
     content: str
@@ -20,13 +39,13 @@ class FileUpdateRequest(BaseModel):
     path: str
     content: str
     base_dir: str
-    project_id: str = None
+    project_id: Optional[str] = None
 
 class FileOperationRequest(BaseModel):
     path: str
     new_path: str = None
     base_dir: str
-    project_id: str = None
+    project_id: Optional[str] = None
 
 async def get_project_member_role(db: AsyncSession, project_id: str, user_id: uuid.UUID) -> str:
     result = await db.execute(
@@ -110,6 +129,7 @@ async def upload_file(
         os.makedirs(os.path.dirname(upload_path), exist_ok=True)
         with open(upload_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+        await broadcast_file_update()
         return {"message": f"File '{file.filename}' uploaded successfully to '{path}'."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -132,6 +152,7 @@ async def upload_folder(
                 shutil.copyfileobj(file.file, buffer)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Could not upload {file.filename}: {e}")
+    await broadcast_file_update()
     return {"message": "Folder uploaded successfully."}
 
 @router.post("/files/create")
@@ -145,12 +166,14 @@ async def create_file_or_folder(
     try:
         if data.path.endswith('/'):
             os.makedirs(path, exist_ok=True)
-            return {"message": f"Directory created: {data.path}"}
+            message = f"Directory created: {data.path}"
         else:
             os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, 'w') as f:
                 f.write('')
-            return {"message": f"File created: {data.path}"}
+            message = f"File created: {data.path}"
+        await broadcast_file_update()
+        return {"message": message}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -165,6 +188,7 @@ async def rename_file_or_folder(
     
     try:
         os.rename(old_path, new_path)
+        await broadcast_file_update()
         return {"message": "Renamed successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -182,9 +206,12 @@ async def delete_file_or_folder(
             shutil.rmtree(path)
         else:
             os.remove(path)
+        await broadcast_file_update()
         return {"message": "Deleted successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+from datetime import datetime
 
 @router.post("/files/update")
 async def update_file(
@@ -197,6 +224,37 @@ async def update_file(
     try:
         with open(path, "w") as f:
             f.write(data.content)
+        await broadcast_file_update()
         return {"message": "File updated successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/log-ai-message")
+async def log_ai_message(
+    message: str = Body(..., embed=True),
+    sender: str = Body(..., embed=True)
+):
+    log_file_path = os.path.abspath("storage/WIT_LOG.md")
+    timestamp = datetime.now().isoformat()
+    
+    if not os.path.abspath(log_file_path).startswith(os.path.abspath("storage")):
+        raise HTTPException(status_code=403, detail="Forbidden: Invalid log file path.")
+
+    try:
+        with open(log_file_path, "a") as f:
+            f.write(f"**[{timestamp}] {sender.upper()}:**\n{message}\n\n---\n")
+        return {"message": "Message logged successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.websocket("/ws/files")
+async def websocket_file_updates(websocket: WebSocket):
+    """WebSocket for real-time file system updates."""
+    await websocket.accept()
+    active_file_connections.append(websocket)
+    try:
+        while True:
+            await websocket.receive_text() # Keep connection open
+    except WebSocketDisconnect:
+        active_file_connections.remove(websocket)
+        logger.info("File system WebSocket client disconnected")

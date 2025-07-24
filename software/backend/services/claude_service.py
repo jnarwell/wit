@@ -9,6 +9,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 from software.backend.services.database_services import User, Project, TeamMember, Equipment
+from software.backend.services.ai_tools import (
+    list_files,
+    read_file,
+    write_file,
+    create_file,
+    delete_file,
+    get_equipment_status,
+    run_equipment_command,
+    search_logs
+)
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +33,86 @@ tools = [
     {"name": "create_equipment", "description": "Adds a new piece of equipment.", "input_schema": {"type": "object", "properties": {"name": {"type": "string"}, "type": {"type": "string", "description": "e.g., 3d_printer, laser_cutter"}}, "required": ["name", "type"]}},
     {"name": "list_equipment", "description": "Lists all equipment for the user.", "input_schema": {"type": "object", "properties": {}}},
     {"name": "delete_equipment", "description": "Deletes a piece of equipment.", "input_schema": {"type": "object", "properties": {"equipment_id": {"type": "string"}}, "required": ["equipment_id"]}},
-    {"name": "get_equipment_status", "description": "Gets the status of a piece of equipment.", "input_schema": {"type": "object", "properties": {"equipment_id": {"type": "string"}}, "required": ["equipment_id"]}}
+    {"name": "get_equipment_status", "description": "Gets the status of a piece of equipment.", "input_schema": {"type": "object", "properties": {"equipment_id": {"type": "string"}}, "required": ["equipment_id"]}},
+    # File System Tools
+    {
+        "name": "list_files",
+        "description": "Lists files and directories at a given path.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "The path to list files in."},
+                "base_dir": {"type": "string", "description": "The base directory ('user' or 'project')."},
+                "project_id": {"type": "string", "description": "The project ID, if applicable."}
+            },
+            "required": ["path", "base_dir"]
+        }
+    },
+    {
+        "name": "read_file",
+        "description": "Reads the content of a file.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "The path of the file to read."},
+                "base_dir": {"type": "string", "description": "The base directory ('user' or 'project')."},
+                "project_id": {"type": "string", "description": "The project ID, if applicable."}
+            },
+            "required": ["path", "base_dir"]
+        }
+    },
+    {
+        "name": "write_file",
+        "description": "Writes content to a file.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "The path of the file to write to."},
+                "content": {"type": "string", "description": "The content to write to the file."},
+                "base_dir": {"type": "string", "description": "The base directory ('user' or 'project')."},
+                "project_id": {"type": "string", "description": "The project ID, if applicable."}
+            },
+            "required": ["path", "content", "base_dir"]
+        }
+    },
+    {
+        "name": "create_file",
+        "description": "Creates a new file.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "The path of the file to create."},
+                "base_dir": {"type": "string", "description": "The base directory ('user' or 'project')."},
+                "project_id": {"type": "string", "description": "The project ID, if applicable."}
+            },
+            "required": ["path", "base_dir"]
+        }
+    },
+    {
+        "name": "delete_file",
+        "description": "Deletes a file.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "The path of the file to delete."},
+                "base_dir": {"type": "string", "description": "The base directory ('user' or 'project')."},
+                "project_id": {"type": "string", "description": "The project ID, if applicable."}
+            },
+            "required": ["path", "base_dir"]
+        }
+    },
+    # Log Tools
+    {
+        "name": "search_logs",
+        "description": "Searches the AI conversation logs.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "The query to search for in the logs."}
+            },
+            "required": ["query"]
+        }
+    }
 ]
 
 # --- Tool Implementations ---
@@ -112,14 +201,28 @@ class ClaudeTerminalService:
             if response_message.type == "tool_use":
                 tool_name, tool_input, tool_use_id = response_message.name, response_message.input, response_message.id
                 
-                if tool_name == "create_project": tool_result = await create_project(db, user, **tool_input)
-                elif tool_name == "list_projects": tool_result = await list_projects(db, user)
-                elif tool_name == "update_project": tool_result = await update_project(db, user, **tool_input)
-                elif tool_name == "delete_project": tool_result = await delete_project(db, user, **tool_input)
-                elif tool_name == "create_equipment": tool_result = await create_equipment(db, user, **tool_input)
-                elif tool_name == "list_equipment": tool_result = await list_equipment(db, user)
-                elif tool_name == "delete_equipment": tool_result = await delete_equipment(db, user, **tool_input)
+                if tool_name == "create_project":
+                    tool_result = await create_project(db, user, **tool_input)
+                elif tool_name == "list_projects":
+                    tool_result = await list_projects(db, user)
+                elif tool_name == "update_project":
+                    tool_result = await update_project(db, user, **tool_input)
+                elif tool_name == "delete_project":
+                    tool_result = await delete_project(db, user, **tool_input)
+                elif tool_name == "create_equipment":
+                    tool_result = await create_equipment(db, user, **tool_input)
+                elif tool_name == "list_equipment":
+                    tool_result = await list_equipment(db, user)
+                elif tool_name == "delete_equipment":
+                    tool_result = await delete_equipment(db, user, **tool_input)
                 elif tool_name == "get_equipment_status": tool_result = await get_equipment_status(db, user, **tool_input)
+                elif tool_name == "list_files": tool_result = await list_files(user=user, **tool_input)
+                elif tool_name == "read_file": tool_result = await read_file(user=user, **tool_input)
+                elif tool_name == "write_file": tool_result = await write_file(user=user, **tool_input)
+                elif tool_name == "create_file": tool_result = await create_file(user=user, **tool_input)
+                elif tool_name == "delete_file": tool_result = await delete_file(user=user, **tool_input)
+                elif tool_name == "run_equipment_command": tool_result = await run_equipment_command(**tool_input)
+                elif tool_name == "search_logs": tool_result = await search_logs(**tool_input)
                 else: tool_result = {"status": "error", "message": f"Unknown tool: {tool_name}"}
 
                 messages.append({"role": "assistant", "content": response.content})

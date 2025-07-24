@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 # Adjust imports to match the new structure
@@ -28,6 +28,7 @@ from software.frontend.web.routers import (
     files_api,
     file_operations_router
 )
+from software.frontend.web.routers.file_operations_router import active_file_connections
 
 # --- Lifespan Management ---
 @asynccontextmanager
@@ -53,7 +54,7 @@ app = FastAPI(
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:5173", "ws://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -70,6 +71,17 @@ app.include_router(members_router, prefix="/api/v1", tags=["members"])
 app.include_router(terminal_router.router, prefix="/api/v1/terminal", tags=["terminal"])
 app.include_router(files_api.router, prefix="/api/v1", tags=["files_api"])
 app.include_router(file_operations_router.router, prefix="/api/v1", tags=["file_operations"])
+
+@app.websocket("/api/v1/files/ws/files")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    active_file_connections.append(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        active_file_connections.remove(websocket)
+
 
 # --- Root Endpoint ---
 @app.get("/")

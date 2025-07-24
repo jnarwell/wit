@@ -57,18 +57,39 @@ const Terminal: React.FC = () => {
         focusInput();
     }, []);
 
+    const logMessage = async (role: 'user' | 'assistant', content: string) => {
+        if (!tokens) return;
+        try {
+            await fetch(`${API_BASE_URL}/api/v1/log-ai-message`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${tokens.access_token}`,
+                },
+                body: JSON.stringify({ sender: role, message: content }),
+            });
+        } catch (error) {
+            console.error("Failed to log message:", error);
+        }
+    };
+
     const handleCommandSubmit = async (command: string) => {
         if (!tokens) {
-            setHistory(prev => [...prev, { role: 'assistant', content: 'Error: Authentication token not found. Please log in again.' }]);
+            const errorMessage = 'Error: Authentication token not found. Please log in again.';
+            setHistory(prev => [...prev, { role: 'assistant', content: errorMessage }]);
+            await logMessage('assistant', errorMessage);
             return;
         }
 
         const newHistory: TerminalLine[] = [...history, { role: 'user', content: command }];
         setHistory(newHistory);
+        await logMessage('user', command);
         setIsProcessing(true);
 
         if (command.toLowerCase() === 'clear') {
-            setHistory([{ role: 'assistant', content: 'Terminal cleared.' }]);
+            const clearMessage = 'Terminal cleared.';
+            setHistory([{ role: 'assistant', content: clearMessage }]);
+            await logMessage('assistant', clearMessage);
             setIsProcessing(false);
             return;
         }
@@ -91,8 +112,11 @@ const Terminal: React.FC = () => {
             }
             const data = await response.json();
             setHistory(prev => [...prev, { role: 'assistant', content: data.response }]);
+            await logMessage('assistant', data.response);
         } catch (error) {
-            setHistory(prev => [...prev, { role: 'assistant', content: `Error: ${error instanceof Error ? error.message : 'Could not connect to the terminal server.'}` }]);
+            const errorMessage = `Error: ${error instanceof Error ? error.message : 'Could not connect to the terminal server.'}`;
+            setHistory(prev => [...prev, { role: 'assistant', content: errorMessage }]);
+            await logMessage('assistant', errorMessage);
         } finally {
             setIsProcessing(false);
         }

@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased] - 2025-07-24 (Night)
+
+### Added
+- **AI Tooling**: Empowered the AI with a comprehensive set of tools, allowing it to manage files (list, read, write, create, delete), check equipment status, and search conversation logs.
+- **Real-Time UI Updates**: Implemented a WebSocket connection to automatically refresh the file browser and viewer in real-time when the AI performs any file operation, ensuring the UI always reflects the current state.
+- **AI Conversation Logging**: Created a permanent `WIT_LOG.md` file to log all AI conversations with precise timestamps for future analysis and debugging.
+
+### Fixed
+- **AI Authentication**: Resolved a critical bug where the AI's tools were not using the authenticated user's context, causing `NoneType` errors and incorrect file operations.
+- **CORS & WebSocket Errors**: Fixed multiple CORS and WebSocket connection issues that prevented the frontend from communicating with the backend, including adding the frontend's origin to the allowed list and correctly handling WebSocket connections.
+- **API Validation**: Corrected several Pydantic validation errors by making `project_id` optional in `FileOperationRequest` and `FileUpdateRequest` models, allowing for operations on user-level files.
+- **Python Errors**: Fixed numerous `NameError`, `TypeError`, `SyntaxError`, and `IndentationError` exceptions that arose during the development of the new AI features.
+
 ## [Unreleased] - 2025-07-24 (Evening)
 
 ### Fixed

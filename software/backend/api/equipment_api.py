@@ -19,13 +19,13 @@ from datetime import datetime
 import time
 
 # Import integrations
-from software.integrations.octoprint_integration import (
+from software.frontend.web.integrations.octoprint_integration import (
     OctoPrintManager, OctoPrintConfig, PrinterState as OctoPrintState
 )
-from software.integrations.prusa_serial import (
+from software.frontend.web.integrations.prusa_serial import (
     PrusaSerial, PrusaConfig, PrinterState as PrusaState
 )
-from software.integrations.grbl_integration import (
+from software.frontend.web.integrations.grbl_integration import (
     GRBLController, GRBLConfig, MachineState
 )
 

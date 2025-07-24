@@ -52,6 +52,18 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect }) => {
 
     useEffect(() => {
         fetchFiles();
+
+        const ws = new WebSocket('ws://localhost:8000/api/v1/files/ws/files');
+        ws.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            if (message.type === 'refresh_files') {
+                fetchFiles();
+            }
+        };
+
+        return () => {
+            ws.close();
+        };
     }, [tokens]);
 
     const handleContextMenu = (e: React.MouseEvent, node?: FileNode, baseDir?: string, projectId?: string) => {
