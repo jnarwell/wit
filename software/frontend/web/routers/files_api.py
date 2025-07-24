@@ -27,7 +27,7 @@ def build_tree(path: str) -> List[FileNode]:
         is_dir = os.path.isdir(item_path)
         node = FileNode(name=item, path=item_path, is_dir=is_dir)
         if is_dir:
-            node.children = get_file_structure(item_path)
+            node.children = build_tree(item_path)
         nodes.append(node)
     return nodes
 
@@ -36,7 +36,7 @@ async def get_user_files(current_user: User = Depends(get_current_user)):
     """Returns the file structure for the current user's general storage."""
     user_dir = os.path.join("storage", "users", str(current_user.id))
     os.makedirs(user_dir, exist_ok=True)
-    return get_file_structure(user_dir)
+    return build_tree(user_dir)
 
 @router.get("/files/projects", response_model=List[FileNode])
 async def get_projects_files(
@@ -59,6 +59,6 @@ async def get_projects_files(
                 name=project_id,
                 path=project_dir,
                 is_dir=True,
-                children=get_file_structure(project_dir)
+                children=build_tree(project_dir)
             ))
     return projects_files

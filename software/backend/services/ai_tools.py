@@ -3,7 +3,7 @@ import os
 import json
 from datetime import datetime
 from typing import List, Dict, Any
-from software.frontend.web.routers.files_api import get_user_files, get_projects_files
+from software.frontend.web.routers.files_api import get_user_files, get_projects_files, build_tree
 from software.frontend.web.routers.file_operations_router import (
     get_file_content,
     update_file,
@@ -27,7 +27,7 @@ async def list_files(user: User, path: str, base_dir: str, project_id: str = Non
         if not os.path.abspath(full_path).startswith(os.path.abspath(base_path)):
             return "Error: Access denied."
             
-        structure = get_file_structure(full_path)
+        structure = build_tree(full_path)
         return json.dumps([node.dict() for node in structure], indent=2)
 
 async def read_file(user: User, path: str, base_dir: str, project_id: str = None) -> str:

@@ -56,10 +56,11 @@ app = FastAPI(
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:5173", "ws://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Include all API routers
@@ -79,32 +80,26 @@ app.include_router(project_files_router, prefix="/api/v1", tags=["project_files"
 @app.websocket("/api/v1/files/ws/files")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    active_file_connections.add(websocket)
+    active_file_connections.append(websocket)
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        active_file_connections.remove(websocket)
+        if websocket in active_file_connections:
+            active_file_connections.remove(websocket)
 
 @app.websocket("/api/v1/files/ws/project/{project_id}")
 async def project_websocket_endpoint(websocket: WebSocket, project_id: str):
     await websocket.accept()
-    # Store project-specific connections
-    if not hasattr(active_file_connections, 'project_connections'):
-        active_file_connections.project_connections = {}
-    
-    if project_id not in active_file_connections.project_connections:
-        active_file_connections.project_connections[project_id] = set()
-    
-    active_file_connections.project_connections[project_id].add(websocket)
+    # For now, just add to the main connections list
+    active_file_connections.append(websocket)
     
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        active_file_connections.project_connections[project_id].remove(websocket)
-        if not active_file_connections.project_connections[project_id]:
-            del active_file_connections.project_connections[project_id]
+        if websocket in active_file_connections:
+            active_file_connections.remove(websocket)
 
 
 # --- Root Endpoint ---
