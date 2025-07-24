@@ -19,6 +19,18 @@ from software.backend.services.ai_tools import (
     run_equipment_command,
     search_logs
 )
+from software.backend.services.ai_project_tools import (
+    create_task,
+    list_tasks,
+    update_task,
+    delete_task,
+    add_team_member,
+    list_team_members,
+    remove_team_member,
+    get_project_stats,
+    get_project_details,
+    search_projects
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +41,20 @@ tools = [
     {"name": "list_projects", "description": "Lists all projects for the user.", "input_schema": {"type": "object", "properties": {}}},
     {"name": "update_project", "description": "Updates a project.", "input_schema": {"type": "object", "properties": {"project_id": {"type": "string"}, "name": {"type": "string"}, "description": {"type": "string"}}, "required": ["project_id"]}},
     {"name": "delete_project", "description": "Deletes a project.", "input_schema": {"type": "object", "properties": {"project_id": {"type": "string"}}, "required": ["project_id"]}},
+    {"name": "get_project_details", "description": "Get detailed information about a project including recent activity.", "input_schema": {"type": "object", "properties": {"project_id": {"type": "string"}}, "required": ["project_id"]}},
+    {"name": "get_project_stats", "description": "Get comprehensive statistics for a project including task progress, member count, and file count.", "input_schema": {"type": "object", "properties": {"project_id": {"type": "string"}}, "required": ["project_id"]}},
+    {"name": "search_projects", "description": "Search for projects by name or description.", "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+    
+    # Task Management Tools
+    {"name": "create_task", "description": "Create a new task in a project.", "input_schema": {"type": "object", "properties": {"project_id": {"type": "string"}, "name": {"type": "string"}, "description": {"type": "string"}, "priority": {"type": "string", "enum": ["low", "medium", "high"]}, "assigned_to": {"type": "string"}, "due_date": {"type": "string", "description": "ISO format date"}}, "required": ["project_id", "name"]}},
+    {"name": "list_tasks", "description": "List tasks in a project with optional filters.", "input_schema": {"type": "object", "properties": {"project_id": {"type": "string"}, "status": {"type": "string", "enum": ["pending", "in_progress", "completed", "cancelled"]}, "assigned_to": {"type": "string"}}, "required": ["project_id"]}},
+    {"name": "update_task", "description": "Update a task's properties.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "status": {"type": "string", "enum": ["pending", "in_progress", "completed", "cancelled"]}, "priority": {"type": "string", "enum": ["low", "medium", "high"]}, "assigned_to": {"type": "string"}, "name": {"type": "string"}, "description": {"type": "string"}}, "required": ["task_id"]}},
+    {"name": "delete_task", "description": "Delete a task.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"]}},
+    
+    # Team Member Tools
+    {"name": "add_team_member", "description": "Add a team member to a project.", "input_schema": {"type": "object", "properties": {"project_id": {"type": "string"}, "username": {"type": "string"}, "role": {"type": "string", "enum": ["viewer", "editor", "admin"]}}, "required": ["project_id", "username"]}},
+    {"name": "list_team_members", "description": "List all team members of a project.", "input_schema": {"type": "object", "properties": {"project_id": {"type": "string"}}, "required": ["project_id"]}},
+    {"name": "remove_team_member", "description": "Remove a team member from a project.", "input_schema": {"type": "object", "properties": {"project_id": {"type": "string"}, "username": {"type": "string"}}, "required": ["project_id", "username"]}},
     # Equipment Tools
     {"name": "create_equipment", "description": "Adds a new piece of equipment.", "input_schema": {"type": "object", "properties": {"name": {"type": "string"}, "type": {"type": "string", "description": "e.g., 3d_printer, laser_cutter"}}, "required": ["name", "type"]}},
     {"name": "list_equipment", "description": "Lists all equipment for the user.", "input_schema": {"type": "object", "properties": {}}},
@@ -188,7 +214,19 @@ class ClaudeTerminalService:
     async def process_command(self, command_text: str, history: List[Dict[str, Any]], db: AsyncSession, user: User) -> str:
         if not self.client: return "Error: Claude API key not configured."
         
-        system_prompt = "You are WIT, an AI assistant in a command-line terminal for a project management system. You can execute tools to perform actions. When a user asks to perform an action, think about which tool to use and respond with the tool call. If no specific tool is required, provide a direct, helpful, conversational response."
+        system_prompt = """You are WIT, an AI assistant in a command-line terminal for a comprehensive project management system. You have full control over projects, tasks, and team management.
+
+Your capabilities include:
+- Project Management: Create, update, delete projects, get project details and statistics
+- Task Management: Create, update, delete, and list tasks with priorities and assignments
+- Team Management: Add/remove team members, assign roles (viewer, editor, admin)
+- File Management: Read, write, create, and delete files in user and project directories
+- Equipment Management: Track and control workshop equipment
+- Analytics: Get project progress, task completion rates, and team statistics
+
+When users ask about project status, provide comprehensive information including task progress, team members, and recent activity. Be proactive in offering helpful suggestions for project management.
+
+When a user asks to perform an action, think about which tool to use and respond with the tool call. If no specific tool is required, provide a direct, helpful, conversational response."""
         messages = history[:-1] + [{"role": "user", "content": command_text}]
 
         try:
@@ -216,6 +254,30 @@ class ClaudeTerminalService:
                 elif tool_name == "delete_equipment":
                     tool_result = await delete_equipment(db, user, **tool_input)
                 elif tool_name == "get_equipment_status": tool_result = await get_equipment_status(db, user, **tool_input)
+                # Task Management
+                elif tool_name == "create_task":
+                    tool_result = await create_task(db, user, **tool_input)
+                elif tool_name == "list_tasks":
+                    tool_result = await list_tasks(db, user, **tool_input)
+                elif tool_name == "update_task":
+                    tool_result = await update_task(db, user, **tool_input)
+                elif tool_name == "delete_task":
+                    tool_result = await delete_task(db, user, **tool_input)
+                # Team Member Management
+                elif tool_name == "add_team_member":
+                    tool_result = await add_team_member(db, user, **tool_input)
+                elif tool_name == "list_team_members":
+                    tool_result = await list_team_members(db, user, **tool_input)
+                elif tool_name == "remove_team_member":
+                    tool_result = await remove_team_member(db, user, **tool_input)
+                # Project Analytics
+                elif tool_name == "get_project_details":
+                    tool_result = await get_project_details(db, user, **tool_input)
+                elif tool_name == "get_project_stats":
+                    tool_result = await get_project_stats(db, user, **tool_input)
+                elif tool_name == "search_projects":
+                    tool_result = await search_projects(db, user, **tool_input)
+                # File Management
                 elif tool_name == "list_files": tool_result = await list_files(user=user, **tool_input)
                 elif tool_name == "read_file": tool_result = await read_file(user=user, **tool_input)
                 elif tool_name == "write_file": tool_result = await write_file(user=user, **tool_input)
