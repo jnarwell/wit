@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FaTimes, FaEdit, FaSave, FaPlus, FaTrash, FaFolder, FaUpload, FaUserPlus, FaCheck, FaClock, FaExclamationCircle } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
-import FileBrowser from '../components/FileBrowser';
+import ProjectFileBrowser from '../components/ProjectFileBrowser';
 import './ProjectDetailPageNew.css';
 
 const API_BASE_URL = 'http://localhost:8000';
@@ -483,10 +483,10 @@ const ProjectDetailPageNew: React.FC<ProjectDetailPageNewProps> = ({ projectId, 
             </div>
             {showFileBrowser && (
               <div className="file-browser-container">
-                <FileBrowser 
-                  baseDir="project" 
+                <ProjectFileBrowser 
                   projectId={projectId}
-                  onFileSelect={() => {}}
+                  baseDir="project"
+                  onFileSelect={(path) => console.log('File selected:', path)}
                 />
               </div>
             )}

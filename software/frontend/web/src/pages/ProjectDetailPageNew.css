@@ -434,6 +434,14 @@
 .file-browser-container {
   flex: 1;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure ProjectFileBrowser takes full height */
+.file-browser-container .project-file-browser {
+  flex: 1;
+  height: 100%;
 }
 
 /* Modals */

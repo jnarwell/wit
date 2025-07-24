@@ -1,0 +1,320 @@
+/* software/frontend/web/src/components/ProjectFileBrowser.css */
+.project-file-browser {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: #1a1a1a;
+    color: #f0f0f0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+}
+
+.browser-container {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+}
+
+.file-tree-container {
+    flex: 0 0 300px;
+    min-width: 200px;
+    max-width: 500px;
+    border-right: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    resize: horizontal;
+}
+
+.browser-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: #2a2a2a;
+    border-bottom: 1px solid #333;
+}
+
+.browser-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+    color: #fff;
+}
+
+.browser-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    background: none;
+    border: 1px solid #444;
+    color: #ccc;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background-color: #333;
+    border-color: #555;
+    color: #fff;
+}
+
+.file-tree {
+    list-style: none;
+    margin: 0;
+    padding: 0.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.file-node {
+    margin: 0;
+    position: relative;
+}
+
+.file-node.drag-over > .file-item {
+    background-color: #0066cc;
+    color: white;
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem 0.5rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s;
+    user-select: none;
+}
+
+.file-item:hover {
+    background-color: #2a2a2a;
+}
+
+.file-item.selected {
+    background-color: #0066cc;
+    color: white;
+}
+
+.file-item.folder {
+    font-weight: 500;
+}
+
+.file-icon {
+    margin-right: 0.5rem;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.file-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-info {
+    display: flex;
+    gap: 1rem;
+    font-size: 12px;
+    color: #999;
+    margin-left: 1rem;
+}
+
+.file-item.selected .file-info {
+    color: #ccc;
+}
+
+.file-size {
+    min-width: 60px;
+    text-align: right;
+}
+
+.file-date {
+    min-width: 80px;
+}
+
+/* Empty state */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #666;
+    text-align: center;
+    padding: 2rem;
+}
+
+.empty-state p {
+    margin: 0.5rem 0;
+}
+
+.empty-state .hint {
+    font-size: 12px;
+    color: #555;
+}
+
+/* Loading state */
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #666;
+}
+
+/* File viewer container */
+.file-viewer-container {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Context menu styling (if not already styled) */
+.context-menu {
+    position: fixed;
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    padding: 0.5rem 0;
+    min-width: 200px;
+    z-index: 1000;
+}
+
+.context-menu-item {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #f0f0f0;
+    transition: background-color 0.15s;
+}
+
+.context-menu-item:hover {
+    background-color: #333;
+}
+
+.context-menu-item.separator {
+    height: 1px;
+    background-color: #444;
+    margin: 0.25rem 0;
+    padding: 0;
+    cursor: default;
+}
+
+.context-menu-item.separator:hover {
+    background-color: #444;
+}
+
+/* Drag and drop visual feedback */
+.project-file-browser.dragging {
+    position: relative;
+}
+
+.project-file-browser.dragging::after {
+    content: 'Drop files here';
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 102, 204, 0.1);
+    border: 2px dashed #0066cc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #0066cc;
+    z-index: 100;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .browser-container {
+        flex-direction: column;
+    }
+    
+    .file-tree-container {
+        flex: 0 0 200px;
+        max-width: none;
+        border-right: none;
+        border-bottom: 1px solid #333;
+        resize: none;
+    }
+    
+    .file-info {
+        display: none;
+    }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.file-node {
+    animation: fadeIn 0.2s ease-out;
+}
+
+/* Scrollbar styling */
+.file-tree::-webkit-scrollbar {
+    width: 8px;
+}
+
+.file-tree::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+.file-tree::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 4px;
+}
+
+.file-tree::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* File type specific icons (optional enhancement) */
+.file-item[data-ext="js"] .file-icon::before,
+.file-item[data-ext="jsx"] .file-icon::before,
+.file-item[data-ext="ts"] .file-icon::before,
+.file-item[data-ext="tsx"] .file-icon::before {
+    content: '📜';
+}
+
+.file-item[data-ext="css"] .file-icon::before,
+.file-item[data-ext="scss"] .file-icon::before {
+    content: '🎨';
+}
+
+.file-item[data-ext="md"] .file-icon::before,
+.file-item[data-ext="txt"] .file-icon::before {
+    content: '📝';
+}
+
+.file-item[data-ext="json"] .file-icon::before,
+.file-item[data-ext="xml"] .file-icon::before {
+    content: '📊';
+}
+
+.file-item[data-ext="jpg"] .file-icon::before,
+.file-item[data-ext="png"] .file-icon::before,
+.file-item[data-ext="gif"] .file-icon::before {
+    content: '🖼️';
+}
+
+.file-item[data-ext="pdf"] .file-icon::before {
+    content: '📑';
+}

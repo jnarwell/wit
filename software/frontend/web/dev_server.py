@@ -27,7 +27,8 @@ from software.frontend.web.routers import (
     terminal_router,
     files_api,
     file_operations_router,
-    team_members_router
+    team_members_router,
+    project_files_router
 )
 from software.frontend.web.routers.file_operations_router import active_file_connections
 
@@ -73,16 +74,37 @@ app.include_router(team_members_router, prefix="/api/v1", tags=["team_members"])
 app.include_router(terminal_router.router, prefix="/api/v1/terminal", tags=["terminal"])
 app.include_router(files_api.router, prefix="/api/v1", tags=["files_api"])
 app.include_router(file_operations_router.router, prefix="/api/v1", tags=["file_operations"])
+app.include_router(project_files_router.router, prefix="/api/v1", tags=["project_files"])
 
 @app.websocket("/api/v1/files/ws/files")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    active_file_connections.append(websocket)
+    active_file_connections.add(websocket)
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
         active_file_connections.remove(websocket)
+
+@app.websocket("/api/v1/files/ws/project/{project_id}")
+async def project_websocket_endpoint(websocket: WebSocket, project_id: str):
+    await websocket.accept()
+    # Store project-specific connections
+    if not hasattr(active_file_connections, 'project_connections'):
+        active_file_connections.project_connections = {}
+    
+    if project_id not in active_file_connections.project_connections:
+        active_file_connections.project_connections[project_id] = set()
+    
+    active_file_connections.project_connections[project_id].add(websocket)
+    
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        active_file_connections.project_connections[project_id].remove(websocket)
+        if not active_file_connections.project_connections[project_id]:
+            del active_file_connections.project_connections[project_id]
 
 
 # --- Root Endpoint ---
