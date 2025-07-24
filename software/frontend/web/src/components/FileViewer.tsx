@@ -4,6 +4,11 @@ import { useAuth } from '../contexts/AuthContext';
 import './FileViewer.css';
 import PdfViewer from './PdfViewer';
 import './PdfViewer.css';
+import { CodeViewer, getLanguageFromExtension } from './CodeViewer';
+import './CodeViewer.css';
+import XmlViewer from './XmlViewer';
+import MarkupViewer from './MarkupViewer';
+import './MarkupViewer.css';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -25,46 +30,87 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
     const [jsonData, setJsonData] = useState<any>(null);
+    const [jsonlData, setJsonlData] = useState<any[]>([]);
     
     const fileExtension = path.split('.').pop()?.toLowerCase();
+    const fileName = path.split('/').pop() || '';
+    
+    // Define supported code extensions
+    const codeExtensions = new Set([
+        'js', 'jsx', 'ts', 'tsx', 'py', 'java', 'c', 'cpp', 'cc', 'cxx', 'h', 'hpp',
+        'cs', 'go', 'rs', 'rb', 'php', 'swift', 'kt', 'r', 'm', 'lua', 'dart', 'scala',
+        'hs', 'ex', 'exs', 'html', 'htm', 'css', 'scss', 'sass', 'less', 'vue', 'svelte',
+        'yml', 'yaml', 'toml', 'ini', 'cfg', 'conf', 'env', 'properties', 'xml',
+        'sh', 'bash', 'zsh', 'fish', 'ps1', 'bat', 'cmd', 'sql', 'graphql', 'gql',
+        'diff', 'patch', 'dockerfile', 'makefile', 'gitignore', 'dockerignore', 'editorconfig'
+    ]);
+    
+    // Define markup/documentation extensions
+    const markupExtensions = new Set([
+        'adoc', 'asciidoc', 'asc', 'rst', 'rest', 'tex', 'latex', 'org'
+    ]);
+    
+    // Editable code/config files
+    const editableCodeExtensions = new Set([
+        'yml', 'yaml', 'toml', 'ini', 'cfg', 'conf', 'env', 'properties',
+        'sh', 'bash', 'zsh', 'fish', 'ps1', 'bat', 'cmd',
+        'gitignore', 'dockerignore', 'editorconfig'
+    ]);
+    
+    // Special case for files without extensions
+    const isSpecialFile = ['dockerfile', 'makefile', 'gitignore', 'dockerignore', 'editorconfig'].includes(fileName.toLowerCase());
+    
     const isEditable = fileExtension === 'md' || fileExtension === 'txt' || fileExtension === 'log';
+    const isEditableCode = (fileExtension && editableCodeExtensions.has(fileExtension)) || 
+                          ['gitignore', 'dockerignore', 'editorconfig'].includes(fileName.toLowerCase());
     const isCsv = fileExtension === 'csv';
+    const isTsv = fileExtension === 'tsv';
     const isJson = fileExtension === 'json';
+    const isJsonl = fileExtension === 'jsonl' || fileExtension === 'ndjson';
     const isLog = fileExtension === 'log';
     const isRtf = fileExtension === 'rtf';
     const isDoc = fileExtension === 'doc' || fileExtension === 'docx';
     const isPdf = fileExtension === 'pdf';
-    const isViewable = isEditable || isCsv || isJson || isRtf || isDoc || isPdf;
+    const isXml = fileExtension === 'xml';
+    const isCode = (fileExtension && codeExtensions.has(fileExtension) && !isXml) || isSpecialFile;
+    const isMarkup = fileExtension && markupExtensions.has(fileExtension);
+    const isViewable = isEditable || isCsv || isTsv || isJson || isJsonl || isRtf || isDoc || isPdf || isCode || isXml || isMarkup;
 
-    const parseCsv = (csvText: string) => {
+    const parseDelimitedData = (text: string, delimiter: string) => {
         const rows: string[][] = [];
-        const lines = csvText.split('\n').filter(line => line.trim() !== '');
+        const lines = text.split('\n').filter(line => line.trim() !== '');
         
         for (const line of lines) {
-            const row: string[] = [];
-            let current = '';
-            let inQuotes = false;
-            
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
+            if (delimiter === '\t') {
+                // For TSV, simple split is usually sufficient
+                rows.push(line.split('\t').map(cell => cell.trim()));
+            } else {
+                // For CSV, handle quoted values
+                const row: string[] = [];
+                let current = '';
+                let inQuotes = false;
                 
-                if (char === '"') {
-                    if (inQuotes && line[i + 1] === '"') {
-                        current += '"';
-                        i++;
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    
+                    if (char === '"') {
+                        if (inQuotes && line[i + 1] === '"') {
+                            current += '"';
+                            i++;
+                        } else {
+                            inQuotes = !inQuotes;
+                        }
+                    } else if (char === delimiter && !inQuotes) {
+                        row.push(current.trim());
+                        current = '';
                     } else {
-                        inQuotes = !inQuotes;
+                        current += char;
                     }
-                } else if (char === ',' && !inQuotes) {
-                    row.push(current.trim());
-                    current = '';
-                } else {
-                    current += char;
                 }
+                
+                row.push(current.trim());
+                rows.push(row);
             }
-            
-            row.push(current.trim());
-            rows.push(row);
         }
         
         setCsvData(rows);
@@ -102,12 +148,29 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
                 setOriginalContent(data.content);
                 
                 if (isCsv) {
-                    parseCsv(data.content);
+                    parseDelimitedData(data.content, ',');
+                } else if (isTsv) {
+                    parseDelimitedData(data.content, '\t');
                 } else if (isJson) {
                     try {
                         setJsonData(JSON.parse(data.content));
                     } catch (e) {
                         setJsonData(null);
+                        setContent(data.content); // Fall back to raw text
+                    }
+                } else if (isJsonl) {
+                    try {
+                        const lines = data.content.trim().split('\n');
+                        const parsedLines = lines.map((line, index) => {
+                            try {
+                                return JSON.parse(line);
+                            } catch (e) {
+                                return { _error: `Line ${index + 1}: Invalid JSON`, _raw: line };
+                            }
+                        });
+                        setJsonlData(parsedLines);
+                    } catch (e) {
+                        setJsonlData([]);
                         setContent(data.content); // Fall back to raw text
                     }
                 }
@@ -121,7 +184,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
             }
         };
         fetchContent();
-    }, [path, baseDir, projectId, tokens, isViewable, isCsv, isJson, isPdf, isRtf, isDoc, fileExtension]);
+    }, [path, baseDir, projectId, tokens, isViewable, isCsv, isTsv, isJson, isJsonl, isPdf, isRtf, isDoc, fileExtension]);
 
     const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setContent(e.target.value);
@@ -295,13 +358,43 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
             );
         }
         
-        if (isCsv) {
+        if (isJsonl && jsonlData.length > 0) {
+            return (
+                <div className="jsonl-viewer">
+                    <div className="jsonl-header">
+                        <span className="jsonl-type">JSONL/NDJSON Data</span>
+                        <span className="jsonl-info">{jsonlData.length} records</span>
+                    </div>
+                    <div className="jsonl-content">
+                        {jsonlData.map((item, index) => (
+                            <div key={index} className="jsonl-record">
+                                <div className="record-number">Record {index + 1}</div>
+                                {item._error ? (
+                                    <div className="record-error">
+                                        <div className="error-message">{item._error}</div>
+                                        <pre className="error-raw">{item._raw}</pre>
+                                    </div>
+                                ) : (
+                                    <pre>{renderJsonContent(item)}</pre>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+        
+        if (isCsv || isTsv) {
             if (csvData.length === 0) {
-                return <p>No CSV data to display</p>;
+                return <p>No {isCsv ? 'CSV' : 'TSV'} data to display</p>;
             }
             
             return (
                 <div className="csv-wrapper">
+                    <div className="table-header">
+                        <span className="table-type">{isCsv ? 'CSV' : 'TSV'} Data</span>
+                        <span className="table-info">{csvData.length} rows × {csvData[0]?.length || 0} columns</span>
+                    </div>
                     <table className="csv-table">
                         <thead>
                             <tr>
@@ -328,6 +421,44 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
             );
         }
         
+        if (isXml) {
+            return <XmlViewer content={content} fileName={fileName} />;
+        }
+        
+        if (isMarkup) {
+            let format: 'asciidoc' | 'rst' | 'latex' | 'org';
+            if (['adoc', 'asciidoc', 'asc'].includes(fileExtension || '')) {
+                format = 'asciidoc';
+            } else if (['rst', 'rest'].includes(fileExtension || '')) {
+                format = 'rst';
+            } else if (['tex', 'latex'].includes(fileExtension || '')) {
+                format = 'latex';
+            } else {
+                format = 'org';
+            }
+            return <MarkupViewer content={content} format={format} fileName={fileName} />;
+        }
+        
+        if (isCode && !isJson) {
+            const language = isSpecialFile ? fileName.toLowerCase() : getLanguageFromExtension(fileExtension || '');
+            return (
+                <CodeViewer
+                    content={content}
+                    language={language}
+                    fileName={fileName}
+                    isEditable={isEditableCode}
+                    onContentChange={isEditableCode ? (newContent) => {
+                        setContent(newContent);
+                        if (newContent !== originalContent) {
+                            setSaveStatus('unsaved');
+                        } else {
+                            setSaveStatus('saved');
+                        }
+                    } : undefined}
+                />
+            );
+        }
+        
         if (isEditable) {
             return (
                 <textarea
@@ -349,7 +480,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
                     <span>{getDisplayPath()}</span>
                 </div>
                 <div>
-                    {isEditable && <button onClick={handleSave} disabled={isSaving || saveStatus === 'saved'}>{isSaving ? 'Saving...' : 'Save'}</button>}
+                    {(isEditable || isEditableCode) && <button onClick={handleSave} disabled={isSaving || saveStatus === 'saved'}>{isSaving ? 'Saving...' : 'Save'}</button>}
                     <button onClick={handleClose}>&times;</button>
                 </div>
             </div>

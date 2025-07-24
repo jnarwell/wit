@@ -1,0 +1,58 @@
+#+TITLE: Org-mode Test Document
+#+AUTHOR: Test Author
+#+DATE: 2025-01-24
+
+* Introduction
+
+This is a test Org-mode document with various formatting options.
+
+** Text Formatting
+
+This document contains *bold text*, /italic text/, _underlined text_, +strike-through text+, and ~inline code~.
+
+** Lists
+
+*** Unordered Lists
+- First item
+- Second item
+  - Nested item
+  - Another nested item
+- Third item
+
+*** Ordered Lists
+1. First numbered item
+2. Second numbered item
+3. Third numbered item
+
+** Code Blocks
+
+#+BEGIN_SRC python
+def hello_org():
+    print("Hello from Org-mode!")
+#+END_SRC
+
+** Links
+
+- [[https://example.com][Example Site]]
+- [[https://orgmode.org]]
+
+** TODO Tasks
+
+*** TODO Write documentation
+*** DONE Complete the markup viewer
+*** TODO Test all features
+
+** Tables
+
+| Name    | Age | City     |
+|---------+-----+----------|
+| Alice   |  30 | New York |
+| Bob     |  25 | London   |
+| Charlie |  35 | Tokyo    |
+
+** Quotes
+
+#+BEGIN_QUOTE
+This is a block quote in Org-mode format.
+It can span multiple lines.
+#+END_QUOTE
