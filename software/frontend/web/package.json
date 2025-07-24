@@ -11,6 +11,7 @@
     "@vitejs/plugin-react": "^4.6.0",
     "axios": "^1.10.0",
     "lucide-react": "^0.525.0",
+    "pdfjs-dist": "^3.11.174",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-grid-layout": "^1.5.2",

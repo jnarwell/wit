@@ -1,5 +1,26 @@
 # Changelog
 
+## [Unreleased] - 2025-07-24 (Late Night)
+
+### Added
+- **Enhanced File Viewer**: Comprehensive multi-format file viewing support
+  - **CSV Files**: Interactive table view with proper parsing for quoted values, sticky headers, and hover effects
+  - **JSON Files**: Syntax-highlighted viewer with color-coded keys, values, and proper indentation
+  - **PDF Files**: Full PDF viewer with page navigation, zoom controls, and proper authorization
+  - **RTF Files**: Text extraction and display with clean formatting
+  - **DOC/DOCX Files**: Microsoft Word document parsing and text display
+  - **LOG Files**: Terminal-style viewer with green-on-black theme
+- **Backend Document Processing**: 
+  - Added `/api/v1/files/parse` endpoint for RTF and DOCX text extraction
+  - Added `/api/v1/files/download` endpoint for binary file downloads with proper MIME types
+  - Installed `striprtf` and `python-docx` libraries for document parsing
+- **WebSocket Improvements**: Added automatic reconnection logic with error handling for better stability
+
+### Fixed
+- **PDF Rendering**: Resolved canvas conflicts in React StrictMode by implementing proper render task management
+- **Binary File Handling**: Fixed 500 errors when attempting to read binary files as text
+- **File Type Detection**: Improved file extension handling to properly route requests to appropriate endpoints
+
 ## [Unreleased] - 2025-07-24 (Night)
 
 ### Added

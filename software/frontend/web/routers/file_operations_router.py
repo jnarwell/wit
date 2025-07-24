@@ -4,6 +4,7 @@ import shutil
 import uuid
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File, Form, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Annotated, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -79,13 +80,110 @@ async def get_file_content(
     file_path = validate_path(base_directory, path)
     
     try:
-        with open(file_path, "r") as f:
-            content = f.read()
+        with open(file_path, "rb") as f:
+            binary_content = f.read()
+        try:
+            content = binary_content.decode("utf-8")
+        except UnicodeDecodeError:
+            content = f"Cannot display binary file: {os.path.basename(path)}"
         return FileContentResponse(content=content)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/files/parse", response_model=FileContentResponse)
+async def parse_document(
+    path: str,
+    base_dir: str,
+    project_id: str = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Parse document files (RTF, DOCX) and return their text content."""
+    base_directory = get_base_dir(base_dir, current_user, project_id)
+    file_path = validate_path(base_directory, path)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found.")
+    
+    file_ext = os.path.splitext(file_path)[1].lower()
+    
+    try:
+        if file_ext == '.rtf':
+            # For RTF files, extract text
+            import striprtf
+            with open(file_path, "r", encoding='utf-8', errors='ignore') as f:
+                rtf_content = f.read()
+            content = striprtf.rtf_to_text(rtf_content)
+        elif file_ext == '.docx':
+            # For DOCX files, use python-docx
+            from docx import Document
+            doc = Document(file_path)
+            paragraphs = []
+            for para in doc.paragraphs:
+                if para.text.strip():
+                    paragraphs.append(para.text)
+            content = '\n\n'.join(paragraphs)
+        elif file_ext == '.doc':
+            raise HTTPException(
+                status_code=501,
+                detail="Legacy .doc format is not supported. Please convert to .docx format."
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type: {file_ext}. This endpoint only supports RTF and DOCX files."
+            )
+            
+        return FileContentResponse(content=content)
+    
+    except ImportError as e:
+        if 'striprtf' in str(e):
+            raise HTTPException(status_code=501, detail="RTF support not installed. Run: pip install striprtf")
+        elif 'docx' in str(e):
+            raise HTTPException(status_code=501, detail="DOCX support not installed. Run: pip install python-docx")
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error parsing document {file_path}: {type(e).__name__}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error parsing document: {str(e)}")
+
+@router.get("/files/download")
+async def download_file(
+    path: str,
+    base_dir: str,
+    project_id: str = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Download a file, supporting both text and binary files."""
+    base_directory = get_base_dir(base_dir, current_user, project_id)
+    file_path = validate_path(base_directory, path)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found.")
+    
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=400, detail="Path is not a file.")
+    
+    # Determine MIME type based on file extension
+    file_ext = os.path.splitext(file_path)[1].lower()
+    media_type = "application/octet-stream"  # Default binary type
+    
+    if file_ext == ".pdf":
+        media_type = "application/pdf"
+    elif file_ext in [".doc", ".docx"]:
+        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    elif file_ext in [".txt", ".log"]:
+        media_type = "text/plain"
+    elif file_ext == ".json":
+        media_type = "application/json"
+    elif file_ext == ".csv":
+        media_type = "text/csv"
+    
+    return FileResponse(
+        path=file_path,
+        media_type=media_type,
+        filename=os.path.basename(file_path)
+    )
 
 
 def validate_path(base_dir: str, path: str):

@@ -53,16 +53,50 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect }) => {
     useEffect(() => {
         fetchFiles();
 
-        const ws = new WebSocket('ws://localhost:8000/api/v1/files/ws/files');
-        ws.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-            if (message.type === 'refresh_files') {
-                fetchFiles();
+        let ws: WebSocket | null = null;
+        let reconnectTimeout: NodeJS.Timeout;
+
+        const connectWebSocket = () => {
+            try {
+                ws = new WebSocket('ws://localhost:8000/api/v1/files/ws/files');
+                
+                ws.onopen = () => {
+                    console.log('WebSocket connected');
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        if (message.type === 'refresh_files') {
+                            fetchFiles();
+                        }
+                    } catch (error) {
+                        console.error('Error parsing WebSocket message:', error);
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+                
+                ws.onclose = () => {
+                    console.log('WebSocket closed, attempting reconnect in 5 seconds...');
+                    reconnectTimeout = setTimeout(connectWebSocket, 5000);
+                };
+            } catch (error) {
+                console.error('Failed to create WebSocket:', error);
             }
         };
 
+        if (tokens) {
+            connectWebSocket();
+        }
+
         return () => {
-            ws.close();
+            clearTimeout(reconnectTimeout);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.close();
+            }
         };
     }, [tokens]);
 
