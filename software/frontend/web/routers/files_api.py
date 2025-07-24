@@ -3,8 +3,10 @@ import os
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
-from software.backend.services.database_services import User
+from software.backend.services.database_services import User, Project, TeamMember, get_session
 from software.frontend.web.routers.projects_router import get_current_user
 
 router = APIRouter()
@@ -36,9 +38,27 @@ async def get_user_files(current_user: User = Depends(get_current_user)):
     os.makedirs(user_dir, exist_ok=True)
     return get_file_structure(user_dir)
 
-@router.get("/files/project/{project_id}", response_model=List[FileNode])
-async def get_project_files(project_id: str):
-    """Returns the file structure for a specific project."""
-    project_dir = os.path.join("storage", "projects", project_id)
-    os.makedirs(project_dir, exist_ok=True)
-    return get_file_structure(project_dir)
+@router.get("/files/projects", response_model=List[FileNode])
+async def get_projects_files(
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Returns the file structure for all projects the user is a member of."""
+    result = await db.execute(
+        select(Project.project_id)
+        .join(TeamMember)
+        .where(TeamMember.user_id == current_user.id)
+    )
+    project_ids = result.scalars().all()
+    
+    projects_files = []
+    for project_id in project_ids:
+        project_dir = os.path.join("storage", "projects", project_id)
+        if os.path.exists(project_dir):
+            projects_files.append(FileNode(
+                name=project_id,
+                path=project_dir,
+                is_dir=True,
+                children=get_file_structure(project_dir)
+            ))
+    return projects_files

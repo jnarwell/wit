@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased] - 2025-07-24 (Evening)
+
+### Fixed
+- **API Routing**: Resolved a series of cascading API routing issues that prevented file viewing, creation, and editing, returning the file management system to full functionality.
+- **Path Validation**: Corrected a critical path validation bug that caused duplicated path segments and `FileNotFoundError` exceptions during file operations.
+- **Missing Endpoints**: Implemented the missing `/api/v1/files/content` (GET) and `/api/v1/files/update` (POST) endpoints to allow reading and saving file content.
+
 ## [Unreleased] - 2025-07-24 (Afternoon)
 
 ### Added

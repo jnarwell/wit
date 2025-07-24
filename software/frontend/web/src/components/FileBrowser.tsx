@@ -19,7 +19,11 @@ interface ContextMenuState {
     items: { label: string; action: () => void; }[];
 }
 
-const FileBrowser: React.FC = () => {
+interface FileBrowserProps {
+    onFileSelect: (path: string, baseDir: string, projectId?: string) => void;
+}
+
+const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect }) => {
     const { tokens, user } = useAuth();
     const [userFiles, setUserFiles] = useState<FileNode[]>([]);
     const [projectFiles, setProjectFiles] = useState<FileNode[]>([]);
@@ -35,7 +39,7 @@ const FileBrowser: React.FC = () => {
         try {
             const [userRes, projectRes] = await Promise.all([
                 fetch(`${API_BASE_URL}/api/v1/files/user`, { headers: { 'Authorization': `Bearer ${tokens.access_token}` } }),
-                fetch(`${API_BASE_URL}/api/v1/files/project/PROJ-551C12CB`, { headers: { 'Authorization': `Bearer ${tokens.access_token}` } })
+                fetch(`${API_BASE_URL}/api/v1/files/projects`, { headers: { 'Authorization': `Bearer ${tokens.access_token}` } })
             ]);
             setUserFiles(await userRes.json());
             setProjectFiles(await projectRes.json());
@@ -80,7 +84,7 @@ const FileBrowser: React.FC = () => {
             await fetch(`${API_BASE_URL}/api/v1/files/rename`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokens.access_token}` },
-                body: JSON.stringify({ data: { path: node.path, new_path: newPath, base_dir: baseDir, project_id: projectId } })
+                body: JSON.stringify({ path: node.path, new_path: newPath, base_dir: baseDir, project_id: projectId })
             });
             fetchFiles();
         }
@@ -92,7 +96,7 @@ const FileBrowser: React.FC = () => {
             await fetch(`${API_BASE_URL}/api/v1/files/delete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokens.access_token}` },
-                body: JSON.stringify({ data: { path: node.path, base_dir: baseDir, project_id: projectId } })
+                body: JSON.stringify({ path: node.path, base_dir: baseDir, project_id: projectId })
             });
             fetchFiles();
         }
@@ -103,13 +107,13 @@ const FileBrowser: React.FC = () => {
         let name = prompt(`Enter name for new ${type}:`);
         if (name) {
             if (type === 'file' && !name.includes('.')) {
-                name += '.md'; // Default to markdown if no extension
+                name += '.md';
             }
             const path = `${basePath}/${name}${type === 'folder' ? '/' : ''}`;
             await fetch(`${API_BASE_URL}/api/v1/files/create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokens.access_token}` },
-                body: JSON.stringify({ data: { path, base_dir: baseDir, project_id: projectId } })
+                body: JSON.stringify({ path, base_dir: baseDir, project_id: projectId })
             });
             fetchFiles();
         }
@@ -171,7 +175,13 @@ const FileBrowser: React.FC = () => {
         <ul>
             {nodes.map(node => (
                 <li key={node.path}>
-                    <span className={node.is_dir ? 'folder' : 'file'} onContextMenu={(e) => handleContextMenu(e, node, baseDir, projectId)}>{node.name}</span>
+                    <span 
+                        className={node.is_dir ? 'folder' : 'file'} 
+                        onContextMenu={(e) => handleContextMenu(e, node, baseDir, projectId)}
+                        onClick={() => !node.is_dir && onFileSelect(node.path, baseDir, projectId)}
+                    >
+                        {node.name}
+                    </span>
                     {node.is_dir && node.children.length > 0 && renderTree(node.children, baseDir, projectId)}
                 </li>
             ))}

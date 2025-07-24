@@ -32,6 +32,11 @@ async def create_project(db: AsyncSession, user: User, name: str, description: s
     db.add(new_project)
     await db.flush()
     db.add(TeamMember(project_id=new_project.id, user_id=user.id, role="owner"))
+    
+    # Create a corresponding folder for the project
+    project_dir = os.path.join("storage", "projects", new_project.project_id)
+    os.makedirs(project_dir, exist_ok=True)
+    
     await db.commit()
     return {"status": "success", "project_id": new_project.project_id, "name": name}
 

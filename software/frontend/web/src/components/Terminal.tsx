@@ -4,12 +4,19 @@ import './Terminal.css';
 import { useAuth } from '../contexts/AuthContext';
 import FileBrowser from './FileBrowser';
 import Resizer from './Resizer';
+import FileViewer from './FileViewer';
 
 const API_BASE_URL = 'http://localhost:8000';
 
 interface TerminalLine {
     role: 'user' | 'assistant';
     content: string;
+}
+
+interface ViewingFile {
+    path: string;
+    baseDir: string;
+    projectId?: string;
 }
 
 const Terminal: React.FC = () => {
@@ -27,6 +34,7 @@ const Terminal: React.FC = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [sidebarWidth, setSidebarWidth] = useState(window.innerWidth / 4);
     const [isResizing, setIsResizing] = useState(false);
+    const [viewingFile, setViewingFile] = useState<ViewingFile | null>(null);
     
     const terminalEndRef = useRef<HTMLDivElement>(null);
     const hiddenInputRef = useRef<HTMLTextAreaElement>(null);
@@ -163,34 +171,37 @@ const Terminal: React.FC = () => {
 
     return (
         <div className="terminal-container">
-            <div className="terminal" onClick={focusInput}>
-                <div className="terminal-output">
-                    {history.map((line, index) => (
-                        <div key={index} className="terminal-line">
-                            {line.role === 'user' && <span className="terminal-prompt">&gt; </span>}
-                            {line.content}
-                        </div>
-                    ))}
-                    <div ref={terminalEndRef} />
+            <div className="terminal-main-area">
+                {viewingFile && <FileViewer {...viewingFile} onClose={() => setViewingFile(null)} />}
+                <div className="terminal" onClick={focusInput}>
+                    <div className="terminal-output">
+                        {history.map((line, index) => (
+                            <div key={index} className="terminal-line">
+                                {line.role === 'user' && <span className="terminal-prompt">&gt; </span>}
+                                {line.content}
+                            </div>
+                        ))}
+                        <div ref={terminalEndRef} />
+                    </div>
+                    <div className="terminal-input-line">
+                        <span className="terminal-prompt">&gt;</span>
+                        {renderInput()}
+                    </div>
+                    <textarea
+                        ref={hiddenInputRef}
+                        value={input}
+                        onChange={handleInputChange}
+                        onKeyDown={handleKeyDown}
+                        onSelect={handleSelect}
+                        className="hidden-input"
+                        autoFocus
+                        spellCheck="false"
+                    />
                 </div>
-                <div className="terminal-input-line">
-                    <span className="terminal-prompt">&gt;</span>
-                    {renderInput()}
-                </div>
-                <textarea
-                    ref={hiddenInputRef}
-                    value={input}
-                    onChange={handleInputChange}
-                    onKeyDown={handleKeyDown}
-                    onSelect={handleSelect}
-                    className="hidden-input"
-                    autoFocus
-                    spellCheck="false"
-                />
             </div>
             <Resizer onMouseDown={handleMouseDown} />
             <div style={{ width: `${sidebarWidth}px`, flexShrink: 0 }}>
-                <FileBrowser />
+                <FileBrowser onFileSelect={(path, baseDir, projectId) => setViewingFile({ path, baseDir, projectId })} />
             </div>
         </div>
     );

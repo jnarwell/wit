@@ -1,0 +1,63 @@
+/* software/frontend/web/src/components/FileViewer.css */
+.file-viewer {
+    height: 50%;
+    background-color: #2d2d2d;
+    border-bottom: 1px solid #444;
+    display: flex;
+    flex-direction: column;
+}
+
+.file-viewer-header {
+    background-color: #3a3a3a;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: sans-serif;
+}
+
+.file-viewer-header .file-info {
+    display: flex;
+    align-items: center;
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.file-viewer-header span {
+    color: #f0f0f0;
+}
+
+.file-viewer-header button {
+    background: none;
+    border: none;
+    color: #f0f0f0;
+    font-size: 1.2em;
+    cursor: pointer;
+    margin-left: 15px; /* Increased spacing */
+}
+
+.file-viewer-content {
+    padding: 15px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.file-viewer-content textarea {
+    width: 100%;
+    height: 100%;
+    background-color: #2d2d2d;
+    color: #f0f0f0;
+    border: none;
+    font-family: 'Courier New', Courier, monospace;
+    resize: none;
+}
+
+.file-viewer-content textarea:focus {
+    outline: none;
+}
