@@ -36,11 +36,14 @@ class ProjectResponse(ProjectBase):
     id: uuid.UUID
     project_id: str
     owner_id: uuid.UUID
-    created_at: str
-    updated_at: str | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
 
     class Config:
         from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat() if v else None
+        }
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
@@ -102,11 +105,17 @@ async def create_project(
 @router.get("/", response_model=List[ProjectResponse], include_in_schema=False)
 async def get_projects(
     db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
     skip: int = 0,
     limit: int = 100
 ):
-    """Get all projects."""
-    result = await db.execute(select(Project).offset(skip).limit(limit))
+    """Get all projects for the current user."""
+    result = await db.execute(
+        select(Project)
+        .where(Project.owner_id == current_user.id)
+        .offset(skip)
+        .limit(limit)
+    )
     projects = result.scalars().all()
     return projects
 

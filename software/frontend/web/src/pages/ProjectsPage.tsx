@@ -144,7 +144,17 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ onNavigateToDetail }) => {
           'Authorization': `Bearer ${tokens.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newProject),
+        body: JSON.stringify({
+          name: newProject.name,
+          description: newProject.description,
+          type: newProject.type,
+          status: newProject.status,
+          priority: newProject.priority,
+          extra_data: {
+            team: newProject.team,
+            deadline: newProject.deadline
+          }
+        }),
       });
       if (!response.ok) {
         const errorData = await response.json();
@@ -368,7 +378,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ onNavigateToDetail }) => {
                     {/* Status Light - Clickable */}
                     <div className="relative group">
                       <button
-                        className={`w-4 h-4 rounded-full ${PROJECT_STATUS[project.status].color} hover:ring-2 hover:ring-gray-400 transition-all`}
+                        className={`w-4 h-4 rounded-full ${PROJECT_STATUS[project.status]?.color || 'bg-gray-500'} hover:ring-2 hover:ring-gray-400 transition-all`}
                         onClick={(e) => {
                           e.stopPropagation();
                         }}
@@ -413,9 +423,9 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ onNavigateToDetail }) => {
                 <div className="flex items-center justify-between mb-3">
                   <div className="relative group">
                     <button
-                      className={`px-3 py-1 rounded-full text-xs font-medium text-white ${PROJECT_PRIORITY[project.priority].color} hover:ring-2 hover:ring-gray-400 transition-all`}
+                      className={`px-3 py-1 rounded-full text-xs font-medium text-white ${PROJECT_PRIORITY[project.priority]?.color || 'bg-gray-500'} hover:ring-2 hover:ring-gray-400 transition-all`}
                     >
-                      {PROJECT_PRIORITY[project.priority].label} Priority
+                      {PROJECT_PRIORITY[project.priority]?.label || 'Medium'} Priority
                     </button>
                     {/* Priority Dropdown */}
                     <div className="absolute left-0 top-8 bg-gray-700 rounded-lg shadow-xl p-2 hidden group-hover:block z-10 min-w-[120px]">
@@ -434,7 +444,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ onNavigateToDetail }) => {
                   </div>
                   
                   {/* Team Info */}
-                  {project.extra_data.team && (
+                  {project.extra_data?.team && (
                     <span className="text-xs text-gray-400">
                       {project.extra_data.team}
                     </span>

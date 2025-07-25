@@ -28,11 +28,14 @@ class TaskUpdate(BaseModel):
 class TaskResponse(TaskBase):
     id: uuid.UUID
     project_id: uuid.UUID
-    created_at: str
-    updated_at: str | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
 
     class Config:
         from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat() if v else None
+        }
 
 router = APIRouter()
 
