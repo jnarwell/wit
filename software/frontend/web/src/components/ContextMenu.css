@@ -23,3 +23,15 @@
 .context-menu li:hover {
     background-color: #555;
 }
+
+.context-menu li.separator {
+    height: 1px;
+    background-color: #555;
+    margin: 5px 0;
+    padding: 0;
+    cursor: default;
+}
+
+.context-menu li.separator:hover {
+    background-color: #555;
+}

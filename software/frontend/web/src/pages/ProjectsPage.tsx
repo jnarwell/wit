@@ -94,6 +94,10 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ onNavigateToDetail }) => {
       }));
       setProjects(mergedProjects);
       setError(null);
+      // Save projects to localStorage for widgets
+      localStorage.setItem('wit-projects', JSON.stringify(mergedProjects));
+      // Dispatch event to notify widgets
+      window.dispatchEvent(new Event('projects-updated'));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {

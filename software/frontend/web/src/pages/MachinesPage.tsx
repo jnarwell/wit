@@ -477,6 +477,8 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
   useEffect(() => {
     console.log('[MachinesPage] Saving', machines.length, 'machines to localStorage');
     localStorage.setItem('wit-machines', JSON.stringify(machines));
+    // Dispatch event to notify widgets
+    window.dispatchEvent(new Event('machines-updated'));
   }, [machines]);
 
   // Update machine details when type changes

@@ -44,19 +44,31 @@ async def get_projects_files(
     current_user: User = Depends(get_current_user)
 ):
     """Returns the file structure for all projects the user is a member of."""
+    # Get projects with their names
     result = await db.execute(
-        select(Project.project_id)
+        select(Project)
         .join(TeamMember)
         .where(TeamMember.user_id == current_user.id)
     )
-    project_ids = result.scalars().all()
+    projects = result.scalars().all()
+    
+    # Also get owned projects
+    owned_result = await db.execute(
+        select(Project).where(Project.owner_id == current_user.id)
+    )
+    owned_projects = owned_result.scalars().all()
+    
+    # Combine and deduplicate
+    all_projects = {p.id: p for p in projects}
+    for p in owned_projects:
+        all_projects[p.id] = p
     
     projects_files = []
-    for project_id in project_ids:
-        project_dir = os.path.join("storage", "projects", project_id)
+    for project in all_projects.values():
+        project_dir = os.path.join("storage", "projects", project.project_id)
         if os.path.exists(project_dir):
             projects_files.append(FileNode(
-                name=project_id,
+                name=f"{project.name} ({project.project_id})",
                 path=project_dir,
                 is_dir=True,
                 children=build_tree(project_dir)

@@ -183,6 +183,8 @@ const SensorsPage: React.FC<SensorsPageProps> = ({ onNavigateToDetail }) => {
   // Save sensors to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('wit-sensors', JSON.stringify(sensors));
+    // Dispatch event to notify widgets
+    window.dispatchEvent(new Event('sensors-updated'));
   }, [sensors]);
 
   // Update sensor details when type changes
@@ -538,11 +540,7 @@ const SensorsPage: React.FC<SensorsPageProps> = ({ onNavigateToDetail }) => {
   };
 
   const handleDeleteSensor = (sensorId: string) => {
-    setSensors(prevSensors => {
-      const newSensors = prevSensors.filter(s => s.id !== sensorId);
-      localStorage.setItem('wit-sensors', JSON.stringify(newSensors));
-      return newSensors;
-    });
+    setSensors(prevSensors => prevSensors.filter(s => s.id !== sensorId));
   };
 
   const navigateToSensor = (sensorId: string) => {

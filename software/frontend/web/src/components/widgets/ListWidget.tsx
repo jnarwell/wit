@@ -59,74 +59,35 @@ const ListWidget: React.FC<ListWidgetProps> = ({ type, height, pixelHeight, onRe
     };
   }, [type]);
   
-  // Sample data configurations (used as fallback)
-  const sampleData = {
-    projects: [
-      { id: 'P001', name: 'Widget Production', status: 'Active' },
-      { id: 'P002', name: 'Client Dashboard', status: 'In Progress' },
-      { id: 'P003', name: 'Prototype Alpha', status: 'Planning' },
-      { id: 'P004', name: 'Research Phase 2', status: 'On Hold' },
-      { id: 'P005', name: 'Manufacturing Line', status: 'Active' },
-      { id: 'P006', name: 'Quality Control', status: 'Review' },
-      { id: 'P007', name: 'Beta Testing', status: 'In Progress' },
-      { id: 'P008', name: 'Documentation', status: 'Planning' },
-      { id: 'P009', name: 'Integration Tests', status: 'Active' },
-      { id: 'P010', name: 'Deployment Phase', status: 'On Hold' }
-    ],
-    machines: [
-      { id: 'M001', name: '3D Printer #1', status: 'Online' },
-      { id: 'M002', name: 'CNC Mill', status: 'Busy' },
-      { id: 'M003', name: 'Laser Cutter', status: 'Offline' },
-      { id: 'M004', name: '3D Printer #2', status: 'Maintenance' },
-      { id: 'M005', name: 'Vinyl Cutter', status: 'Online' },
-      { id: 'M006', name: 'Soldering Station', status: 'Available' },
-      { id: 'M007', name: 'Reflow Oven', status: 'Busy' },
-      { id: 'M008', name: 'Oscilloscope', status: 'Online' },
-      { id: 'M009', name: 'PCB Mill', status: 'Offline' },
-      { id: 'M010', name: 'Injection Molder', status: 'Maintenance' },
-      { id: 'M011', name: 'Grinding Machine', status: 'Online' },
-      { id: 'M012', name: 'Heat Press', status: 'Online' }
-    ],
-    sensors: [
-      { id: 'S001', name: 'Temperature #1', status: 'Normal' },
-      { id: 'S002', name: 'Humidity', status: 'Normal' },
-      { id: 'S003', name: 'Air Quality', status: 'Warning' },
-      { id: 'S004', name: 'Temperature #2', status: 'Critical' },
-      { id: 'S005', name: 'Pressure', status: 'Normal' },
-      { id: 'S006', name: 'Motion Detector', status: 'Active' },
-      { id: 'S007', name: 'Light Sensor', status: 'Normal' },
-      { id: 'S008', name: 'Sound Level', status: 'Warning' }
-    ]
-  };
   
   const configs = {
     projects: {
       title: 'Projects',
-      items: realData.length > 0 ? realData.map(p => ({
+      items: realData.map(p => ({
         id: p.id,
         name: p.name,
         status: p.status === 'green' ? 'Active' : p.status === 'yellow' ? 'In Progress' : 'On Hold'
-      })) : sampleData.projects,
+      })),
       page: 'projects',
       detailPage: 'project'
     },
     machines: {
       title: 'Machines',
-      items: realData.length > 0 ? realData.map(m => ({
+      items: realData.map(m => ({
         id: m.id,
         name: m.name,
         status: m.status === 'green' ? 'Online' : m.status === 'yellow' ? 'Maintenance' : 'Offline'
-      })) : sampleData.machines,
+      })),
       page: 'machines',
       detailPage: 'machine'
     },
     sensors: {
       title: 'Sensors',
-      items: realData.length > 0 ? realData.map(s => ({
+      items: realData.map(s => ({
         id: s.id,
         name: s.name,
         status: s.status === 'green' ? 'Normal' : s.status === 'yellow' ? 'Warning' : 'Critical'
-      })) : sampleData.sensors,
+      })),
       page: 'sensors',
       detailPage: 'sensor'
     }

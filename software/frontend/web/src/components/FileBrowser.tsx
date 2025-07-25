@@ -219,18 +219,50 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect }) => {
 
     const renderTree = (nodes: FileNode[], baseDir: string, projectId?: string) => (
         <ul>
-            {nodes.map(node => (
-                <li key={node.path}>
-                    <span 
-                        className={node.is_dir ? 'folder' : 'file'} 
-                        onContextMenu={(e) => handleContextMenu(e, node, baseDir, projectId)}
-                        onClick={() => !node.is_dir && onFileSelect(node.path, baseDir, projectId)}
-                    >
-                        {node.name}
-                    </span>
-                    {node.is_dir && node.children.length > 0 && renderTree(node.children, baseDir, projectId)}
-                </li>
-            ))}
+            {nodes.map(node => {
+                // For project folders at the root level, extract project ID from path
+                let currentProjectId = projectId;
+                if (baseDir === 'project' && node.is_dir && node.path.includes('storage/projects/')) {
+                    const match = node.path.match(/storage\/projects\/([^\/]+)/);
+                    if (match) {
+                        currentProjectId = match[1];
+                    }
+                }
+                
+                return (
+                    <li key={node.path}>
+                        <span 
+                            className={node.is_dir ? 'folder' : 'file'} 
+                            onContextMenu={(e) => handleContextMenu(e, node, baseDir, currentProjectId)}
+                            onClick={() => {
+                                if (!node.is_dir) {
+                                    // For project files, extract the relative path
+                                    let relativePath = node.path;
+                                    if (baseDir === 'project' && currentProjectId) {
+                                        const projectPrefix = `storage/projects/${currentProjectId}/`;
+                                        if (relativePath.startsWith(projectPrefix)) {
+                                            relativePath = relativePath.substring(projectPrefix.length);
+                                        }
+                                    } else if (baseDir === 'user') {
+                                        const userPrefix = `storage/users/`;
+                                        if (relativePath.startsWith(userPrefix)) {
+                                            // Find the end of the user ID
+                                            const parts = relativePath.split('/');
+                                            if (parts.length > 3) {
+                                                relativePath = parts.slice(3).join('/');
+                                            }
+                                        }
+                                    }
+                                    onFileSelect(relativePath, baseDir, currentProjectId);
+                                }
+                            }}
+                        >
+                            {node.name}
+                        </span>
+                        {node.is_dir && node.children.length > 0 && renderTree(node.children, baseDir, currentProjectId)}
+                    </li>
+                );
+            })}
         </ul>
     );
 
@@ -245,9 +277,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect }) => {
                 <h3>My Files</h3>
                 {renderTree(userFiles, 'user')}
             </div>
-            <div className="file-section" onContextMenu={(e) => handleContextMenu(e, undefined, 'project', 'PROJ-551C12CB')}>
+            <div className="file-section" onContextMenu={(e) => handleContextMenu(e, undefined, 'project')}>
                 <h3>Project Files</h3>
-                {renderTree(projectFiles, 'project', 'PROJ-551C12CB')}
+                {renderTree(projectFiles, 'project')}
             </div>
             {contextMenu && <ContextMenu {...contextMenu} onClose={closeContextMenu} />}
         </div>

@@ -1,5 +1,33 @@
 # Changelog
 
+## [Unreleased] - 2025-07-25
+
+### Added
+- **Dashboard File Widgets**: Two new dashboard widgets for file management
+  - **File Explorer Widget**: Browse and view files directly from the dashboard with folder navigation
+  - **File Viewer Widget**: Pin specific files to the dashboard for persistent quick access
+- **Widget Data Updates**: List widgets now display real data from Projects, Machines, and Sensors pages
+  - Projects, Machines, and Sensors pages now save data to localStorage and dispatch update events
+  - List widgets listen for these events and refresh automatically
+  - WIT terminal commands that create items now trigger widget refreshes
+- **Mini Terminal Enhancement**: WITsWidget transformed from voice assistant to functional mini terminal
+  - Matches the main WIT page interface (without file explorer)
+  - Executes commands through the same AI backend
+  - Automatically refreshes list widgets when items are created via commands
+
+### Fixed
+- **Widget Interaction**: Resolved drag behavior conflict with file selection in File Explorer and File Viewer widgets
+  - Added proper event propagation stopping to prevent widget dragging when clicking on files
+  - Users can now properly select files and folders without triggering widget movement
+- **Data Display**: Fixed list widgets showing hardcoded sample data instead of actual user data
+- **Context Menu**: Fixed separator items appearing as clickable options in file browser context menus
+- **File Sync**: Fixed file content synchronization between project pages and main storage
+- **Project Naming**: Project folders in main storage now show project names instead of IDs
+
+### Changed
+- **Widget Architecture**: ListWidget component refactored to remove all sample data fallback logic
+- **Data Flow**: Implemented proper data persistence and event-driven updates across all list widgets
+
 ## [Unreleased] - 2025-07-24 (Late Night)
 
 ### Added

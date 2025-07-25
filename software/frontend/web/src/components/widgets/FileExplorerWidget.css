@@ -1,0 +1,136 @@
+/* FileExplorerWidget.css */
+.file-explorer-widget {
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.file-explorer-widget.viewing-file {
+  padding: 0;
+}
+
+.file-explorer-widget .widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.file-explorer-widget .widget-title {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.file-explorer-widget .remove-button {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+  transition: all 0.2s;
+}
+
+.file-explorer-widget .remove-button:hover {
+  color: #ff4444;
+}
+
+.file-explorer-widget .widget-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+.file-explorer-widget .widget-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.file-explorer-widget .widget-content::-webkit-scrollbar-track {
+  background: #2a2a2a;
+}
+
+.file-explorer-widget .widget-content::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 3px;
+}
+
+.file-explorer-widget .widget-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.file-explorer-widget .loading,
+.file-explorer-widget .empty-state {
+  color: #666;
+  text-align: center;
+  padding: 20px;
+  font-size: 12px;
+}
+
+.file-explorer-widget .file-tree {
+  font-size: 12px;
+}
+
+.file-explorer-widget .file-node {
+  margin: 1px 0;
+}
+
+.file-explorer-widget .file-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 4px;
+  color: #ccc;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.file-explorer-widget .file-item:hover {
+  background-color: #2a2a2a;
+  color: #fff;
+}
+
+.file-explorer-widget .file-item.folder {
+  color: #66b3ff;
+}
+
+.file-explorer-widget .file-item.file {
+  color: #ccc;
+}
+
+.file-explorer-widget .folder-icon {
+  width: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -16px;
+  margin-right: 2px;
+}
+
+.file-explorer-widget .file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* File icons */
+.file-explorer-widget .file-item svg {
+  flex-shrink: 0;
+}
+
+/* When viewing a file, the FileViewer takes full space */
+.file-explorer-widget.viewing-file .file-viewer {
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}

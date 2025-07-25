@@ -9,6 +9,31 @@
     font-size: 14px;
 }
 
+/* Split view when file is selected */
+.project-file-browser.split-view {
+    display: flex;
+    flex-direction: column;
+}
+
+.file-viewer-section {
+    flex: 1;
+    min-height: 50%;
+    border-bottom: 1px solid #333;
+    overflow: hidden;
+}
+
+.file-browser-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* When in split view, reduce the browser section height */
+.split-view .file-browser-section {
+    flex: 0 0 50%;
+}
+
 .browser-container {
     display: flex;
     height: 100%;
@@ -16,14 +41,10 @@
 }
 
 .file-tree-container {
-    flex: 0 0 300px;
-    min-width: 200px;
-    max-width: 500px;
-    border-right: 1px solid #333;
+    flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    resize: horizontal;
 }
 
 .browser-header {
@@ -68,6 +89,18 @@
     list-style: none;
     margin: 0;
     padding: 0.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Ensure file tree scrolls properly */
+.file-tree-container {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.file-tree-container .file-tree {
     overflow-y: auto;
     flex: 1;
 }
@@ -169,11 +202,11 @@
     color: #666;
 }
 
-/* File viewer container */
-.file-viewer-container {
-    flex: 1;
-    overflow: hidden;
-    position: relative;
+/* File viewer section styling */
+.file-viewer-section .file-viewer {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Context menu styling (if not already styled) */

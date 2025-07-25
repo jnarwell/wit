@@ -469,28 +469,13 @@ const ProjectDetailPageNew: React.FC<ProjectDetailPageNewProps> = ({ projectId, 
           </div>
         </div>
 
-        {/* Right side - Project Database (1/4) */}
-        <div className="sidebar-content">
-          <div className="sidebar-section">
-            <div className="sidebar-header">
-              <h3><FaFolder /> Project Files</h3>
-              <button 
-                onClick={() => setShowFileBrowser(!showFileBrowser)} 
-                className="toggle-button"
-              >
-                {showFileBrowser ? 'Hide' : 'Show'}
-              </button>
-            </div>
-            {showFileBrowser && (
-              <div className="file-browser-container">
-                <ProjectFileBrowser 
-                  projectId={projectId}
-                  baseDir="project"
-                  onFileSelect={(path) => console.log('File selected:', path)}
-                />
-              </div>
-            )}
-          </div>
+        {/* Right side - Project Files (1/4) */}
+        <div className="sidebar-content project-files-sidebar">
+          <ProjectFileBrowser 
+            projectId={projectId}
+            baseDir="project"
+            onFileSelect={(path) => console.log('File selected:', path)}
+          />
         </div>
       </div>
 

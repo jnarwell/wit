@@ -4,7 +4,8 @@ import './ContextMenu.css';
 
 interface MenuItem {
     label: string;
-    action: () => void;
+    action?: () => void;
+    isSeparator?: boolean;
 }
 
 interface ContextMenuProps {
@@ -33,9 +34,13 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
         <div ref={menuRef} className="context-menu" style={{ top: y, left: x }}>
             <ul>
                 {items.map((item, index) => (
-                    <li key={index} onClick={item.action}>
-                        {item.label}
-                    </li>
+                    item.isSeparator ? (
+                        <li key={index} className="separator"></li>
+                    ) : (
+                        <li key={index} onClick={item.action}>
+                            {item.label}
+                        </li>
+                    )
                 ))}
             </ul>
         </div>

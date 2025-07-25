@@ -1,0 +1,238 @@
+/* FileViewerWidget.css */
+.file-viewer-widget {
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.file-viewer-widget.viewing-file {
+  padding: 0;
+  background-color: transparent;
+}
+
+.file-viewer-widget .widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.file-viewer-widget .widget-title {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.file-viewer-widget .remove-button {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+  transition: all 0.2s;
+}
+
+.file-viewer-widget .remove-button:hover {
+  color: #ff4444;
+}
+
+.file-viewer-widget .widget-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+.file-viewer-widget .widget-content.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-viewer-widget .widget-content.file-picker {
+  border: 1px solid #333;
+  border-radius: 4px;
+  background-color: #0a0a0a;
+  padding: 8px;
+}
+
+.file-viewer-widget .widget-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.file-viewer-widget .widget-content::-webkit-scrollbar-track {
+  background: #2a2a2a;
+}
+
+.file-viewer-widget .widget-content::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 3px;
+}
+
+.file-viewer-widget .widget-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.file-viewer-widget .loading,
+.file-viewer-widget .empty-state {
+  color: #666;
+  text-align: center;
+  padding: 20px;
+  font-size: 12px;
+}
+
+.file-viewer-widget .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.file-viewer-widget .empty-icon {
+  color: #444;
+  margin-bottom: 8px;
+}
+
+.file-viewer-widget .select-file-button,
+.file-viewer-widget .cancel-button {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.file-viewer-widget .select-file-button:hover {
+  background-color: #1d4ed8;
+}
+
+.file-viewer-widget .cancel-button {
+  background-color: #666;
+}
+
+.file-viewer-widget .cancel-button:hover {
+  background-color: #555;
+}
+
+.file-viewer-widget .widget-footer {
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+  border-top: 1px solid #333;
+  margin-top: 12px;
+}
+
+/* File tree styles */
+.file-viewer-widget .file-tree {
+  font-size: 12px;
+}
+
+.file-viewer-widget .file-node {
+  margin: 1px 0;
+}
+
+.file-viewer-widget .file-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 4px;
+  color: #ccc;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.file-viewer-widget .file-item:hover {
+  background-color: #2a2a2a;
+  color: #fff;
+}
+
+.file-viewer-widget .file-item.folder {
+  color: #66b3ff;
+}
+
+.file-viewer-widget .file-item.file {
+  color: #ccc;
+}
+
+.file-viewer-widget .folder-icon {
+  width: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -16px;
+  margin-right: 2px;
+  font-size: 10px;
+}
+
+.file-viewer-widget .file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* File viewer header when file is selected */
+.file-viewer-widget .file-viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #1a1a1a;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.file-viewer-widget .file-viewer-header .file-name {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  margin-right: 12px;
+}
+
+.file-viewer-widget .file-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.file-viewer-widget .change-file-button {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+  transition: all 0.2s;
+}
+
+.file-viewer-widget .change-file-button:hover {
+  color: #2563eb;
+}
+
+/* File viewer content */
+.file-viewer-widget .file-viewer-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-viewer-widget .file-viewer-content .file-viewer {
+  flex: 1;
+  height: 100%;
+}

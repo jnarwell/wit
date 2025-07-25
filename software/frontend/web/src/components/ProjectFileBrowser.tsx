@@ -161,7 +161,7 @@ const ProjectFileBrowser: React.FC<ProjectFileBrowserProps> = ({
                 action: () => window.open(`/file/${node.path}`, '_blank'),
                 icon: '🔗'
             });
-            items.push({ label: 'separator', action: () => {} });
+            items.push({ label: '', isSeparator: true });
         }
 
         if (node) {
@@ -175,7 +175,7 @@ const ProjectFileBrowser: React.FC<ProjectFileBrowserProps> = ({
                 action: () => handleDelete(node),
                 icon: '🗑️'
             });
-            items.push({ label: 'separator', action: () => {} });
+            items.push({ label: '', isSeparator: true });
         }
         
         items.push({ 
@@ -188,7 +188,7 @@ const ProjectFileBrowser: React.FC<ProjectFileBrowserProps> = ({
             action: () => handleCreate('folder', basePath),
             icon: '📁'
         });
-        items.push({ label: 'separator', action: () => {} });
+        items.push({ label: '', isSeparator: true });
         items.push({ 
             label: 'Upload File', 
             action: () => handleUpload('file', basePath),
@@ -201,7 +201,7 @@ const ProjectFileBrowser: React.FC<ProjectFileBrowserProps> = ({
         });
 
         if (node && !node.is_dir) {
-            items.push({ label: 'separator', action: () => {} });
+            items.push({ label: '', isSeparator: true });
             items.push({ 
                 label: 'Download', 
                 action: () => handleDownload(node),
@@ -470,7 +470,7 @@ const ProjectFileBrowser: React.FC<ProjectFileBrowserProps> = ({
     );
 
     return (
-        <div className="project-file-browser" ref={browserRef}>
+        <div className={`project-file-browser ${viewerFile ? 'split-view' : ''}`} ref={browserRef}>
             <input 
                 type="file" 
                 ref={fileInputRef} 
@@ -486,7 +486,54 @@ const ProjectFileBrowser: React.FC<ProjectFileBrowserProps> = ({
                 onChange={handleFolderSelected} 
             />
             
-            <div className="browser-container">
+            {/* File Viewer (top half when file is selected) */}
+            {viewerFile && (
+                <div className="file-viewer-section">
+                    <FileViewer
+                        path={viewerFile.path}
+                        baseDir={viewerFile.baseDir}
+                        projectId={viewerFile.projectId}
+                        onClose={() => setViewerFile(null)}
+                    />
+                </div>
+            )}
+            
+            {/* File Browser (bottom half when file is selected, full height otherwise) */}
+            <div className="file-browser-section">
+                <div className="browser-header">
+                    <h3>📁 Project Files</h3>
+                    <div className="browser-actions">
+                        <button 
+                            onClick={() => handleCreate('file', '')} 
+                            title="New File"
+                            className="action-btn"
+                        >
+                            📄+
+                        </button>
+                        <button 
+                            onClick={() => handleCreate('folder', '')} 
+                            title="New Folder"
+                            className="action-btn"
+                        >
+                            📁+
+                        </button>
+                        <button 
+                            onClick={() => handleUpload('file', '')} 
+                            title="Upload File"
+                            className="action-btn"
+                        >
+                            ⬆️
+                        </button>
+                        <button 
+                            onClick={fetchFiles} 
+                            title="Refresh"
+                            className="action-btn"
+                        >
+                            🔄
+                        </button>
+                    </div>
+                </div>
+                
                 <div 
                     className="file-tree-container"
                     onContextMenu={(e) => handleContextMenu(e)}
@@ -494,40 +541,6 @@ const ProjectFileBrowser: React.FC<ProjectFileBrowserProps> = ({
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e)}
                 >
-                    <div className="browser-header">
-                        <h3>📁 Project Files</h3>
-                        <div className="browser-actions">
-                            <button 
-                                onClick={() => handleCreate('file', '')} 
-                                title="New File"
-                                className="action-btn"
-                            >
-                                📄+
-                            </button>
-                            <button 
-                                onClick={() => handleCreate('folder', '')} 
-                                title="New Folder"
-                                className="action-btn"
-                            >
-                                📁+
-                            </button>
-                            <button 
-                                onClick={() => handleUpload('file', '')} 
-                                title="Upload File"
-                                className="action-btn"
-                            >
-                                ⬆️
-                            </button>
-                            <button 
-                                onClick={fetchFiles} 
-                                title="Refresh"
-                                className="action-btn"
-                            >
-                                🔄
-                            </button>
-                        </div>
-                    </div>
-                    
                     {isLoading ? (
                         <div className="loading">Loading files...</div>
                     ) : files.length === 0 ? (
@@ -539,17 +552,6 @@ const ProjectFileBrowser: React.FC<ProjectFileBrowserProps> = ({
                         renderTree(files)
                     )}
                 </div>
-                
-                {viewerFile && (
-                    <div className="file-viewer-container">
-                        <FileViewer
-                            path={viewerFile.path}
-                            baseDir={viewerFile.baseDir}
-                            projectId={viewerFile.projectId}
-                            onClose={() => setViewerFile(null)}
-                        />
-                    </div>
-                )}
             </div>
             
             {contextMenu && (

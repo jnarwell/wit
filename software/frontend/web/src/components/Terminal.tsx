@@ -113,6 +113,41 @@ const Terminal: React.FC = () => {
             const data = await response.json();
             setHistory(prev => [...prev, { role: 'assistant', content: data.response }]);
             await logMessage('assistant', data.response);
+            
+            // Check if the response indicates that items were created/updated
+            const responseText = data.response.toLowerCase();
+            
+            // Check for project creation/update
+            if (responseText.includes('project') && (responseText.includes('created') || responseText.includes('added') || responseText.includes('updated'))) {
+                // Refresh projects data
+                const projectsData = await fetch(`${API_BASE_URL}/api/v1/projects`, {
+                    headers: { 'Authorization': `Bearer ${tokens.access_token}` }
+                });
+                if (projectsData.ok) {
+                    const projects = await projectsData.json();
+                    localStorage.setItem('wit-projects', JSON.stringify(projects));
+                    window.dispatchEvent(new Event('projects-updated'));
+                }
+            }
+            
+            // Check for machine/equipment creation/update
+            if ((responseText.includes('machine') || responseText.includes('equipment') || responseText.includes('printer')) && 
+                (responseText.includes('created') || responseText.includes('added') || responseText.includes('updated'))) {
+                // Refresh machines data - try to get from localStorage first since backend might not be available
+                const storedMachines = localStorage.getItem('wit-machines');
+                if (storedMachines) {
+                    window.dispatchEvent(new Event('machines-updated'));
+                }
+            }
+            
+            // Check for sensor creation/update
+            if (responseText.includes('sensor') && (responseText.includes('created') || responseText.includes('added') || responseText.includes('updated'))) {
+                // Refresh sensors data
+                const storedSensors = localStorage.getItem('wit-sensors');
+                if (storedSensors) {
+                    window.dispatchEvent(new Event('sensors-updated'));
+                }
+            }
         } catch (error) {
             const errorMessage = `Error: ${error instanceof Error ? error.message : 'Could not connect to the terminal server.'}`;
             setHistory(prev => [...prev, { role: 'assistant', content: errorMessage }]);

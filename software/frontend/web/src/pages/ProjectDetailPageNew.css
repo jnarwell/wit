@@ -438,6 +438,21 @@
   flex-direction: column;
 }
 
+/* Project Files Sidebar - takes full height */
+.project-files-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.project-files-sidebar .project-file-browser {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Ensure ProjectFileBrowser takes full height */
 .file-browser-container .project-file-browser {
   flex: 1;

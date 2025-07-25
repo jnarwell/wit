@@ -5,10 +5,12 @@ import SpecificWidget from './widgets/SpecificWidget';
 import ListWidget from './widgets/ListWidget';
 import WITsWidget from './widgets/WITsWidget';
 import UtilityWidget from './widgets/UtilityWidget';
+import FileExplorerWidget from './widgets/FileExplorerWidget';
+import FileViewerWidget from './widgets/FileViewerWidget';
 
 interface Widget {
   id: string;
-  type: 'project' | 'machine' | 'sensor' | 'projects-list' | 'machines-list' | 'sensors-list' | 'wits' | 'utility';
+  type: 'project' | 'machine' | 'sensor' | 'projects-list' | 'machines-list' | 'sensors-list' | 'wits' | 'utility' | 'file-explorer' | 'file-viewer';
   subType?: string;
   position: { x: number; y: number };
   size: { width: number; height: number };
@@ -611,6 +613,8 @@ const Dashboard: React.FC = () => {
                   {expandedCategories.special && (
                     <div className="ml-4 mt-1 space-y-1">
                       <button onClick={() => addWidget('wits')} className="w-full text-left text-gray-400 hover:text-white text-sm py-1 px-2 rounded hover:bg-gray-600 transition-colors">WITs Assistant</button>
+                      <button onClick={() => addWidget('file-explorer')} className="w-full text-left text-gray-400 hover:text-white text-sm py-1 px-2 rounded hover:bg-gray-600 transition-colors">File Explorer</button>
+                      <button onClick={() => addWidget('file-viewer')} className="w-full text-left text-gray-400 hover:text-white text-sm py-1 px-2 rounded hover:bg-gray-600 transition-colors">File Viewer</button>
                     </div>
                   )}
                 </div>
@@ -815,6 +819,12 @@ const Dashboard: React.FC = () => {
                   height={size.height}
                   {...commonProps}
                 />
+              )}
+              {widget.type === 'file-explorer' && (
+                <FileExplorerWidget {...commonProps} />
+              )}
+              {widget.type === 'file-viewer' && (
+                <FileViewerWidget {...commonProps} />
               )}
             </div>
           );
