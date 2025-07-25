@@ -1393,6 +1393,7 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
                     setNewMachine({
                       ...newMachine,
                       type,
+                      name: typeConfig.defaultName,
                       connectionType: typeConfig.defaultConnection,
                       manufacturer: typeConfig.manufacturers[0],
                       username: 'maker',

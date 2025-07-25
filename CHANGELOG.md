@@ -19,6 +19,8 @@
 ### Fixed
 - **Authentication Headers**: Fixed missing `getAuthHeaders` function causing connection test and delete failures
 - **WebSocket URL**: Corrected printer WebSocket endpoint path to match backend routing
+- **Machine Deletion**: Fixed 404 errors by properly including backend equipment API router for printer endpoints
+- **Machine Type Selection**: Machine name now automatically updates to default name when type is changed
 
 ### Changed
 - **Machine Type Selection**: Reorganized add machine dialog with categorized dropdown for better UX

@@ -34,6 +34,8 @@ from software.frontend.web.routers import (
     microcontrollers_router
 )
 from software.frontend.web.routers.file_operations_router import active_file_connections
+# Import backend equipment API for printer support
+from software.backend.api.equipment_api import router as backend_equipment_router, shutdown_equipment
 
 # --- Lifespan Management ---
 @asynccontextmanager
@@ -49,6 +51,8 @@ async def lifespan(app: FastAPI):
     yield
     
     logging.info("--- Server Shutting Down ---")
+    # Shutdown equipment connections
+    await shutdown_equipment()
 
 # --- FastAPI App Initialization ---
 app = FastAPI(
@@ -71,6 +75,9 @@ app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(users_router, prefix="/api/v1/users", tags=["users"])
 app.include_router(projects_router, prefix="/api/v1/projects", tags=["projects"])
 app.include_router(tasks_router, prefix="/api/v1", tags=["tasks"])
+# Use backend equipment router for printer support
+app.include_router(backend_equipment_router, tags=["equipment"])
+# Keep frontend equipment router for generic equipment
 app.include_router(equipment_router, prefix="/api/v1", tags=["equipment"])
 app.include_router(microcontrollers_router.router, prefix="/api/v1/microcontrollers", tags=["microcontrollers"])
 app.include_router(files_router, prefix="/api/v1", tags=["files"])
