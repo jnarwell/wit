@@ -1,5 +1,33 @@
 # Changelog
 
+## [Unreleased] - 2025-07-25 (Night)
+
+### Added
+- **Enhanced Project Management**: Complete overhaul of project display with rich interactive features
+  - Editable status lights (Not Started/In Progress/Blocked/Complete) with color-coded indicators
+  - Editable priority tags (Low/Medium/High) with click-to-change functionality
+  - Real-time updates via PATCH endpoints for status and priority changes
+  - Visual progress bars (placeholder for task-based calculation)
+  - Grid layout controls with adjustable columns
+- **Advanced Filtering & Sorting**: 
+  - Filter projects by status and priority
+  - Sort by date created, last updated, name, priority, or status
+  - Responsive grid layout that adapts to selected column count
+- **Database Schema Updates**:
+  - Added `priority` field to projects and tasks tables
+  - Updated `status` field with new values: not_started, in_progress, blocked, complete
+  - Added `updated_at` timestamps with automatic updates
+
+### Changed
+- **Project Display**: Replaced generic SpecificWidget with custom project cards showing:
+  - Interactive status light with hover dropdown
+  - Priority badge with click-to-edit functionality
+  - Team information and project type
+  - Progress indicator (to be calculated from tasks)
+- **API Enhancements**:
+  - Added PATCH endpoints for partial updates to projects and tasks
+  - Updated schemas to include new status and priority fields
+
 ## [Unreleased] - 2025-07-25 (Evening)
 
 ### Added

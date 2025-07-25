@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
+from datetime import datetime
 from fastapi.security import OAuth2PasswordBearer
 
 from software.backend.services.database_services import get_session, Project, User, TeamMember
@@ -16,16 +17,27 @@ class ProjectBase(BaseModel):
     name: str
     description: str | None = None
     type: str
-    status: str
+    status: str = "not_started"  # not_started, in_progress, blocked, complete
+    priority: str = "medium"  # low, medium, high
     extra_data: dict = {}
 
 class ProjectCreate(ProjectBase):
     pass
 
+class ProjectUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    type: str | None = None
+    status: str | None = None
+    priority: str | None = None
+    extra_data: dict | None = None
+
 class ProjectResponse(ProjectBase):
     id: uuid.UUID
     project_id: str
     owner_id: uuid.UUID
+    created_at: str
+    updated_at: str | None = None
 
     class Config:
         from_attributes = True
@@ -66,6 +78,7 @@ async def create_project(
         description=project.description,
         type=project.type,
         status=project.status,
+        priority=project.priority,
         extra_data=project.extra_data,
         owner_id=current_user.id
     )
@@ -130,6 +143,37 @@ async def update_project(
 
     for key, value in project_update.dict().items():
         setattr(project, key, value)
+    
+    await db.commit()
+    await db.refresh(project)
+    return project
+
+@router.patch("/{project_id}", response_model=ProjectResponse)
+async def patch_project(
+    project_id: str,
+    project_update: ProjectUpdate,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Partially update a project."""
+    result = await db.execute(
+        select(Project).where(Project.project_id == project_id)
+    )
+    project = result.scalar_one_or_none()
+
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this project")
+
+    # Only update fields that were provided
+    update_data = project_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(project, key, value)
+    
+    # Update the updated_at timestamp
+    project.updated_at = datetime.utcnow()
     
     await db.commit()
     await db.refresh(project)

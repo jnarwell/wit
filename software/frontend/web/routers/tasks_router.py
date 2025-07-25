@@ -6,21 +6,30 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from software.backend.services.database_services import get_session, Task, Project
-from software.backend.schemas.task_schemas import TaskCreate, TaskResponse, TaskUpdate
 from pydantic import BaseModel
+from datetime import datetime
 
 # --- Pydantic Schemas for Tasks ---
 class TaskBase(BaseModel):
     name: str
     description: str | None = None
+    status: str = "not_started"  # not_started, in_progress, blocked, complete
+    priority: str = "medium"  # low, medium, high
 
 class TaskCreate(TaskBase):
     pass
 
+class TaskUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    status: str | None = None
+    priority: str | None = None
+
 class TaskResponse(TaskBase):
     id: uuid.UUID
-    status: str
     project_id: uuid.UUID
+    created_at: str
+    updated_at: str | None = None
 
     class Config:
         from_attributes = True
@@ -42,6 +51,8 @@ async def create_task_for_project(
     new_task = Task(
         name=task.name,
         description=task.description,
+        status=task.status,
+        priority=task.priority,
         project_id=project.id
     )
     db.add(new_task)
@@ -85,6 +96,33 @@ async def update_task(
 
     for key, value in task_update.dict(exclude_unset=True).items():
         setattr(task, key, value)
+    
+    # Update the updated_at timestamp
+    task.updated_at = datetime.utcnow()
+    
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+@router.patch("/tasks/{task_id}", response_model=TaskResponse)
+async def patch_task(
+    task_id: uuid.UUID,
+    task_update: TaskUpdate,
+    db: AsyncSession = Depends(get_session),
+):
+    """Partially update a task."""
+    result = await db.execute(select(Task).where(Task.id == task_id))
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Only update fields that were provided
+    update_data = task_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(task, key, value)
+    
+    # Update the updated_at timestamp
+    task.updated_at = datetime.utcnow()
     
     await db.commit()
     await db.refresh(task)
