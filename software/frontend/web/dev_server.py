@@ -15,6 +15,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Adjust imports to match the new structure
 from software.backend.services.database_services import create_db_and_tables
+# Import all models to ensure they're registered
+import software.backend.models
 from software.backend.services.claude_service import claude_terminal_service
 from software.frontend.web.routers import (
     auth_router, 
@@ -28,7 +30,8 @@ from software.frontend.web.routers import (
     files_api,
     file_operations_router,
     team_members_router,
-    project_files_router
+    project_files_router,
+    microcontrollers_router
 )
 from software.frontend.web.routers.file_operations_router import active_file_connections
 
@@ -69,6 +72,7 @@ app.include_router(users_router, prefix="/api/v1/users", tags=["users"])
 app.include_router(projects_router, prefix="/api/v1/projects", tags=["projects"])
 app.include_router(tasks_router, prefix="/api/v1", tags=["tasks"])
 app.include_router(equipment_router, prefix="/api/v1", tags=["equipment"])
+app.include_router(microcontrollers_router.router, prefix="/api/v1/microcontrollers", tags=["microcontrollers"])
 app.include_router(files_router, prefix="/api/v1", tags=["files"])
 app.include_router(members_router, prefix="/api/v1", tags=["members"])
 app.include_router(team_members_router, prefix="/api/v1", tags=["team_members"])

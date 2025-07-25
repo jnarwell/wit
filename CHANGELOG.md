@@ -1,5 +1,28 @@
 # Changelog
 
+## [Unreleased] - 2025-07-25 (Evening)
+
+### Added
+- **Microcontroller Support**: Comprehensive backend infrastructure for Arduino, ESP32, and Raspberry Pi
+  - Database models for microcontrollers, sensor readings, and device logs
+  - API endpoints for device management, connection control, and data retrieval
+  - Serial, network (TCP/UDP/HTTP), and MQTT connection support
+  - Real-time WebSocket support for streaming sensor data
+  - Automatic connection parameter detection based on device type
+- **Machines Page Enhancements**: 
+  - Added microcontroller types (Arduino Uno/Mega/Nano, ESP32/8266, Raspberry Pi)
+  - Serial port scanning functionality for automatic device detection
+  - Baud rate configuration for serial connections
+  - Grouped machine types in dropdown (Workshop Equipment vs Microcontrollers)
+  - Microcontroller-specific icon display
+
+### Fixed
+- **Authentication Headers**: Fixed missing `getAuthHeaders` function causing connection test and delete failures
+- **WebSocket URL**: Corrected printer WebSocket endpoint path to match backend routing
+
+### Changed
+- **Machine Type Selection**: Reorganized add machine dialog with categorized dropdown for better UX
+
 ## [Unreleased] - 2025-07-25
 
 ### Added

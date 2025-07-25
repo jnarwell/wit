@@ -89,6 +89,49 @@ const MACHINE_TYPES: Record<string, MachineTypeConfig> = {
     connectionTypes: ['usb', 'network-prusalink', 'network-octoprint', 'serial', 'bluetooth'],
     defaultConnection: 'network-octoprint',
     manufacturers: ['Custom', 'Other']
+  },
+  // Microcontrollers
+  'arduino-uno': {
+    defaultName: 'Arduino Uno',
+    connectionTypes: ['usb', 'serial'],
+    defaultConnection: 'usb',
+    manufacturers: ['Arduino']
+  },
+  'arduino-mega': {
+    defaultName: 'Arduino Mega',
+    connectionTypes: ['usb', 'serial'],
+    defaultConnection: 'usb',
+    manufacturers: ['Arduino']
+  },
+  'arduino-nano': {
+    defaultName: 'Arduino Nano',
+    connectionTypes: ['usb', 'serial'],
+    defaultConnection: 'usb',
+    manufacturers: ['Arduino']
+  },
+  'esp32': {
+    defaultName: 'ESP32',
+    connectionTypes: ['usb', 'network', 'bluetooth'],
+    defaultConnection: 'usb',
+    manufacturers: ['Espressif', 'NodeMCU', 'Wemos', 'Other']
+  },
+  'esp8266': {
+    defaultName: 'ESP8266',
+    connectionTypes: ['usb', 'network'],
+    defaultConnection: 'usb',
+    manufacturers: ['Espressif', 'NodeMCU', 'Wemos', 'Other']
+  },
+  'raspberry-pi': {
+    defaultName: 'Raspberry Pi',
+    connectionTypes: ['network', 'usb'],
+    defaultConnection: 'network',
+    manufacturers: ['Raspberry Pi Foundation']
+  },
+  'raspberry-pi-pico': {
+    defaultName: 'Raspberry Pi Pico',
+    connectionTypes: ['usb', 'serial'],
+    defaultConnection: 'usb',
+    manufacturers: ['Raspberry Pi Foundation']
   }
 };
 
@@ -120,6 +163,11 @@ const CONNECTION_CONFIGS: Record<string, any> = {
     label: 'Bluetooth',
     placeholder: 'Device name',
     helperText: 'Bluetooth connection (experimental)'
+  },
+  'network': {
+    label: 'Network',
+    placeholder: '192.168.1.100:8080',
+    helperText: 'IP address and port for network connection'
   }
 };
 
@@ -274,7 +322,7 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
     console.log(`[MachinesPage] Connecting to printer WebSocket... (attempt ${reconnectAttemptsRef.current + 1}/${WS_MAX_RECONNECT_ATTEMPTS})`);
     
     try {
-      const ws = new WebSocket('ws://localhost:8000/ws/printers');
+      const ws = new WebSocket('ws://localhost:8000/api/v1/equipment/ws/printers');
       
       ws.onopen = () => {
         console.log('[MachinesPage] WebSocket connected successfully');
@@ -413,6 +461,8 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
   const [gridRows, setGridRows] = useState(3);
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionTestResult, setConnectionTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [availableSerialPorts, setAvailableSerialPorts] = useState<Array<{ port: string; description: string }>>([]);
+  const [scanningPorts, setScanningPorts] = useState(false);
   
   const [newMachine, setNewMachine] = useState({
     type: '3d-printer',
@@ -424,7 +474,8 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
     apiKey: '',
     manufacturer: '',
     model: '',
-    notes: ''
+    notes: '',
+    baudRate: '115200'
   });
 
   // Drag state
@@ -454,6 +505,14 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
 
   const interactionStartPosRef = useRef({ x: 0, y: 0 });
   const [canNavigate, setCanNavigate] = useState(true);
+  
+  // Helper function for auth headers
+  const getAuthHeaders = () => {
+    return {
+      'Authorization': `Bearer ${tokens?.access_token}`,
+      'Content-Type': 'application/json'
+    };
+  };
 
   // Load saved machines on mount
   useEffect(() => {
@@ -859,6 +918,25 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
     }
   };
 
+  const scanSerialPorts = async () => {
+    setScanningPorts(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/microcontrollers/ports`, {
+        headers: {
+          'Authorization': `Bearer ${tokens?.access_token}`
+        }
+      });
+      if (response.ok) {
+        const ports = await response.json();
+        setAvailableSerialPorts(ports);
+      }
+    } catch (error) {
+      console.error('Failed to scan serial ports:', error);
+    } finally {
+      setScanningPorts(false);
+    }
+  };
+
   const handleAddMachine = async () => {
     if (!isAuthenticated) {
       alert('Please login first to add machines');
@@ -912,7 +990,8 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
       apiKey: '',
       manufacturer: '',
       model: '',
-      notes: ''
+      notes: '',
+      baudRate: '115200'
     });
     
     setShowAddModal(false);
@@ -1324,11 +1403,23 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
                   }}
                   className="w-full bg-gray-700 text-white rounded px-3 py-2"
                 >
-                  {Object.entries(MACHINE_TYPES).map(([key, config]) => (
-                    <option key={key} value={key}>
-                      {config.defaultName}
-                    </option>
-                  ))}
+                  <optgroup label="Workshop Equipment">
+                    <option value="3d-printer">3D Printer</option>
+                    <option value="laser-cutter">Laser Cutter</option>
+                    <option value="cnc-mill">CNC Mill</option>
+                    <option value="vinyl-cutter">Vinyl Cutter</option>
+                    <option value="soldering">Soldering Station</option>
+                    <option value="custom">Custom Equipment</option>
+                  </optgroup>
+                  <optgroup label="Microcontrollers">
+                    <option value="arduino-uno">Arduino Uno</option>
+                    <option value="arduino-mega">Arduino Mega</option>
+                    <option value="arduino-nano">Arduino Nano</option>
+                    <option value="esp32">ESP32</option>
+                    <option value="esp8266">ESP8266</option>
+                    <option value="raspberry-pi">Raspberry Pi</option>
+                    <option value="raspberry-pi-pico">Raspberry Pi Pico</option>
+                  </optgroup>
                 </select>
               </div>
 
@@ -1380,17 +1471,70 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
                 <label className="block text-gray-300 mb-1">
                   {newMachine.connectionType.includes('network') ? 'IP Address/URL' : 'Port/Address'}
                 </label>
-                <input
-                  type="text"
-                  value={newMachine.connectionDetails}
-                  onChange={(e) => {
-                    setNewMachine({ ...newMachine, connectionDetails: e.target.value });
-                    setConnectionTestResult(null);
-                  }}
-                  placeholder={getConnectionPlaceholder()}
-                  className="w-full bg-gray-700 text-white rounded px-3 py-2"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newMachine.connectionDetails}
+                    onChange={(e) => {
+                      setNewMachine({ ...newMachine, connectionDetails: e.target.value });
+                      setConnectionTestResult(null);
+                    }}
+                    placeholder={getConnectionPlaceholder()}
+                    className="flex-1 bg-gray-700 text-white rounded px-3 py-2"
+                  />
+                  {/* Show scan button for USB/Serial connections on microcontrollers */}
+                  {(newMachine.connectionType === 'usb' || newMachine.connectionType === 'serial') && 
+                   (newMachine.type.includes('arduino') || newMachine.type.includes('esp') || newMachine.type.includes('raspberry-pi')) && (
+                    <button
+                      onClick={scanSerialPorts}
+                      disabled={scanningPorts}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors disabled:opacity-50"
+                    >
+                      {scanningPorts ? 'Scanning...' : 'Scan Ports'}
+                    </button>
+                  )}
+                </div>
+                {/* Show available ports dropdown */}
+                {availableSerialPorts.length > 0 && (
+                  <select
+                    className="w-full mt-2 bg-gray-700 text-white rounded px-3 py-2"
+                    onChange={(e) => {
+                      setNewMachine({ ...newMachine, connectionDetails: e.target.value });
+                      setConnectionTestResult(null);
+                    }}
+                    value={newMachine.connectionDetails}
+                  >
+                    <option value="">Select a port...</option>
+                    {availableSerialPorts.map(port => (
+                      <option key={port.port} value={port.port}>
+                        {port.port} - {port.description}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
+
+              {/* Baud Rate for Serial/USB microcontrollers */}
+              {(newMachine.connectionType === 'usb' || newMachine.connectionType === 'serial') && 
+               (newMachine.type.includes('arduino') || newMachine.type.includes('esp') || newMachine.type.includes('raspberry-pi')) && (
+                <div>
+                  <label className="block text-gray-300 mb-1">Baud Rate</label>
+                  <select
+                    value={newMachine.baudRate}
+                    onChange={(e) => setNewMachine({ ...newMachine, baudRate: e.target.value })}
+                    className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                  >
+                    <option value="9600">9600</option>
+                    <option value="14400">14400</option>
+                    <option value="19200">19200</option>
+                    <option value="38400">38400</option>
+                    <option value="57600">57600</option>
+                    <option value="115200">115200</option>
+                    <option value="128000">128000</option>
+                    <option value="256000">256000</option>
+                  </select>
+                </div>
+              )}
 
               {/* PrusaLink Authentication */}
               {newMachine.connectionType === 'network-prusalink' && (

@@ -42,7 +42,16 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
   const getIcon = () => {
     switch (type) {
       case 'project': return <FaProjectDiagram className="w-5 h-5" />;
-      case 'machine': return <FaCog className="w-5 h-5" />;
+      case 'machine': 
+        // Check if it's a microcontroller
+        if (widgetData.type && (
+          widgetData.type.includes('arduino') || 
+          widgetData.type.includes('esp') || 
+          widgetData.type.includes('raspberry-pi')
+        )) {
+          return <FaMicrochip className="w-5 h-5" />;
+        }
+        return <FaCog className="w-5 h-5" />;
       case 'sensor': return <FaMicrochip className="w-5 h-5" />;
     }
   };

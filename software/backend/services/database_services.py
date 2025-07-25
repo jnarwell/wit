@@ -14,6 +14,7 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker, create_async_engine, AsyncEngine)
 from sqlalchemy.orm import declarative_base, relationship
 
+
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./wit.db")
 logger = logging.getLogger(__name__)
 Base = declarative_base()
@@ -28,6 +29,7 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     projects = relationship("Project", back_populates="owner")
+    microcontrollers = relationship("Microcontroller", back_populates="owner")
 
 class Project(Base):
     __tablename__ = "projects"
@@ -88,6 +90,12 @@ class Equipment(Base):
 engine: AsyncEngine = create_async_engine(DATABASE_URL, echo=False, future=True)
 session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
+# Sync engine for background tasks
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
+sync_engine = create_engine(DATABASE_URL.replace("+aiosqlite", ""), echo=False)
+sync_session_factory = sessionmaker(bind=sync_engine, expire_on_commit=False)
+
 async def create_db_and_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -114,3 +122,7 @@ async def create_user(db: AsyncSession, username: str, email: str, password: str
     await db.commit()
     await db.refresh(new_user)
     return new_user
+
+def get_session_sync() -> Session:
+    """Get a synchronous database session for background tasks"""
+    return sync_session_factory()
