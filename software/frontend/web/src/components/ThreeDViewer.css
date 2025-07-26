@@ -1,0 +1,125 @@
+/* software/frontend/web/src/components/ThreeDViewer.css */
+.three-d-viewer {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background-color: #1a1a1a;
+}
+
+/* Canvas container */
+.three-d-viewer canvas {
+    width: 100% !important;
+    height: 100% !important;
+    outline: none;
+}
+
+/* Controls bar */
+.three-d-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 15px;
+    background-color: #2a2a2a;
+    border-bottom: 1px solid #3a3a3a;
+}
+
+.three-d-controls label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #ccc;
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.three-d-controls input[type="checkbox"] {
+    cursor: pointer;
+}
+
+/* Info bar */
+.three-d-info {
+    padding: 8px;
+    background-color: #2a2a2a;
+    border-top: 1px solid #3a3a3a;
+    color: #888;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* Loading state */
+.three-d-loading {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    background-color: #1a1a1a;
+    color: #888;
+}
+
+.three-d-loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #3a3a3a;
+    border-top-color: #888;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Error state */
+.three-d-error {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    background-color: #1a1a1a;
+    color: #ff6b6b;
+    text-align: center;
+    padding: 20px;
+}
+
+.three-d-error-message {
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.three-d-error-detail {
+    font-size: 14px;
+    color: #888;
+}
+
+/* Model info overlay */
+.three-d-model-info {
+    position: absolute;
+    top: 60px;
+    left: 15px;
+    background-color: rgba(42, 42, 42, 0.9);
+    padding: 10px 15px;
+    border-radius: 4px;
+    color: #ccc;
+    font-size: 12px;
+    pointer-events: none;
+}
+
+.three-d-model-info div {
+    margin: 3px 0;
+}
+
+/* Format badges */
+.format-badge-3d {
+    display: inline-block;
+    padding: 2px 8px;
+    background-color: #0e639c;
+    color: white;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    margin-left: 10px;
+}

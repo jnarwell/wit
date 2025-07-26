@@ -3,6 +3,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global font family - Roboto Mono everywhere except terminal */
+* {
+  font-family: 'Roboto Mono', monospace;
+}
+
+/* Preserve terminal's original font */
+.terminal, .terminal * {
+  font-family: 'Courier New', Courier, monospace !important;
+}
+
 /* Widget menu items */
 .widget-menu-item {
   @apply w-full text-left px-3 py-2 rounded text-gray-300 hover:bg-gray-700 hover:text-white transition-colors text-sm;

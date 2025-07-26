@@ -1,5 +1,5 @@
 // software/frontend/web/src/components/FileViewer.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import './FileViewer.css';
 import PdfViewer from './PdfViewer';
@@ -9,6 +9,9 @@ import './CodeViewer.css';
 import XmlViewer from './XmlViewer';
 import MarkupViewer from './MarkupViewer';
 import './MarkupViewer.css';
+import ImageViewer from './ImageViewer';
+import ThreeDViewer from './ThreeDViewer';
+import './ThreeDViewer.css';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -31,18 +34,72 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
     const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
     const [jsonData, setJsonData] = useState<any>(null);
     const [jsonlData, setJsonlData] = useState<any[]>([]);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     
+    const fileViewerRef = useRef<HTMLDivElement>(null);
     const fileExtension = path.split('.').pop()?.toLowerCase();
     const fileName = path.split('/').pop() || '';
     
     // Define supported code extensions
     const codeExtensions = new Set([
-        'js', 'jsx', 'ts', 'tsx', 'py', 'java', 'c', 'cpp', 'cc', 'cxx', 'h', 'hpp',
-        'cs', 'go', 'rs', 'rb', 'php', 'swift', 'kt', 'r', 'm', 'lua', 'dart', 'scala',
-        'hs', 'ex', 'exs', 'html', 'htm', 'css', 'scss', 'sass', 'less', 'vue', 'svelte',
-        'yml', 'yaml', 'toml', 'ini', 'cfg', 'conf', 'env', 'properties', 'xml',
-        'sh', 'bash', 'zsh', 'fish', 'ps1', 'bat', 'cmd', 'sql', 'graphql', 'gql',
-        'diff', 'patch', 'dockerfile', 'makefile', 'gitignore', 'dockerignore', 'editorconfig'
+        // JavaScript/TypeScript ecosystem
+        'js', 'jsx', 'ts', 'tsx', 'mjs', 'cjs', 'vue', 'svelte',
+        // Web technologies
+        'html', 'htm', 'css', 'scss', 'sass', 'less', 'styl', 'stylus',
+        // Python
+        'py', 'pyw', 'pyx', 'pxd', 'pxi', 'py3', 'pyi',
+        // Java/JVM languages
+        'java', 'class', 'jar', 'scala', 'sc', 'kt', 'kts', 'groovy', 'gradle', 'clj', 'cljs', 'cljc',
+        // C/C++
+        'c', 'cpp', 'cc', 'cxx', 'c++', 'h', 'hpp', 'hh', 'hxx', 'h++', 'ino', 'tpp', 'txx',
+        // C# and .NET
+        'cs', 'csx', 'vb', 'fs', 'fsi', 'fsx', 'fsscript',
+        // Go
+        'go', 'mod', 'sum',
+        // Rust
+        'rs', 'rlib',
+        // Ruby
+        'rb', 'rbw', 'rake', 'gemspec', 'podspec', 'thor', 'irb', 'ru',
+        // PHP
+        'php', 'php3', 'php4', 'php5', 'php7', 'phps', 'phtml', 'pht',
+        // Swift/Objective-C
+        'swift', 'm', 'mm', 'objc', 'objcpp',
+        // Shell scripts
+        'sh', 'bash', 'zsh', 'fish', 'ksh', 'csh', 'tcsh', 'command', 'ps1', 'psm1', 'psd1', 'bat', 'cmd',
+        // Data languages
+        'sql', 'mysql', 'pgsql', 'plsql', 'tsql', 'graphql', 'gql',
+        // Functional languages
+        'hs', 'lhs', 'elm', 'ml', 'mli', 'fs', 'fsi', 'fsx', 'erl', 'hrl', 'ex', 'exs', 'eex', 'leex',
+        // Scientific/Data Science
+        'r', 'R', 'rmd', 'Rmd', 'julia', 'jl', 'mat', 'm', 'ipynb',
+        // Mobile development
+        'dart', 'gradle', 'xaml',
+        // Systems programming
+        'asm', 's', 'S', 'nasm', 'nim', 'nims', 'nimble', 'v', 'vh', 'sv', 'svh', 'vhd', 'vhdl',
+        // Scripting languages
+        'lua', 'perl', 'pl', 'pm', 'pod', 't', 'raku', 'rakumod', 'rakudoc', 'tcl', 'tk',
+        // Markup and config
+        'xml', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf', 'config', 'env', 'properties', 'props', 'prefs',
+        // Build files
+        'makefile', 'mk', 'mak', 'make', 'gnumakefile', 'ocamlmakefile', 'cmakelists', 'cmake', 'dockerfile', 'containerfile',
+        // Package files
+        'json', 'package', 'lock', 'gemfile', 'rakefile', 'guardfile', 'podfile', 'cartfile', 'pubspec',
+        // Documentation
+        'md', 'markdown', 'mdown', 'mkd', 'mdx', 'rmd', 'readme',
+        // Version control
+        'gitignore', 'gitattributes', 'gitmodules', 'dockerignore', 'npmignore', 'eslintignore', 'prettierignore',
+        // Config files
+        'editorconfig', 'eslintrc', 'prettierrc', 'babelrc', 'browserlistrc', 'stylelintrc',
+        // Other languages
+        'pas', 'pp', 'inc', 'lpr', 'dpr', 'dpk', 'ada', 'adb', 'ads', 'nim', 'cr', 'sol', 'zig', 'odin',
+        // Patches and diffs
+        'diff', 'patch',
+        // Binary source representations
+        'proto', 'thrift', 'avdl', 'avsc', 'avpr',
+        // Template languages
+        'ejs', 'erb', 'haml', 'pug', 'jade', 'twig', 'njk', 'liquid', 'mustache', 'hbs', 'handlebars',
+        // Other common extensions
+        'tf', 'tfvars', 'hcl', 'nomad', 'workflow', 'wf', 'service', 'socket', 'timer', 'target', 'mount'
     ]);
     
     // Define markup/documentation extensions
@@ -52,17 +109,40 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
     
     // Editable code/config files
     const editableCodeExtensions = new Set([
-        'yml', 'yaml', 'toml', 'ini', 'cfg', 'conf', 'env', 'properties',
-        'sh', 'bash', 'zsh', 'fish', 'ps1', 'bat', 'cmd',
-        'gitignore', 'dockerignore', 'editorconfig'
+        // Config formats
+        'yml', 'yaml', 'toml', 'ini', 'cfg', 'conf', 'config', 'env', 'properties', 'props', 'prefs',
+        // Shell scripts
+        'sh', 'bash', 'zsh', 'fish', 'ksh', 'csh', 'tcsh', 'command', 'ps1', 'psm1', 'psd1', 'bat', 'cmd',
+        // Build and package files
+        'makefile', 'mk', 'mak', 'make', 'dockerfile', 'containerfile', 'gemfile', 'rakefile', 'guardfile',
+        'podfile', 'cartfile', 'pubspec', 'cmakelists', 'cmake',
+        // Ignore files
+        'gitignore', 'gitattributes', 'gitmodules', 'dockerignore', 'npmignore', 'eslintignore', 'prettierignore',
+        // RC files
+        'editorconfig', 'eslintrc', 'prettierrc', 'babelrc', 'browserlistrc', 'stylelintrc', 'bashrc', 'zshrc',
+        'vimrc', 'inputrc', 'netrc', 'curlrc', 'wgetrc', 'npmrc', 'yarnrc',
+        // Other config files
+        'htaccess', 'htpasswd', 'gitconfig', 'ssh_config', 'sshd_config', 'hosts', 'hostname',
+        'resolv', 'exports', 'profile', 'bash_profile', 'bash_aliases'
     ]);
     
     // Special case for files without extensions
-    const isSpecialFile = ['dockerfile', 'makefile', 'gitignore', 'dockerignore', 'editorconfig'].includes(fileName.toLowerCase());
+    const specialFiles = [
+        'dockerfile', 'containerfile', 'makefile', 'gnumakefile', 'ocamlmakefile',
+        'gemfile', 'rakefile', 'guardfile', 'podfile', 'cartfile', 'cmakelists',
+        'gitignore', 'gitattributes', 'gitmodules', 'gitconfig',
+        'dockerignore', 'npmignore', 'eslintignore', 'prettierignore',
+        'editorconfig', 'eslintrc', 'prettierrc', 'babelrc', 'browserlistrc', 'stylelintrc',
+        'bashrc', 'zshrc', 'vimrc', 'inputrc', 'netrc', 'curlrc', 'wgetrc', 'npmrc', 'yarnrc',
+        'profile', 'bash_profile', 'bash_aliases', 'zprofile', 'zshenv',
+        'htaccess', 'htpasswd', 'hosts', 'hostname', 'resolv', 'exports',
+        'procfile', 'license', 'readme', 'authors', 'contributors', 'changelog',
+        'config', 'conf', 'cfg', 'ini', 'setup', 'install', 'build', 'make',
+        'vagrantfile', 'brewfile', 'pipfile', 'requirements', 'package', 'yarn', 'npm'
+    ];
+    const isSpecialFile = specialFiles.includes(fileName.toLowerCase());
     
-    const isEditable = fileExtension === 'md' || fileExtension === 'txt' || fileExtension === 'log';
-    const isEditableCode = (fileExtension && editableCodeExtensions.has(fileExtension)) || 
-                          ['gitignore', 'dockerignore', 'editorconfig'].includes(fileName.toLowerCase());
+    // Define file type checks first
     const isCsv = fileExtension === 'csv';
     const isTsv = fileExtension === 'tsv';
     const isJson = fileExtension === 'json';
@@ -74,7 +154,51 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
     const isXml = fileExtension === 'xml';
     const isCode = (fileExtension && codeExtensions.has(fileExtension) && !isXml) || isSpecialFile;
     const isMarkup = fileExtension && markupExtensions.has(fileExtension);
-    const isViewable = isEditable || isCsv || isTsv || isJson || isJsonl || isRtf || isDoc || isPdf || isCode || isXml || isMarkup;
+    
+    // Make all text-based files editable
+    const isEditable = fileExtension === 'md' || fileExtension === 'txt' || fileExtension === 'log' ||
+                      isJson || isJsonl || isCsv || isTsv || isXml || 
+                      (fileExtension && markupExtensions.has(fileExtension)) ||
+                      (fileExtension && codeExtensions.has(fileExtension)) || isSpecialFile;
+    
+    const editableSpecialFiles = [
+        'dockerfile', 'containerfile', 'makefile', 'gemfile', 'rakefile', 'guardfile', 'podfile',
+        'gitignore', 'gitattributes', 'gitmodules', 'dockerignore', 'npmignore', 'eslintignore', 'prettierignore',
+        'editorconfig', 'eslintrc', 'prettierrc', 'babelrc', 'browserlistrc', 'stylelintrc',
+        'bashrc', 'zshrc', 'vimrc', 'inputrc', 'netrc', 'curlrc', 'wgetrc', 'npmrc', 'yarnrc',
+        'profile', 'bash_profile', 'bash_aliases', 'htaccess', 'htpasswd', 'hosts',
+        'procfile', 'vagrantfile', 'brewfile', 'pipfile', 'requirements'
+    ];
+    const isEditableCode = (fileExtension && editableCodeExtensions.has(fileExtension)) || 
+                          editableSpecialFiles.includes(fileName.toLowerCase());
+    
+    // Image file detection
+    const imageExtensions = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tiff', 'tif', 'avif']);
+    const isImage = fileExtension && imageExtensions.has(fileExtension);
+    
+    // 3D file detection
+    const threeDExtensions = new Set([
+        'stl', 'step', 'stp', 'iges', 'igs', 'obj', 'fbx', 'dae', 'gltf', 'glb', 
+        '3ds', '3mf', 'ply', 'off', 'xyz', 'pcd', 'vrml', 'wrl', 'x3d',
+        // CAD formats
+        'sldprt', 'sldasm', 'slddrw', // SolidWorks
+        'ipt', 'iam', 'idw', // Inventor
+        'prt', 'asm', 'drw', // Creo/Pro-E
+        'catpart', 'catproduct', 'catdrawing', // CATIA
+        'dwg', 'dxf', // AutoCAD
+        'f3d', 'f3z', // Fusion 360
+        'skp', // SketchUp
+        'blend', // Blender
+        'max', // 3ds Max
+        'ma', 'mb', // Maya
+        'c4d', // Cinema 4D
+        'lwo', 'lws', // LightWave
+        'zpr', // ZBrush
+        'usd', 'usda', 'usdc', 'usdz' // Universal Scene Description
+    ]);
+    const is3D = fileExtension && threeDExtensions.has(fileExtension);
+    
+    const isViewable = isEditable || isCsv || isTsv || isJson || isJsonl || isRtf || isDoc || isPdf || isCode || isXml || isMarkup || isImage || is3D;
 
     const parseDelimitedData = (text: string, delimiter: string) => {
         const rows: string[][] = [];
@@ -127,8 +251,8 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
                 return;
             }
             
-            // Skip API call for PDF files (handled separately)
-            if (isPdf) {
+            // Skip API call for PDF, image, and 3D files (handled separately)
+            if (isPdf || isImage || is3D) {
                 setIsLoading(false);
                 return;
             }
@@ -236,6 +360,9 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
     };
 
     const handleClose = () => {
+        if (isFullscreen) {
+            exitFullscreen();
+        }
         if (saveStatus === 'unsaved') {
             if (window.confirm("You have unsaved changes. Are you sure you want to close?")) {
                 onClose();
@@ -244,6 +371,70 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
             onClose();
         }
     };
+
+    const toggleFullscreen = () => {
+        if (!isFullscreen) {
+            enterFullscreen();
+        } else {
+            exitFullscreen();
+        }
+    };
+
+    const enterFullscreen = () => {
+        if (fileViewerRef.current?.requestFullscreen) {
+            fileViewerRef.current.requestFullscreen();
+        } else if ((fileViewerRef.current as any)?.webkitRequestFullscreen) {
+            (fileViewerRef.current as any).webkitRequestFullscreen();
+        } else if ((fileViewerRef.current as any)?.msRequestFullscreen) {
+            (fileViewerRef.current as any).msRequestFullscreen();
+        }
+        setIsFullscreen(true);
+    };
+
+    const exitFullscreen = () => {
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+            (document as any).webkitExitFullscreen();
+        } else if ((document as any).msExitFullscreen) {
+            (document as any).msExitFullscreen();
+        }
+        setIsFullscreen(false);
+    };
+
+    // Handle fullscreen change events
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+            document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+        };
+    }, []);
+
+    // Handle escape key in fullscreen
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isFullscreen) {
+                exitFullscreen();
+            }
+        };
+
+        if (isFullscreen) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isFullscreen]);
 
     const getDisplayPath = () => {
         const parts = path.split('/');
@@ -310,12 +501,36 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
 
     const renderContent = () => {
         if (isLoading) {
-            return <p>Loading...</p>;
+            return <p style={{ color: '#f0f0f0', padding: '20px' }}>Loading...</p>;
+        }
+        
+        if (!tokens) {
+            return <p style={{ color: '#f0f0f0', padding: '20px' }}>Authentication required. Please log in.</p>;
         }
         
         if (isPdf) {
             const downloadUrl = `${API_BASE_URL}/api/v1/files/download?path=${encodeURIComponent(path)}&base_dir=${baseDir}${projectId ? `&project_id=${projectId}` : ''}`;
             return <PdfViewer url={downloadUrl} authToken={tokens?.access_token} />;
+        }
+        
+        if (isImage && tokens) {
+            return <ImageViewer 
+                path={path} 
+                baseDir={baseDir} 
+                projectId={projectId} 
+                fileName={fileName}
+                token={tokens.access_token}
+            />;
+        }
+        
+        if (is3D && tokens) {
+            return <ThreeDViewer 
+                path={path} 
+                baseDir={baseDir} 
+                projectId={projectId} 
+                fileName={fileName}
+                token={tokens.access_token}
+            />;
         }
         
         if (isDoc) {
@@ -350,93 +565,65 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
             );
         }
         
-        if (isJson && jsonData) {
+        if (isJson) {
+            // For JSON files, show a textarea for editing
             return (
-                <div className="json-viewer">
-                    <pre>{renderJsonContent(jsonData)}</pre>
-                </div>
+                <textarea
+                    value={content}
+                    onChange={handleContentChange}
+                    className="json-editor"
+                    spellCheck={false}
+                    placeholder="Loading JSON content..."
+                />
             );
         }
         
-        if (isJsonl && jsonlData.length > 0) {
+        if (isJsonl) {
+            // For JSONL files, show a textarea for editing
             return (
-                <div className="jsonl-viewer">
-                    <div className="jsonl-header">
-                        <span className="jsonl-type">JSONL/NDJSON Data</span>
-                        <span className="jsonl-info">{jsonlData.length} records</span>
-                    </div>
-                    <div className="jsonl-content">
-                        {jsonlData.map((item, index) => (
-                            <div key={index} className="jsonl-record">
-                                <div className="record-number">Record {index + 1}</div>
-                                {item._error ? (
-                                    <div className="record-error">
-                                        <div className="error-message">{item._error}</div>
-                                        <pre className="error-raw">{item._raw}</pre>
-                                    </div>
-                                ) : (
-                                    <pre>{renderJsonContent(item)}</pre>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                <textarea
+                    value={content}
+                    onChange={handleContentChange}
+                    className="jsonl-editor"
+                    spellCheck={false}
+                />
             );
         }
         
         if (isCsv || isTsv) {
-            if (csvData.length === 0) {
-                return <p>No {isCsv ? 'CSV' : 'TSV'} data to display</p>;
-            }
-            
+            // For CSV/TSV files, show a textarea for editing
             return (
-                <div className="csv-wrapper">
-                    <div className="table-header">
-                        <span className="table-type">{isCsv ? 'CSV' : 'TSV'} Data</span>
-                        <span className="table-info">{csvData.length} rows × {csvData[0]?.length || 0} columns</span>
-                    </div>
-                    <table className="csv-table">
-                        <thead>
-                            <tr>
-                                {csvData[0]?.map((header, index) => (
-                                    <th key={index}>
-                                        {header || `Column ${index + 1}`}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {csvData.slice(1).map((row, rowIndex) => (
-                                <tr key={rowIndex}>
-                                    {row.map((cell, cellIndex) => (
-                                        <td key={cellIndex} title={cell}>
-                                            {cell}
-                                        </td>
-                                    ))}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <textarea
+                    value={content}
+                    onChange={handleContentChange}
+                    className="csv-editor"
+                    spellCheck={false}
+                />
             );
         }
         
         if (isXml) {
-            return <XmlViewer content={content} fileName={fileName} />;
+            // For XML files, show a textarea for editing
+            return (
+                <textarea
+                    value={content}
+                    onChange={handleContentChange}
+                    className="xml-editor"
+                    spellCheck={false}
+                />
+            );
         }
         
         if (isMarkup) {
-            let format: 'asciidoc' | 'rst' | 'latex' | 'org';
-            if (['adoc', 'asciidoc', 'asc'].includes(fileExtension || '')) {
-                format = 'asciidoc';
-            } else if (['rst', 'rest'].includes(fileExtension || '')) {
-                format = 'rst';
-            } else if (['tex', 'latex'].includes(fileExtension || '')) {
-                format = 'latex';
-            } else {
-                format = 'org';
-            }
-            return <MarkupViewer content={content} format={format} fileName={fileName} />;
+            // For markup files, show a textarea for editing
+            return (
+                <textarea
+                    value={content}
+                    onChange={handleContentChange}
+                    className="markup-editor"
+                    spellCheck={false}
+                />
+            );
         }
         
         if (isCode && !isJson) {
@@ -446,15 +633,15 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
                     content={content}
                     language={language}
                     fileName={fileName}
-                    isEditable={isEditableCode}
-                    onContentChange={isEditableCode ? (newContent) => {
+                    isEditable={true}  // Always editable
+                    onContentChange={(newContent) => {
                         setContent(newContent);
                         if (newContent !== originalContent) {
                             setSaveStatus('unsaved');
                         } else {
                             setSaveStatus('saved');
                         }
-                    } : undefined}
+                    }}
                 />
             );
         }
@@ -469,18 +656,25 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
             );
         }
         
-        return <p>{content}</p>;
+        return <p style={{ color: '#f0f0f0', padding: '20px' }}>{content || 'No content available'}</p>;
     };
 
     return (
-        <div className="file-viewer">
+        <div className={`file-viewer ${isFullscreen ? 'file-viewer-fullscreen' : ''}`} ref={fileViewerRef}>
             <div className="file-viewer-header">
                 <div className="file-info">
                     <span className="status-indicator" style={{ backgroundColor: getStatusColor() }}></span>
                     <span>{getDisplayPath()}</span>
                 </div>
-                <div>
-                    {(isEditable || isEditableCode) && <button onClick={handleSave} disabled={isSaving || saveStatus === 'saved'}>{isSaving ? 'Saving...' : 'Save'}</button>}
+                <div className="file-viewer-actions">
+                    {isEditable && <button onClick={handleSave} disabled={isSaving || saveStatus === 'saved'}>{isSaving ? 'Saving...' : 'Save'}</button>}
+                    <button 
+                        onClick={toggleFullscreen} 
+                        className="fullscreen-btn"
+                        title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                    >
+                        {isFullscreen ? '⤓' : '⤢'}
+                    </button>
                     <button onClick={handleClose}>&times;</button>
                 </div>
             </div>
