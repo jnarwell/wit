@@ -18,6 +18,7 @@ interface AuthContextType {
   logout: () => void;
   refreshToken: () => Promise<void>;
   isAuthenticated: boolean;
+  setToken: (token: string) => Promise<void>;
 }
 
 interface AuthTokens {
@@ -137,6 +138,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // App data in localStorage is preserved!
   }, []);
 
+  // Set token directly (for OAuth flows)
+  const setToken = async (token: string) => {
+    try {
+      const tokens: AuthTokens = {
+        access_token: token,
+        refresh_token: token, // Google OAuth doesn't provide refresh token
+        token_type: 'bearer'
+      };
+      
+      storeTokens(tokens, true);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Fetch user info
+      const userInfo = await fetchUserInfo(token);
+      setUser(userInfo);
+    } catch (error) {
+      console.error('Failed to set token:', error);
+      throw error;
+    }
+  };
+
   // Refresh token function
   const refreshToken = async () => {
     try {
@@ -230,7 +252,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     logout,
     refreshToken,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    setToken
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

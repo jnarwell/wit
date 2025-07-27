@@ -1,13 +1,14 @@
 // src/pages/LoginPage.tsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { FiUser, FiLock, FiTerminal, FiAlertCircle, FiEye, FiEyeOff } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage: React.FC<{ redirectTo?: string }> = ({ redirectTo = '/' }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { login, isAuthenticated, setToken } = useAuth();
   
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -16,14 +17,30 @@ const LoginPage: React.FC<{ redirectTo?: string }> = ({ redirectTo = '/' }) => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showDemo, setShowDemo] = useState(true);
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // Handle Google OAuth redirect
+  useEffect(() => {
+    const token = searchParams.get('token');
+    const type = searchParams.get('type');
+    
+    if (token && type === 'google') {
+      // Set the token directly since Google users are pre-authenticated
+      setToken(token);
+      setSuccessMessage('Successfully logged in with Google!');
+      setTimeout(() => {
+        navigate('/', { replace: true });
+      }, 1500);
+    }
+  }, [searchParams, setToken, navigate]);
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !searchParams.get('token')) {
       const from = (location.state as any)?.from?.pathname || redirectTo;
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, location, redirectTo]);
+  }, [isAuthenticated, navigate, location, redirectTo, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,6 +105,16 @@ const LoginPage: React.FC<{ redirectTo?: string }> = ({ redirectTo = '/' }) => {
                     Fill demo credentials
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {successMessage && (
+            <div className="mb-6 p-4 bg-green-900/30 border border-green-700 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <FiAlertCircle className="text-green-400" />
+                <p className="text-green-300 text-sm">{successMessage}</p>
               </div>
             </div>
           )}
@@ -218,7 +245,7 @@ const LoginPage: React.FC<{ redirectTo?: string }> = ({ redirectTo = '/' }) => {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-400">
               Don't have an account?{' '}
-              <a href="/create-user" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">
+              <a href="/signup" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">
                 Create one now
               </a>
             </p>

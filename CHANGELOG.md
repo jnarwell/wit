@@ -3,6 +3,25 @@
 ## [Unreleased] - 2025-07-27
 
 ### Added
+- **Enhanced Signup Page**: Complete user registration experience with advanced features
+  - Comprehensive form validation with real-time feedback
+  - Password strength indicator with visual meter and requirements checklist
+  - Show/hide password toggle for both password fields
+  - Google OAuth integration for one-click signup
+  - Email verification flow with success confirmation page
+  - Responsive design matching the login page aesthetic
+- **Email Verification System**: Backend implementation for secure user registration
+  - POST `/api/v1/auth/signup` endpoint for new user registration
+  - Email verification token generation and storage
+  - GET `/api/v1/auth/verify-email` endpoint for email confirmation
+  - POST `/api/v1/auth/resend-verification` for resending verification emails
+  - Users remain inactive until email is verified
+- **Google OAuth Integration**: Seamless social authentication
+  - GET `/api/v1/auth/google` endpoint for OAuth redirect
+  - GET `/api/v1/auth/google/callback` for handling OAuth response
+  - Automatic user creation for new Google users
+  - Pre-verified accounts for Google users
+  - Frontend integration with token handling
 - **Tasks List Dashboard Widget**: New widget displaying incomplete tasks sorted by due date
   - Shows task title, project name, status, priority, and due date
   - Visual indicators for overdue tasks (red), due today (orange), and due soon (yellow)
@@ -36,6 +55,8 @@
 - **Task Model**: Added `due_date` field to the Task SQLAlchemy model
 - **ProjectDetailPage**: Replaced the existing page with `ProjectDetailPageTabbed` for better organization
 - **AI Tools**: Expanded `ai_tools.py` with 11 new command functions and their tool definitions
+- **AuthContext**: Added `setToken` method to support OAuth token handling
+- **Login Flow**: Updated to redirect `/create-user` link to new `/signup` page
 
 ## [Unreleased] - 2025-07-25 (Night)
 

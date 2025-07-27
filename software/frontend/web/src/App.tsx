@@ -15,6 +15,7 @@ import ProjectDetailPageNew from './pages/ProjectDetailPageNew';
 import ProjectDetailPageTabbed from './pages/ProjectDetailPageTabbed';
 import LoginPage from './pages/LoginPage';
 import CreateUserPage from './pages/CreateUserPage';
+import SignupPage from './pages/SignupPage';
 import Terminal from './components/Terminal';
 import './components/Terminal.css';
 
@@ -202,6 +203,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage redirectTo="/dashboard" />} />
           <Route path="/create-user" element={<CreateUserPage />} />
+          <Route path="/signup" element={<SignupPage />} />
           <Route path="/*" element={<AppContent />} />
         </Routes>
       </AuthProvider>
