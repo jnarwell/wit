@@ -1,5 +1,42 @@
 # Changelog
 
+## [Unreleased] - 2025-07-27
+
+### Added
+- **Tasks List Dashboard Widget**: New widget displaying incomplete tasks sorted by due date
+  - Shows task title, project name, status, priority, and due date
+  - Visual indicators for overdue tasks (red), due today (orange), and due soon (yellow)
+  - Integrates with the tasks API endpoint `/api/v1/tasks/incomplete`
+  - Falls back gracefully when no tasks exist
+- **Robust Project Detail Page**: Complete redesign with tabbed interface
+  - **Overview Tab**: Project summary, progress visualization, quick stats, and activity feed placeholder
+  - **Tasks Tab**: Dedicated task management with full CRUD operations
+    - Click-to-edit tasks with modal dialog
+    - Working filter buttons (All, Not Started, In Progress, Blocked, Complete)
+    - Visual status indicators with colored borders
+    - Quick status updates via dropdown
+    - Task deletion with confirmation
+  - **Team Tab**: Team member management interface
+  - **Files Tab**: Integrated project file browser
+  - **Settings Tab**: Placeholder for future project settings
+- **Comprehensive AI Command System**: Extended WIT AI capabilities with natural language commands
+  - **Project Management**: list, create, update, and delete projects
+  - **Task Management**: list, create, update, and delete tasks with due dates
+  - **Team Management**: list team members and add users to projects with roles
+  - **File Operations**: Enhanced existing file commands
+  - **Equipment Management**: list all equipment and check status
+  - Created detailed command documentation in `/docs/WIT_AI_COMMANDS.md`
+
+### Fixed
+- **Task Creation Backend**: Fixed missing `due_date` field assignment in task creation endpoint
+- **Task Status Mismatch**: Aligned frontend and backend task status values (not_started, in_progress, blocked, complete, cancelled)
+- **Tasks Widget Error**: Fixed TypeError when rendering tasks with undefined status values
+
+### Changed
+- **Task Model**: Added `due_date` field to the Task SQLAlchemy model
+- **ProjectDetailPage**: Replaced the existing page with `ProjectDetailPageTabbed` for better organization
+- **AI Tools**: Expanded `ai_tools.py` with 11 new command functions and their tool definitions
+
 ## [Unreleased] - 2025-07-25 (Night)
 
 ### Added

@@ -1,0 +1,111 @@
+/* ProjectsPage.css */
+
+/* Status and Priority Dropdown Fixes */
+.status-dropdown-container {
+  position: relative;
+}
+
+/* Keep dropdown visible when hovering over the gap */
+.status-dropdown-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -4px;
+  right: -4px;
+  height: calc(100% + 8px); /* Extends to cover the gap */
+  z-index: 5;
+}
+
+/* Dropdown styling */
+.status-dropdown {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px); /* Smaller gap */
+  background-color: #374151;
+  border-radius: 0.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  padding: 0.5rem;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: all 0.2s ease;
+  z-index: 20;
+  min-width: 150px;
+}
+
+/* Show dropdown on hover */
+.status-dropdown-container:hover .status-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* Priority dropdown specific adjustments */
+.priority-dropdown-container {
+  position: relative;
+}
+
+.priority-dropdown-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -4px;
+  right: -4px;
+  height: calc(100% + 12px);
+  z-index: 5;
+}
+
+.priority-dropdown {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  background-color: #374151;
+  border-radius: 0.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  padding: 0.5rem;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: all 0.2s ease;
+  z-index: 20;
+  min-width: 120px;
+}
+
+.priority-dropdown-container:hover .priority-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* Dropdown item styling */
+.dropdown-item {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s;
+  background: transparent;
+  border: none;
+  color: #e5e7eb;
+  cursor: pointer;
+}
+
+.dropdown-item:hover {
+  background-color: #4b5563;
+}
+
+/* Status indicator */
+.status-indicator {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+}
+
+/* Keep dropdown open when moving mouse from trigger to dropdown */
+.status-dropdown-container:hover,
+.priority-dropdown-container:hover {
+  z-index: 30;
+}

@@ -12,6 +12,7 @@ import SensorsPage from './pages/SensorsPage';
 import MachineDetailPage from './pages/MachineDetailPage';
 import SensorDetailPage from './pages/SensorDetailPage';
 import ProjectDetailPageNew from './pages/ProjectDetailPageNew';
+import ProjectDetailPageTabbed from './pages/ProjectDetailPageTabbed';
 import LoginPage from './pages/LoginPage';
 import CreateUserPage from './pages/CreateUserPage';
 import Terminal from './components/Terminal';
@@ -164,7 +165,7 @@ function AppContent() {
         ) : null;
       case 'project-detail':
         return detailPageState ? (
-          <ProjectDetailPageNew 
+          <ProjectDetailPageTabbed 
             projectId={detailPageState.id} 
             onClose={handleDetailClose} 
             onNotFound={handleProjectNotFound}

@@ -6,7 +6,13 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        'mono': ['"Roboto Mono"', 'monospace'],
+        'sans': ['"Roboto Mono"', 'monospace'],
+        'serif': ['"Roboto Mono"', 'monospace'],
+      }
+    },
   },
   plugins: [],
 }

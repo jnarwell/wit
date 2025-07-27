@@ -1,0 +1,62 @@
+/* TasksListWidget.css */
+
+/* Custom hover state for better UX */
+.bg-gray-650 {
+  background-color: #495057;
+}
+
+/* Line clamp utility for task descriptions */
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Smooth scrolling for the task list */
+.tasks-list-container {
+  scrollbar-width: thin;
+  scrollbar-color: #4a5568 #2d3748;
+}
+
+.tasks-list-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tasks-list-container::-webkit-scrollbar-track {
+  background: #2d3748;
+  border-radius: 3px;
+}
+
+.tasks-list-container::-webkit-scrollbar-thumb {
+  background: #4a5568;
+  border-radius: 3px;
+}
+
+.tasks-list-container::-webkit-scrollbar-thumb:hover {
+  background: #718096;
+}
+
+/* Priority badge styling */
+.priority-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Overdue task emphasis */
+.task-overdue {
+  border-left: 3px solid #ef4444;
+  padding-left: 13px;
+}
+
+.task-due-today {
+  border-left: 3px solid #f97316;
+  padding-left: 13px;
+}
+
+.task-due-soon {
+  border-left: 3px solid #eab308;
+  padding-left: 13px;
+}

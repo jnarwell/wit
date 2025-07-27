@@ -15,6 +15,7 @@ class TaskBase(BaseModel):
     description: str | None = None
     status: str = "not_started"  # not_started, in_progress, blocked, complete
     priority: str = "medium"  # low, medium, high
+    due_date: datetime | None = None
 
 class TaskCreate(TaskBase):
     pass
@@ -24,6 +25,7 @@ class TaskUpdate(BaseModel):
     description: str | None = None
     status: str | None = None
     priority: str | None = None
+    due_date: datetime | None = None
 
 class TaskResponse(TaskBase):
     id: uuid.UUID
@@ -37,7 +39,59 @@ class TaskResponse(TaskBase):
             datetime: lambda v: v.isoformat() if v else None
         }
 
+class TaskListResponse(TaskResponse):
+    project_name: str
+    title: str  # Alias for name to match frontend expectation
+
+    @classmethod
+    def from_task_and_project(cls, task, project):
+        return cls(
+            id=task.id,
+            title=task.name,  # Map name to title
+            name=task.name,
+            description=task.description,
+            status=task.status,
+            priority=task.priority,
+            due_date=task.due_date,
+            project_id=task.project_id,
+            project_name=project.name,
+            created_at=task.created_at,
+            updated_at=task.updated_at
+        )
+
 router = APIRouter()
+
+@router.get("/tasks/incomplete", response_model=List[TaskListResponse])
+async def get_incomplete_tasks(
+    db: AsyncSession = Depends(get_session),
+    skip: int = 0,
+    limit: int = 100
+):
+    """Get all incomplete tasks (not completed or cancelled) sorted by due date."""
+    # Get tasks that are not completed or cancelled
+    try:
+        result = await db.execute(
+            select(Task, Project)
+            .join(Project, Task.project_id == Project.id)
+            .where(Task.status.notin_(["complete", "cancelled"]))
+            .where(Task.due_date.isnot(None))  # Only tasks with due dates
+            .where(Task.project_id.isnot(None))  # Only tasks with projects
+            .order_by(Task.due_date)
+            .offset(skip)
+            .limit(limit)
+        )
+        tasks_with_projects = result.all()
+        
+        return [
+            TaskListResponse.from_task_and_project(task, project)
+            for task, project in tasks_with_projects
+        ]
+    except Exception as e:
+        # Log the error for debugging
+        import logging
+        logging.error(f"Error fetching incomplete tasks: {e}")
+        # Return empty list if there's an error
+        return []
 
 @router.post("/projects/{project_id}/tasks", response_model=TaskResponse, status_code=201)
 async def create_task_for_project(
@@ -56,6 +110,7 @@ async def create_task_for_project(
         description=task.description,
         status=task.status,
         priority=task.priority,
+        due_date=task.due_date,
         project_id=project.id
     )
     db.add(new_task)

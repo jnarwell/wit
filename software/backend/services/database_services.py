@@ -65,6 +65,7 @@ class Task(Base):
     description = Column(Text)
     status = Column(String(50), default="not_started")  # not_started, in_progress, blocked, complete
     priority = Column(String(20), default="medium")  # low, medium, high
+    due_date = Column(DateTime, nullable=True)  # Added due_date field
     project_id = Column(PG_UUID(as_uuid=True), ForeignKey("projects.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

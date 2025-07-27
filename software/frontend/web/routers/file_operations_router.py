@@ -178,6 +178,84 @@ async def download_file(
         media_type = "application/json"
     elif file_ext == ".csv":
         media_type = "text/csv"
+    # Image types
+    elif file_ext in [".png"]:
+        media_type = "image/png"
+    elif file_ext in [".jpg", ".jpeg"]:
+        media_type = "image/jpeg"
+    elif file_ext in [".gif"]:
+        media_type = "image/gif"
+    elif file_ext in [".webp"]:
+        media_type = "image/webp"
+    elif file_ext in [".svg"]:
+        media_type = "image/svg+xml"
+    elif file_ext in [".bmp"]:
+        media_type = "image/bmp"
+    elif file_ext in [".ico"]:
+        media_type = "image/x-icon"
+    elif file_ext in [".tiff", ".tif"]:
+        media_type = "image/tiff"
+    elif file_ext in [".avif"]:
+        media_type = "image/avif"
+    # 3D file types
+    elif file_ext in [".stl"]:
+        media_type = "model/stl"
+    elif file_ext in [".obj"]:
+        media_type = "model/obj"
+    elif file_ext in [".gltf"]:
+        media_type = "model/gltf+json"
+    elif file_ext in [".glb"]:
+        media_type = "model/gltf-binary"
+    elif file_ext in [".fbx"]:
+        media_type = "application/octet-stream"
+    elif file_ext in [".dae"]:
+        media_type = "model/vnd.collada+xml"
+    elif file_ext in [".3ds"]:
+        media_type = "application/x-3ds"
+    elif file_ext in [".3mf"]:
+        media_type = "model/3mf"
+    elif file_ext in [".ply"]:
+        media_type = "application/ply"
+    elif file_ext in [".off"]:
+        media_type = "text/plain"
+    elif file_ext in [".xyz"]:
+        media_type = "text/plain"
+    elif file_ext in [".pcd"]:
+        media_type = "application/octet-stream"
+    elif file_ext in [".vrml", ".wrl"]:
+        media_type = "model/vrml"
+    elif file_ext in [".x3d"]:
+        media_type = "model/x3d+xml"
+    elif file_ext in [".step", ".stp", ".iges", ".igs"]:
+        media_type = "application/octet-stream"
+    elif file_ext in [".dwg", ".dxf"]:
+        media_type = "application/octet-stream"
+    elif file_ext in [".sldprt", ".sldasm", ".slddrw"]:
+        media_type = "application/octet-stream"
+    elif file_ext in [".ipt", ".iam", ".idw"]:
+        media_type = "application/octet-stream"
+    elif file_ext in [".prt", ".asm", ".drw"]:
+        media_type = "application/octet-stream"
+    elif file_ext in [".catpart", ".catproduct", ".catdrawing"]:
+        media_type = "application/octet-stream"
+    elif file_ext in [".f3d", ".f3z"]:
+        media_type = "application/octet-stream"
+    elif file_ext in [".skp"]:
+        media_type = "application/vnd.sketchup.skp"
+    elif file_ext in [".blend"]:
+        media_type = "application/x-blender"
+    elif file_ext in [".max"]:
+        media_type = "application/octet-stream"
+    elif file_ext in [".ma", ".mb"]:
+        media_type = "application/octet-stream"
+    elif file_ext in [".c4d"]:
+        media_type = "application/octet-stream"
+    elif file_ext in [".lwo", ".lws"]:
+        media_type = "application/octet-stream"
+    elif file_ext in [".zpr"]:
+        media_type = "application/octet-stream"
+    elif file_ext in [".usd", ".usda", ".usdc", ".usdz"]:
+        media_type = "model/usd"
     
     return FileResponse(
         path=file_path,

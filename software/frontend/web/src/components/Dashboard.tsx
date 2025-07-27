@@ -7,10 +7,11 @@ import WITsWidget from './widgets/WITsWidget';
 import UtilityWidget from './widgets/UtilityWidget';
 import FileExplorerWidget from './widgets/FileExplorerWidget';
 import FileViewerWidget from './widgets/FileViewerWidget';
+import { TasksListWidget } from './widgets/TasksListWidget';
 
 interface Widget {
   id: string;
-  type: 'project' | 'machine' | 'sensor' | 'projects-list' | 'machines-list' | 'sensors-list' | 'wits' | 'utility' | 'file-explorer' | 'file-viewer';
+  type: 'project' | 'machine' | 'sensor' | 'projects-list' | 'machines-list' | 'sensors-list' | 'tasks-list' | 'wits' | 'utility' | 'file-explorer' | 'file-viewer';
   subType?: string;
   position: { x: number; y: number };
   size: { width: number; height: number };
@@ -137,6 +138,16 @@ const Dashboard: React.FC = () => {
   // Load saved layout
   useEffect(() => {
     if (!isGridReady || hasLoadedLayout) return;
+    
+    // Check for clear dashboard flag
+    const shouldClear = localStorage.getItem('clearDashboard');
+    if (shouldClear === 'true') {
+      localStorage.removeItem('clearDashboard');
+      localStorage.removeItem('dashboardLayout');
+      setWidgets([]);
+      setHasLoadedLayout(true);
+      return;
+    }
     
     const savedLayout = localStorage.getItem('dashboardLayout');
     if (savedLayout) {
@@ -577,6 +588,7 @@ const Dashboard: React.FC = () => {
                       <button onClick={() => addWidget('projects-list')} className="widget-menu-item">Projects List</button>
                       <button onClick={() => addWidget('machines-list')} className="widget-menu-item">Machines List</button>
                       <button onClick={() => addWidget('sensors-list')} className="widget-menu-item">Sensors List</button>
+                      <button onClick={() => addWidget('tasks-list')} className="widget-menu-item">Tasks List</button>
                     </div>
                   )}
                 </div>
@@ -685,6 +697,19 @@ const Dashboard: React.FC = () => {
               />
             </div>
           </div>
+          
+          {/* Clear All Button */}
+          <button
+            onClick={() => {
+              if (confirm('Are you sure you want to remove all widgets from the dashboard?')) {
+                setWidgets([]);
+                localStorage.removeItem('dashboardLayout');
+              }
+            }}
+            className="w-full mt-3 bg-red-600 hover:bg-red-700 text-white text-sm py-2 px-3 rounded transition-colors"
+          >
+            Clear All Widgets
+          </button>
         </div>
       </div>
 
@@ -808,6 +833,9 @@ const Dashboard: React.FC = () => {
                   }}
                   {...commonProps}
                 />
+              )}
+              {widget.type === 'tasks-list' && (
+                <TasksListWidget />
               )}
               {widget.type === 'wits' && (
                 <WITsWidget {...commonProps} />

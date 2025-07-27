@@ -33,7 +33,7 @@ interface Task {
   task_id: string;
   name: string;
   description: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'not_started' | 'in_progress' | 'blocked' | 'complete' | 'cancelled';
   project_id: string;
   assigned_to?: string;
   due_date?: string;
@@ -186,7 +186,7 @@ const ProjectDetailPageNew: React.FC<ProjectDetailPageNewProps> = ({ projectId, 
         body: JSON.stringify({
           name: newTask.name,
           description: newTask.description,
-          status: 'pending',
+          status: 'not_started',
           priority: newTask.priority,
           assigned_to: newTask.assigned_to || undefined,
           due_date: newTask.due_date || undefined,
@@ -297,13 +297,13 @@ const ProjectDetailPageNew: React.FC<ProjectDetailPageNewProps> = ({ projectId, 
   };
 
   // Calculate progress metrics
-  const completedTasks = tasks.filter(t => t.status === 'completed').length;
+  const completedTasks = tasks.filter(t => t.status === 'complete').length;
   const totalTasks = tasks.length;
   const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   const getTaskStatusIcon = (status: Task['status']) => {
     switch (status) {
-      case 'completed': return <FaCheck className="text-green-500" />;
+      case 'complete': return <FaCheck className="text-green-500" />;
       case 'in_progress': return <FaClock className="text-yellow-500" />;
       case 'cancelled': return <FaTimes className="text-red-500" />;
       default: return <FaExclamationCircle className="text-gray-500" />;
@@ -425,9 +425,10 @@ const ProjectDetailPageNew: React.FC<ProjectDetailPageNewProps> = ({ projectId, 
                       onChange={(e) => handleUpdateTaskStatus(task.id, e.target.value as Task['status'])}
                       className="status-select"
                     >
-                      <option value="pending">Pending</option>
+                      <option value="not_started">Not Started</option>
                       <option value="in_progress">In Progress</option>
-                      <option value="completed">Completed</option>
+                      <option value="blocked">Blocked</option>
+                      <option value="complete">Complete</option>
                       <option value="cancelled">Cancelled</option>
                     </select>
                     <button onClick={() => handleDeleteTask(task.id)} className="delete-button">

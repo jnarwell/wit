@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Dashboard Widgets</title>
+</head>
+<body>
+    <h1>Clear Dashboard Widgets</h1>
+    <p>Open this file in your browser at http://localhost:3002 to clear the dashboard widgets.</p>
+    <button onclick="clearDashboard()">Clear Dashboard</button>
+    <div id="status"></div>
+    
+    <script>
+        function clearDashboard() {
+            // Clear the dashboard layout from localStorage
+            localStorage.removeItem('dashboardLayout');
+            document.getElementById('status').innerHTML = '<p style="color: green;">Dashboard widgets cleared! Please refresh your W.I.T. application.</p>';
+        }
+        
+        // Auto-clear on page load if running on localhost:3002
+        if (window.location.hostname === 'localhost' && window.location.port === '3002') {
+            clearDashboard();
+        }
+    </script>
+</body>
+</html>
