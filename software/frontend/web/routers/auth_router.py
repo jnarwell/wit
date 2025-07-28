@@ -131,8 +131,53 @@ async def send_verification_email(email: str, token: str):
     """Send verification email (placeholder for actual email service)"""
     # In production, integrate with email service like SendGrid, AWS SES, etc.
     verification_link = f"http://localhost:8000/api/v1/auth/verify-email?token={token}"
-    logger.info(f"Verification email would be sent to {email} with link: {verification_link}")
-    # TODO: Implement actual email sending
+    
+    # For development: Log the verification link
+    logger.info("=" * 80)
+    logger.info("EMAIL VERIFICATION LINK (Development Mode)")
+    logger.info("=" * 80)
+    logger.info(f"To: {email}")
+    logger.info(f"Verification Link: {verification_link}")
+    logger.info("=" * 80)
+    logger.info("Copy and paste this link in your browser to verify your email")
+    logger.info("=" * 80)
+    
+    # For development: Write to a file for easy access
+    try:
+        import os
+        from datetime import datetime
+        
+        # Create a directory for verification emails if it doesn't exist
+        email_dir = "dev_emails"
+        os.makedirs(email_dir, exist_ok=True)
+        
+        # Write the verification email to a file
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        filename = f"{email_dir}/verification_{timestamp}_{email.replace('@', '_at_')}.txt"
+        
+        with open(filename, 'w') as f:
+            f.write(f"Subject: Verify your W.I.T. account\n")
+            f.write(f"To: {email}\n")
+            f.write(f"Date: {datetime.utcnow().isoformat()}\n")
+            f.write("\n")
+            f.write("Welcome to W.I.T.!\n\n")
+            f.write("Please click the link below to verify your email address:\n\n")
+            f.write(f"{verification_link}\n\n")
+            f.write("This link will expire in 24 hours.\n\n")
+            f.write("If you didn't create an account, you can safely ignore this email.\n\n")
+            f.write("Best regards,\nThe W.I.T. Team\n")
+        
+        logger.info(f"Verification email saved to: {filename}")
+        
+        # Optional: Open the link in browser automatically (for development)
+        if os.getenv("AUTO_OPEN_VERIFICATION", "false").lower() == "true":
+            import webbrowser
+            webbrowser.open(verification_link)
+            
+    except Exception as e:
+        logger.error(f"Failed to save verification email: {e}")
+    
+    # TODO: In production, implement actual email sending with SendGrid, AWS SES, etc.
 
 @router.post("/signup", response_model=SignupResponse)
 async def signup(
@@ -206,6 +251,17 @@ async def verify_email(
     db: AsyncSession = Depends(get_session)
 ):
     """Verify email address using token"""
+    # For better UX, redirect to frontend with the token
+    frontend_url = "http://localhost:3001"
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=f"{frontend_url}/verify-email?token={token}")
+
+@router.get("/verify-email-api")
+async def verify_email_api(
+    token: str,
+    db: AsyncSession = Depends(get_session)
+):
+    """API endpoint to verify email address using token"""
     # Check if token exists
     if token not in email_verification_tokens:
         raise HTTPException(

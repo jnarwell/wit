@@ -16,6 +16,7 @@ import ProjectDetailPageTabbed from './pages/ProjectDetailPageTabbed';
 import LoginPage from './pages/LoginPage';
 import CreateUserPage from './pages/CreateUserPage';
 import SignupPage from './pages/SignupPage';
+import EmailVerificationPage from './pages/EmailVerificationPage';
 import Terminal from './components/Terminal';
 import './components/Terminal.css';
 
@@ -204,6 +205,7 @@ function App() {
           <Route path="/login" element={<LoginPage redirectTo="/dashboard" />} />
           <Route path="/create-user" element={<CreateUserPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/verify-email" element={<EmailVerificationPage />} />
           <Route path="/*" element={<AppContent />} />
         </Routes>
       </AuthProvider>
