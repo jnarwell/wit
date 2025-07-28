@@ -278,13 +278,24 @@ async def resend_verification(
     return {"message": "If an account exists with this email, a verification link will be sent."}
 
 # Google OAuth configuration
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "your-google-client-id")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "your-google-client-secret")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_REDIRECT_URI = "http://localhost:8000/api/v1/auth/google/callback"
 
 @router.get("/google")
 async def google_login():
     """Redirect to Google OAuth"""
+    # Check if OAuth is configured
+    if not GOOGLE_CLIENT_ID or GOOGLE_CLIENT_ID == "your-google-client-id":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "Google OAuth not configured",
+                "message": "Google OAuth is not properly configured. Please follow the setup guide.",
+                "setup_guide": "/docs/GOOGLE_OAUTH_SETUP.md"
+            }
+        )
+    
     # In production, use proper OAuth library like authlib
     google_auth_url = (
         f"https://accounts.google.com/o/oauth2/v2/auth?"

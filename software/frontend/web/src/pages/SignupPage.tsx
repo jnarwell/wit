@@ -126,8 +126,14 @@ const SignupPage: React.FC = () => {
       if (response.data.redirect_url) {
         window.location.href = response.data.redirect_url;
       }
-    } catch (err) {
-      setErrors({ general: 'Failed to connect to Google. Please try again.' });
+    } catch (err: any) {
+      if (err.response?.status === 503 && err.response?.data?.detail?.error === 'Google OAuth not configured') {
+        setErrors({ 
+          general: 'Google login is not configured. For development, you can use email/password signup instead.' 
+        });
+      } else {
+        setErrors({ general: 'Failed to connect to Google. Please try again.' });
+      }
     }
   };
 
@@ -179,6 +185,7 @@ const SignupPage: React.FC = () => {
               type="button"
               onClick={handleGoogleSignup}
               className="w-full flex justify-center items-center px-4 py-3 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-white bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              title="Requires Google OAuth configuration. See docs/GOOGLE_OAUTH_SETUP.md"
             >
               <FaGoogle className="mr-2" />
               Continue with Google
