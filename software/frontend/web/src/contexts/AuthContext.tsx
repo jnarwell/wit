@@ -8,6 +8,7 @@ interface User {
   email: string;
   is_admin: boolean;
   is_active: boolean;
+  created_at?: string;
 }
 
 interface AuthContextType {
@@ -104,15 +105,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Set default authorization header
       axios.defaults.headers.common['Authorization'] = `Bearer ${tokens.access_token}`;
 
-      // Skip broken /me endpoint - just set user data directly
-      const userInfo: User = {
-        id: 'demo-admin-id',
-        username: username,
-        email: `${username}@wit.local`,
-        is_admin: username === 'admin',
-        is_active: true
-      };
-      setUser(userInfo);
+      // Get user info from backend
+      try {
+        const meResponse = await axios.get(`${API_BASE_URL}/api/v1/auth/me`);
+        setUser(meResponse.data);
+      } catch (meError) {
+        console.warn('Failed to fetch user info, using defaults:', meError);
+        // Fallback to basic user info
+        const userInfo: User = {
+          id: 'demo-admin-id',
+          username: username,
+          email: `${username}@wit.local`,
+          is_admin: username === 'admin',
+          is_active: true
+        };
+        setUser(userInfo);
+      }
 
       console.log('Login successful!');
     } catch (error: any) {

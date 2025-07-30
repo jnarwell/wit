@@ -139,7 +139,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ onNavigateToDetail }) => {
       return;
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/projects`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/projects/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${tokens.access_token}`,

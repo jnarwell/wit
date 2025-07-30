@@ -8,6 +8,7 @@ Password hashing and JWT token management
 
 from datetime import datetime, timedelta
 from typing import Optional, Any, Union
+import os
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
@@ -16,7 +17,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT settings - these will be overridden by config
 ALGORITHM = "HS256"
-SECRET_KEY = "your-secret-key-change-this"
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this")
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
 

@@ -12,6 +12,8 @@ from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
@@ -21,13 +23,16 @@ import secrets
 logger = logging.getLogger(__name__)
 
 # Security configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", secrets.token_urlsafe(32))
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing - Import from the central security module to ensure consistency
+from auth.security import pwd_context, verify_password, get_password_hash
+
+# Database imports
+from services.database_services import get_session
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
@@ -87,11 +92,11 @@ class AuthService:
         
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify password against hash"""
-        return pwd_context.verify(plain_password, hashed_password)
+        return verify_password(plain_password, hashed_password)
         
     def get_password_hash(self, password: str) -> str:
         """Hash password"""
-        return pwd_context.hash(password)
+        return get_password_hash(password)
         
     def create_access_token(self, data: dict, 
                           expires_delta: Optional[timedelta] = None) -> str:
@@ -141,8 +146,9 @@ class AuthService:
             return None
             
         # Get user from database
-        from .database_service import User
-        user = await self.db.get(User, username=username)
+        from .database_services import User, get_session
+        result = await self.db.execute(select(User).where(User.username == username))
+        user = result.scalar_one_or_none()
         
         if not user:
             return None
@@ -152,16 +158,14 @@ class AuthService:
             
         if not user.is_active:
             return None
-            
-        # Update last login
-        await self.db.update(user, last_login=datetime.utcnow())
         
         return {
             "id": str(user.id),
             "username": user.username,
             "email": user.email,
             "is_admin": user.is_admin,
-            "is_active": user.is_active
+            "is_active": user.is_active,
+            "created_at": user.created_at
         }
         
     async def create_user(self, user_data: UserCreate) -> Optional[dict]:
@@ -170,12 +174,14 @@ class AuthService:
             return None
             
         # Check if user exists
-        from .database_service import User
-        existing = await self.db.get(User, username=user_data.username)
+        from .database_services import User
+        result = await self.db.execute(select(User).where(User.username == user_data.username))
+        existing = result.scalar_one_or_none()
         if existing:
             raise ValueError("Username already exists")
             
-        existing = await self.db.get(User, email=user_data.email)
+        result = await self.db.execute(select(User).where(User.email == user_data.email))
+        existing = result.scalar_one_or_none()
         if existing:
             raise ValueError("Email already exists")
             
@@ -194,7 +200,8 @@ class AuthService:
             "username": user.username,
             "email": user.email,
             "is_admin": user.is_admin,
-            "is_active": user.is_active
+            "is_active": user.is_active,
+            "created_at": user.created_at
         }
         
     async def get_user_by_id(self, user_id: str) -> Optional[dict]:
@@ -211,8 +218,16 @@ class AuthService:
                 }
             return None
             
-        from .database_service import User
-        user = await self.db.get(User, id=user_id)
+        from .database_services import User
+        import uuid
+        # Convert string to UUID if needed
+        if isinstance(user_id, str):
+            try:
+                user_id = uuid.UUID(user_id)
+            except ValueError:
+                return None
+        result = await self.db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
         
         if not user:
             return None
@@ -222,7 +237,8 @@ class AuthService:
             "username": user.username,
             "email": user.email,
             "is_admin": user.is_admin,
-            "is_active": user.is_active
+            "is_active": user.is_active,
+            "created_at": user.created_at
         }
         
     async def change_password(self, user_id: str, 
@@ -232,8 +248,9 @@ class AuthService:
         if not self.db:
             return False
             
-        from .database_service import User
-        user = await self.db.get(User, id=user_id)
+        from .database_services import User
+        result = await self.db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
         
         if not user:
             return False
@@ -242,7 +259,8 @@ class AuthService:
             return False
             
         new_hash = self.get_password_hash(new_password)
-        await self.db.update(user, hashed_password=new_hash)
+        user.hashed_password = new_hash
+        await self.db.commit()
         
         return True
         
@@ -276,7 +294,7 @@ auth_service = AuthService()
 
 
 # Dependency functions for FastAPI
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_session)) -> dict:
     """Get current user from token"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -284,7 +302,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         headers={"WWW-Authenticate": "Bearer"},
     )
     
-    payload = auth_service.decode_token(token)
+    # Create auth service with database
+    auth_with_db = AuthService(db)
+    payload = auth_with_db.decode_token(token)
     if not payload:
         raise credentials_exception
         
@@ -295,7 +315,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     token_data = TokenData(username=username)
     
     # Get user
-    user = await auth_service.get_user_by_id(payload.get("user_id"))
+    user = await auth_with_db.get_user_by_id(payload.get("user_id"))
     
     if user is None:
         raise credentials_exception
@@ -384,9 +404,11 @@ async def register(user_data: UserCreate):
 
 
 @auth_router.post("/token", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_session)):
     """Login and get access token"""
-    user = await auth_service.authenticate_user(
+    # Create auth service with database connection
+    auth_with_db = AuthService(db)
+    user = await auth_with_db.authenticate_user(
         form_data.username, 
         form_data.password
     )
@@ -398,10 +420,10 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             headers={"WWW-Authenticate": "Bearer"},
         )
         
-    access_token = auth_service.create_access_token(
+    access_token = auth_with_db.create_access_token(
         data={"sub": user["username"], "user_id": user["id"]}
     )
-    refresh_token = auth_service.create_refresh_token(
+    refresh_token = auth_with_db.create_refresh_token(
         data={"sub": user["username"], "user_id": user["id"]}
     )
     

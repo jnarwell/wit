@@ -11,8 +11,8 @@ from datetime import datetime, timedelta
 from enum import Enum
 import json
 
-from software.backend.services.mqtt_service import MQTTService, MQTTTopics
-from software.backend.services.database import get_db_context
+from services.mqtt_service import MQTTService, MQTTTopics
+from services.database import get_db_context
 from models.database import SafetyEvent, Equipment, AlertSeverity
 from core.config import settings
 

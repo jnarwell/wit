@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func
 from sqlalchemy.orm import selectinload
 
-from software.backend.services.database_services import (
+from services.database_services import (
     User, Project, TeamMember, Task, File, get_session
 )
 

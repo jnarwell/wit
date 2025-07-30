@@ -11,13 +11,13 @@ import logging
 import sys
 import os
 
-# Add project root to the Python path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-sys.path.insert(0, project_root)
+# Add backend directory to the Python path
+backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, backend_root)
 
 from sqlalchemy import select
-from software.backend.services.database_services import get_session, Base, engine, User
-from software.backend.auth.security import get_password_hash
+from services.database_services import get_session, Base, engine, User
+from auth.security import get_password_hash
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

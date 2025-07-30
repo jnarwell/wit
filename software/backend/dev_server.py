@@ -8,6 +8,7 @@ Enhanced with detailed status parsing and real-time updates
 from fastapi import FastAPI, HTTPException, Depends, status, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -16,11 +17,13 @@ from typing import Optional, List, Dict, Any
 
 # Import routers from main.py
 from routers import (
-    projects, tasks, teams, materials, files,
+    projects, tasks, teams, materials, files_router,
     auth_router, voice_router, vision_router, 
     equipment_router, workspace_router, system_router,
-    network_router
+    network_router, accounts_router
 )
+# Use simplified admin router for development
+from admin_dev import router as admin_router
 import uvicorn
 import sys
 import os
@@ -32,6 +35,30 @@ import aiohttp
 import requests
 from requests.auth import HTTPDigestAuth
 import serial.tools.list_ports
+from dotenv import load_dotenv
+from pathlib import Path
+
+# Load environment variables from .env file
+# Try multiple locations for .env file
+possible_env_paths = [
+    Path(__file__).parent / '.env',  # Same directory as dev_server.py
+    Path(__file__).parent.parent.parent / '.env',  # Project root
+    Path.cwd() / '.env'  # Current working directory
+]
+
+env_loaded = False
+for env_path in possible_env_paths:
+    if env_path.exists():
+        load_dotenv(env_path)
+        print(f"Loaded .env from: {env_path}")
+        env_loaded = True
+        break
+
+if not env_loaded:
+    print("Warning: No .env file found, using default values")
+
+# Set the RUNNING_IN_DEV_SERVER environment variable
+os.environ["RUNNING_IN_DEV_SERVER"] = "true"
 
 # Suppress bcrypt warning
 import warnings
@@ -39,6 +66,9 @@ warnings.filterwarnings("ignore", message=".*bcrypt.*")
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Set dev server environment variable for admin API
+os.environ["RUNNING_IN_DEV_SERVER"] = "true"
 
 
 # Try to import printer integrations
@@ -71,23 +101,27 @@ app.add_middleware(
 )
 
 # Include all routers from main.py
-app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
-app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
-app.include_router(teams.router, prefix="/api/v1/teams", tags=["teams"])
-app.include_router(materials.router, prefix="/api/v1/materials", tags=["materials"])
-app.include_router(files.router, prefix="/api/v1/files", tags=["files"])
-app.include_router(auth_router)
+# Commented out to use dev_server's built-in projects endpoints
+# app.include_router(projects, prefix="/api/v1/projects", tags=["projects"])
+app.include_router(tasks, prefix="/api/v1/tasks", tags=["tasks"])
+app.include_router(teams, prefix="/api/v1/teams", tags=["teams"])
+app.include_router(materials, prefix="/api/v1/materials", tags=["materials"])
+app.include_router(files_router, prefix="/api/v1/files", tags=["files"])
+# Commented out to use dev_server's built-in auth instead of database auth
+# app.include_router(auth_router)
 app.include_router(voice_router)
 app.include_router(vision_router)
 app.include_router(equipment_router)
 app.include_router(workspace_router)
 app.include_router(system_router)
 app.include_router(network_router)
+app.include_router(accounts_router)
+app.include_router(admin_router)
 
 
 # ============== AUTH CONFIGURATION ==============
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", secrets.token_urlsafe(32))
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -107,6 +141,8 @@ class User(BaseModel):
     email: Optional[str] = None
     full_name: Optional[str] = None
     disabled: Optional[bool] = None
+    is_admin: Optional[bool] = False
+    is_active: Optional[bool] = True
 
 class UserInDB(User):
     hashed_password: str
@@ -125,6 +161,12 @@ class PrusaConnectCommand(BaseModel):
 
 # ============== USER DATABASE ==============
 
+# In-memory storage for projects (for development)
+projects_db = []
+
+# In-memory storage for tasks (for development)
+tasks_db = []
+
 users_db = {
     "admin": {
         "username": "admin",
@@ -132,6 +174,8 @@ users_db = {
         "email": "admin@wit.local",
         "hashed_password": pwd_context.hash("admin"),
         "disabled": False,
+        "is_admin": True,
+        "is_active": True,
     },
     "maker": {
         "username": "maker",
@@ -139,6 +183,17 @@ users_db = {
         "email": "maker@wit.local", 
         "hashed_password": pwd_context.hash("maker123"),
         "disabled": False,
+        "is_admin": False,
+        "is_active": True,
+    },
+    "jamie": {
+        "username": "jamie",
+        "full_name": "Jamie User",
+        "email": "jamie@example.com",
+        "hashed_password": pwd_context.hash("test123"),
+        "disabled": False,
+        "is_admin": False,
+        "is_active": True,
     }
 }
 
@@ -161,6 +216,14 @@ prusalink_printers: Dict[str, Dict[str, Any]] = {}
 # WebSocket connections for real-time updates
 active_websockets: List[WebSocket] = []
 
+# ============== PROJECT & TASK STORAGE ==============
+
+# In-memory storage for projects (for development)
+projects_db = []
+
+# In-memory storage for tasks (for development)
+tasks_db = []
+
 # ============== AUTH FUNCTIONS ==============
 
 def authenticate_user(username: str, password: str):
@@ -175,7 +238,10 @@ def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    logger.info(f"Creating token with data: {data}")
+    logger.info(f"Using SECRET_KEY: {SECRET_KEY[:20]}...")
+    encoded_token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_token
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
@@ -220,6 +286,20 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
 
 # ============== AUTH ENDPOINTS ==============
 
+# Helper function to add new users dynamically
+def add_user(username: str, password: str, email: str, is_admin: bool = False):
+    """Add a new user to the users_db"""
+    users_db[username] = {
+        "username": username,
+        "full_name": f"{username.title()} User",
+        "email": email,
+        "hashed_password": pwd_context.hash(password),
+        "disabled": False,
+        "is_admin": is_admin,
+        "is_active": True,
+    }
+    logger.info(f"Added user {username} to users_db")
+
 @app.post("/api/v1/auth/token", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """OAuth2 compatible login endpoint"""
@@ -236,13 +316,17 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 @app.post("/api/v1/auth/login", response_model=Token)
 async def login_json(user_login: UserLogin):
     """JSON login endpoint for easier frontend integration"""
+    logger.info(f"Login attempt for user: {user_login.username}")
     user = authenticate_user(user_login.username, user_login.password)
     if not user:
+        logger.warning(f"Authentication failed for user: {user_login.username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
+    logger.info(f"Authentication successful for user: {user.username}")
     access_token = create_access_token(data={"sub": user.username})
+    logger.info(f"Token created for user: {user.username}")
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/api/v1/auth/me", response_model=User)
@@ -1705,6 +1789,463 @@ async def printer_status_updater():
         except Exception as e:
             logger.error(f"Status updater error: {e}")
             await asyncio.sleep(10)
+
+# ============== MISSING ENDPOINTS ==============
+
+# Terminal endpoints
+@app.post("/api/v1/terminal/command")
+async def terminal_command(command: dict, current_user: User = Depends(get_current_user)):
+    """Execute terminal command with AI assistant"""
+    user_command = command.get('command', '')
+    
+    # Simulate AI responses for common commands
+    ai_responses = {
+        "hi": "Hello! I'm W.I.T., your Workshop Intelligence Terminal. How can I assist you today?",
+        "hello": "Hello! I'm W.I.T., your Workshop Intelligence Terminal. How can I assist you today?",
+        "help": "I can help you with:\n• Managing projects and tasks\n• Controlling 3D printers and equipment\n• File management and organization\n• Workshop automation\n\nTry commands like 'list projects', 'check printers', or ask me anything!",
+        "how are you": "I'm functioning optimally! Ready to help you manage your workshop. What would you like to work on today?",
+        "list projects": "You currently have no active projects. Use 'create project <name>' to start a new one.",
+        "check printers": "No printers are currently connected. Use the Equipment page to add printers.",
+        "whoami": f"You are logged in as: {current_user.username}",
+        "date": f"Current date and time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        "clear": "Terminal cleared.",
+    }
+    
+    # Check for exact matches first
+    command_lower = user_command.lower().strip()
+    if command_lower in ai_responses:
+        response = ai_responses[command_lower]
+    # Check for partial matches
+    elif "project" in command_lower:
+        if "create" in command_lower or "new" in command_lower:
+            # Extract project name from command
+            import re
+            match = re.search(r'(?:create|new)\s+project\s+(.+)', command_lower)
+            if match:
+                project_name = match.group(1).strip()
+                # Create the project
+                import uuid
+                project_id = str(uuid.uuid4())
+                project_code = f"PROJ-{len(projects_db) + 1:04d}"
+                new_project = {
+                    "id": project_id,
+                    "project_id": project_code,
+                    "name": project_name.title(),
+                    "description": f"Created via WIT terminal",
+                    "type": "general",
+                    "status": "not_started",
+                    "priority": "medium",
+                    "owner_id": current_user.username,
+                    "created_at": datetime.now().isoformat(),
+                    "updated_at": datetime.now().isoformat(),
+                    "extra_data": {}
+                }
+                projects_db.append(new_project)
+                response = f"✅ Project '{project_name.title()}' created successfully! Project ID: {project_code}"
+            else:
+                response = "To create a project, use: 'create project <name>' or 'new project <name>'"
+        elif "list" in command_lower or "show" in command_lower:
+            if len(projects_db) == 0:
+                response = "You currently have no active projects. Use 'create project <name>' to start one."
+            else:
+                response = "📋 Your projects:\n"
+                for proj in projects_db:
+                    response += f"• {proj['project_id']}: {proj['name']} ({proj['status']})\n"
+        else:
+            response = "I can help you manage projects. Try 'list projects' or 'create project <name>'"
+    elif "printer" in command_lower:
+        response = "No printers are currently connected. Visit the Equipment page to add and manage printers."
+    elif "task" in command_lower:
+        response = "No tasks found. Tasks are usually associated with projects. Create a project first!"
+    elif "file" in command_lower:
+        response = "File operations are available through the File Browser in the sidebar."
+    elif any(greeting in command_lower for greeting in ["hi", "hello", "hey"]):
+        response = "Hello! I'm W.I.T., your Workshop Intelligence Terminal. How can I assist you today?"
+    else:
+        # Default AI-like response for unknown commands
+        response = f"I understand you said '{user_command}'. I'm still learning and expanding my capabilities. Try 'help' to see what I can do, or rephrase your request."
+    
+    return {
+        "response": response,
+        "status": "success"
+    }
+
+@app.post("/api/v1/log-ai-message")
+async def log_ai_message(message: dict):
+    """Log AI message"""
+    logger.info(f"AI message: {message}")
+    return {"status": "logged"}
+
+# Projects endpoints
+@app.get("/api/v1/projects/")
+async def list_projects(current_user: User = Depends(get_current_user)):
+    """Get all projects"""
+    return projects_db
+
+@app.post("/api/v1/projects/")
+async def create_project(project: dict, current_user: User = Depends(get_current_user)):
+    """Create a new project"""
+    import uuid
+    project_id = str(uuid.uuid4())
+    project_code = f"PROJ-{len(projects_db) + 1:04d}"
+    
+    new_project = {
+        "id": project_id,
+        "project_id": project_code,
+        "name": project.get("name", "New Project"),
+        "description": project.get("description", ""),
+        "type": project.get("type", "general"),
+        "status": project.get("status", "not_started"),
+        "priority": project.get("priority", "medium"),
+        "owner_id": current_user.username,
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
+        "extra_data": project.get("extra_data", {})
+    }
+    
+    projects_db.append(new_project)
+    logger.info(f"Created project: {new_project['name']} ({project_code})")
+    
+    return new_project
+
+@app.get("/api/v1/projects/{project_id}")
+async def get_project(project_id: str, current_user: User = Depends(get_current_user)):
+    """Get individual project details"""
+    # Search by both id and project_id fields
+    for project in projects_db:
+        if project["id"] == project_id or project["project_id"] == project_id:
+            return project
+    
+    raise HTTPException(
+        status_code=404,
+        detail=f"Project {project_id} not found"
+    )
+
+@app.put("/api/v1/projects/{project_id}")
+async def update_project(project_id: str, updates: dict, current_user: User = Depends(get_current_user)):
+    """Update project details"""
+    for i, project in enumerate(projects_db):
+        if project["id"] == project_id or project["project_id"] == project_id:
+            # Update allowed fields
+            if "name" in updates:
+                project["name"] = updates["name"]
+            if "description" in updates:
+                project["description"] = updates["description"]
+            if "status" in updates:
+                project["status"] = updates["status"]
+            if "priority" in updates:
+                project["priority"] = updates["priority"]
+            if "type" in updates:
+                project["type"] = updates["type"]
+            if "extra_data" in updates:
+                project["extra_data"].update(updates["extra_data"])
+            
+            project["updated_at"] = datetime.now().isoformat()
+            projects_db[i] = project
+            logger.info(f"Updated project: {project['name']} ({project['project_id']})")
+            return project
+    
+    raise HTTPException(
+        status_code=404,
+        detail=f"Project {project_id} not found"
+    )
+
+@app.delete("/api/v1/projects/{project_id}")
+async def delete_project(project_id: str, current_user: User = Depends(get_current_user)):
+    """Delete a project"""
+    for i, project in enumerate(projects_db):
+        if project["id"] == project_id or project["project_id"] == project_id:
+            deleted_project = projects_db.pop(i)
+            logger.info(f"Deleted project: {deleted_project['name']} ({deleted_project['project_id']})")
+            return {"message": f"Project {deleted_project['name']} deleted successfully"}
+    
+    raise HTTPException(
+        status_code=404,
+        detail=f"Project {project_id} not found"
+    )
+
+# Tasks endpoints
+@app.get("/api/v1/tasks/incomplete")
+async def get_incomplete_tasks(current_user: User = Depends(get_current_user)):
+    """Get incomplete tasks for the current user"""
+    incomplete_tasks = [
+        task for task in tasks_db 
+        if task["status"] != "completed" and task["owner_id"] == current_user.username
+    ]
+    return incomplete_tasks
+
+@app.get("/api/v1/projects/{project_id}/tasks")
+async def get_project_tasks(project_id: str, current_user: User = Depends(get_current_user)):
+    """Get all tasks for a project"""
+    # Check if project exists and get the actual project
+    project = None
+    for p in projects_db:
+        if p["id"] == project_id or p.get("project_id") == project_id:
+            project = p
+            break
+    
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    
+    # Return tasks for this project (search by both id and project_id)
+    project_tasks = []
+    for task in tasks_db:
+        if task["project_id"] == project["id"] or task["project_id"] == project.get("project_id", project["id"]):
+            project_tasks.append(task)
+    
+    return project_tasks
+
+@app.post("/api/v1/projects/{project_id}/tasks")
+async def create_project_task(project_id: str, task: dict, current_user: User = Depends(get_current_user)):
+    """Create a new task for a project"""
+    # Check if project exists
+    project_exists = any(p["id"] == project_id or p["project_id"] == project_id for p in projects_db)
+    if not project_exists:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    
+    import uuid
+    task_id = str(uuid.uuid4())
+    task_code = f"TASK-{len(tasks_db) + 1:04d}"
+    new_task = {
+        "id": task_id,
+        "task_id": task_code,
+        "project_id": project_id,
+        "name": task.get("name", task.get("title", "New Task")),
+        "description": task.get("description", ""),
+        "status": task.get("status", "not_started"),
+        "priority": task.get("priority", "medium"),
+        "assigned_to": task.get("assigned_to", task.get("assignee")),
+        "owner_id": current_user.username,
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
+        "due_date": task.get("due_date"),
+        "tags": task.get("tags", [])
+    }
+    
+    tasks_db.append(new_task)
+    logger.info(f"Created task: {new_task['name']} for project {project_id}")
+    return new_task
+
+@app.get("/api/v1/tasks/{task_id}")
+async def get_task(task_id: str, current_user: User = Depends(get_current_user)):
+    """Get individual task details"""
+    for task in tasks_db:
+        if task["id"] == task_id or task.get("task_id") == task_id:
+            return task
+    
+    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+@app.put("/api/v1/tasks/{task_id}")
+async def update_task(task_id: str, updates: dict, current_user: User = Depends(get_current_user)):
+    """Update task details"""
+    for i, task in enumerate(tasks_db):
+        if task["id"] == task_id or task.get("task_id") == task_id:
+            # Update allowed fields
+            if "name" in updates:
+                task["name"] = updates["name"]
+            if "title" in updates:  # Support both name and title
+                task["name"] = updates["title"]
+            if "description" in updates:
+                task["description"] = updates["description"]
+            if "status" in updates:
+                task["status"] = updates["status"]
+            if "priority" in updates:
+                task["priority"] = updates["priority"]
+            if "assigned_to" in updates:
+                task["assigned_to"] = updates["assigned_to"]
+            if "assignee" in updates:  # Support both assigned_to and assignee
+                task["assigned_to"] = updates["assignee"]
+            if "due_date" in updates:
+                task["due_date"] = updates["due_date"]
+            if "tags" in updates:
+                task["tags"] = updates["tags"]
+            
+            task["updated_at"] = datetime.now().isoformat()
+            tasks_db[i] = task
+            logger.info(f"Updated task: {task['name']}")
+            return task
+    
+    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+@app.patch("/api/v1/tasks/{task_id}")
+async def patch_task(task_id: str, updates: dict, current_user: User = Depends(get_current_user)):
+    """Partially update task details (PATCH)"""
+    return await update_task(task_id, updates, current_user)
+
+@app.delete("/api/v1/tasks/{task_id}")
+async def delete_task(task_id: str, current_user: User = Depends(get_current_user)):
+    """Delete a task"""
+    for i, task in enumerate(tasks_db):
+        if task["id"] == task_id or task.get("task_id") == task_id:
+            deleted_task = tasks_db.pop(i)
+            logger.info(f"Deleted task: {deleted_task['name']}")
+            return {"message": f"Task {deleted_task['name']} deleted successfully"}
+    
+    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+# Project members endpoints
+@app.get("/api/v1/projects/{project_id}/members")
+async def get_project_members(project_id: str, current_user: User = Depends(get_current_user)):
+    """Get project members"""
+    # Check if project exists
+    project_exists = any(p["id"] == project_id or p["project_id"] == project_id for p in projects_db)
+    if not project_exists:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    
+    # Return mock members for development
+    members = [
+        {
+            "id": "member1",
+            "user_id": "admin",
+            "username": "admin",
+            "role": "owner",
+            "joined_at": datetime.now().isoformat()
+        },
+        {
+            "id": "member2", 
+            "user_id": "maker",
+            "username": "maker",
+            "role": "member",
+            "joined_at": datetime.now().isoformat()
+        }
+    ]
+    return members
+
+@app.delete("/api/v1/projects/{project_id}/members/{user_id}")
+async def remove_project_member(project_id: str, user_id: str, current_user: User = Depends(get_current_user)):
+    """Remove a member from project"""
+    # Check if project exists
+    project_exists = any(p["id"] == project_id or p["project_id"] == project_id for p in projects_db)
+    if not project_exists:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    
+    logger.info(f"Removed user {user_id} from project {project_id}")
+    return {"message": f"User {user_id} removed from project"}
+
+# Project files endpoints
+@app.get("/api/v1/projects/{project_id}/files")
+async def get_project_files(project_id: str, current_user: User = Depends(get_current_user)):
+    """Get files for a specific project"""
+    # Check if project exists
+    project_exists = any(p["id"] == project_id or p["project_id"] == project_id for p in projects_db)
+    if not project_exists:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    
+    # Return mock files for development
+    files = [
+        {
+            "id": "file1",
+            "name": "README.md",
+            "path": f"projects/{project_id}/README.md",
+            "size": 1024,
+            "type": "text/markdown",
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat()
+        },
+        {
+            "id": "file2",
+            "name": "main.py",
+            "path": f"projects/{project_id}/main.py",
+            "size": 2048,
+            "type": "text/x-python",
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat()
+        }
+    ]
+    return files
+
+# Auth registration endpoint
+@app.post("/api/v1/auth/register")
+async def register_user(user_data: dict):
+    """Register a new user"""
+    username = user_data.get("username")
+    password = user_data.get("password")
+    email = user_data.get("email", f"{username}@wit.local")
+    
+    if not username or not password:
+        raise HTTPException(
+            status_code=400,
+            detail="Username and password are required"
+        )
+    
+    if username in users_db:
+        raise HTTPException(
+            status_code=400,
+            detail="Username already exists"
+        )
+    
+    # Add user to users_db
+    add_user(username, password, email, is_admin=False)
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": username})
+    
+    logger.info(f"Registered new user: {username}")
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "username": username,
+            "email": email,
+            "is_admin": False,
+            "is_active": True
+        }
+    }
+
+# Google OAuth callback endpoint (simplified for dev)
+@app.get("/api/v1/auth/google/callback")
+async def google_oauth_callback(code: str = None, state: str = None):
+    """Handle Google OAuth callback in dev mode"""
+    if not code:
+        raise HTTPException(status_code=400, detail="No authorization code provided")
+    
+    # In dev mode, we'll just create a success response
+    # In production, this would exchange the code for tokens with Google
+    logger.info(f"Google OAuth callback received with code: {code[:10]}...")
+    
+    # Redirect to frontend with success message
+    frontend_url = "http://localhost:5173"  # Adjust if your frontend runs on a different port
+    return RedirectResponse(
+        url=f"{frontend_url}/auth/callback?status=success&provider=google",
+        status_code=302
+    )
+
+# Microcontroller ports endpoint
+@app.get("/api/v1/microcontrollers/ports")
+async def get_microcontroller_ports(current_user: User = Depends(get_current_user)):
+    """Get available serial ports"""
+    try:
+        import serial.tools.list_ports
+        ports = []
+        for port in serial.tools.list_ports.comports():
+            ports.append({
+                "device": port.device,
+                "name": port.name,
+                "description": port.description,
+                "hwid": port.hwid,
+                "vid": port.vid,
+                "pid": port.pid,
+                "serial_number": port.serial_number,
+                "manufacturer": port.manufacturer,
+                "product": port.product
+            })
+        return ports
+    except ImportError:
+        # If pyserial not installed, return mock data
+        return [
+            {
+                "device": "/dev/ttyUSB0",
+                "name": "ttyUSB0",
+                "description": "USB Serial Port",
+                "hwid": "USB VID:PID=1234:5678",
+                "vid": 0x1234,
+                "pid": 0x5678,
+                "serial_number": "12345",
+                "manufacturer": "Arduino",
+                "product": "Arduino Uno"
+            }
+        ]
 
 @app.on_event("startup")
 async def startup_event():

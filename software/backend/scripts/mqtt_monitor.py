@@ -9,7 +9,7 @@ from collections import defaultdict
 import json
 
 sys.path.append(".")
-from software.backend.services.mqtt_service_v2 import MQTTService
+from services.mqtt_service_v2 import MQTTService
 
 
 class MQTTMonitor:

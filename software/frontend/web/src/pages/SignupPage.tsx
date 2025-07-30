@@ -23,6 +23,7 @@ const SignupPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
+  const [recaptchaVerified, setRecaptchaVerified] = useState(false);
   const navigate = useNavigate();
 
   // Password validation rules
@@ -97,11 +98,17 @@ const SignupPage: React.FC = () => {
       const response = await axios.post('http://localhost:8000/api/v1/auth/signup', {
         username: formData.username,
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        recaptcha_token: recaptchaVerified ? 'dummy-token' : null
       });
 
       if (response.data.success) {
-        setVerificationSent(true);
+        // Instead of showing verification message, redirect to login
+        navigate('/login', { 
+          state: { 
+            message: 'Account created successfully! Please login with your credentials.' 
+          } 
+        });
       }
     } catch (err: any) {
       if (err.response?.data?.detail) {
@@ -373,11 +380,30 @@ const SignupPage: React.FC = () => {
               <p className="text-sm text-red-400">{errors.general}</p>
             </div>
           )}
+          
+          {/* reCAPTCHA Placeholder */}
+          <div className="bg-gray-700 p-4 rounded-md border border-gray-600">
+            <div className="flex items-center justify-center">
+              <input
+                type="checkbox"
+                id="recaptcha"
+                checked={recaptchaVerified}
+                onChange={(e) => setRecaptchaVerified(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="recaptcha" className="ml-2 block text-sm text-gray-300">
+                I'm not a robot (reCAPTCHA placeholder)
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 text-center mt-2">
+              This is a temporary placeholder. In production, use Google reCAPTCHA.
+            </p>
+          </div>
 
           <div>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !recaptchaVerified}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? 'Creating account...' : 'Create account'}

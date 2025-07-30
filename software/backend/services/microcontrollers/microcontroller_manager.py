@@ -6,7 +6,7 @@ import json
 import logging
 from fastapi import WebSocket
 
-from software.backend.schemas.microcontroller import (
+from schemas.microcontroller import (
     MicrocontrollerCommandResponse, SerialPortInfo
 )
 from .connection_factory import ConnectionFactory
@@ -46,8 +46,8 @@ class MicrocontrollerManager:
         """Connect to a microcontroller"""
         try:
             # Get microcontroller from database
-            from software.backend.services.database_services import get_session_sync
-            from software.backend.models.microcontroller import Microcontroller
+            from services.database_services import get_session_sync
+            from models.microcontroller import Microcontroller
             
             with get_session_sync() as db:
                 microcontroller = db.query(Microcontroller).filter_by(id=microcontroller_id).first()
@@ -99,8 +99,8 @@ class MicrocontrollerManager:
             del self.connections[microcontroller_id]
             
             # Update status in database
-            from software.backend.services.database_services import get_session_sync
-            from software.backend.models.microcontroller import Microcontroller
+            from services.database_services import get_session_sync
+            from models.microcontroller import Microcontroller
             
             with get_session_sync() as db:
                 microcontroller = db.query(Microcontroller).filter_by(id=microcontroller_id).first()
@@ -133,8 +133,8 @@ class MicrocontrollerManager:
             response = await connection.send_command(command, params)
             
             # Log command
-            from software.backend.services.database_services import get_session_sync
-            from software.backend.models.microcontroller import DeviceLog
+            from services.database_services import get_session_sync
+            from models.microcontroller import DeviceLog
             
             with get_session_sync() as db:
                 log_entry = DeviceLog(
@@ -212,8 +212,8 @@ class MicrocontrollerManager:
             
             if data_type == "sensor_reading":
                 # Store sensor reading
-                from software.backend.services.database_services import get_session_sync
-                from software.backend.models.microcontroller import SensorReading
+                from services.database_services import get_session_sync
+                from models.microcontroller import SensorReading
                 
                 with get_session_sync() as db:
                     reading = SensorReading(
@@ -235,8 +235,8 @@ class MicrocontrollerManager:
                 
             elif data_type == "log":
                 # Store log entry
-                from software.backend.services.database_services import get_session_sync
-                from software.backend.models.microcontroller import DeviceLog
+                from services.database_services import get_session_sync
+                from models.microcontroller import DeviceLog
                 
                 with get_session_sync() as db:
                     log_entry = DeviceLog(

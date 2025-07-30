@@ -19,7 +19,7 @@ const LoginPage: React.FC<{ redirectTo?: string }> = ({ redirectTo = '/' }) => {
   const [showDemo, setShowDemo] = useState(true);
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Handle Google OAuth redirect
+  // Handle Google OAuth redirect and signup success
   useEffect(() => {
     const token = searchParams.get('token');
     const type = searchParams.get('type');
@@ -32,7 +32,12 @@ const LoginPage: React.FC<{ redirectTo?: string }> = ({ redirectTo = '/' }) => {
         navigate('/', { replace: true });
       }, 1500);
     }
-  }, [searchParams, setToken, navigate]);
+    
+    // Check for signup success message
+    if (location.state?.message) {
+      setSuccessMessage(location.state.message);
+    }
+  }, [searchParams, setToken, navigate, location.state]);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -119,6 +124,16 @@ const LoginPage: React.FC<{ redirectTo?: string }> = ({ redirectTo = '/' }) => {
             </div>
           )}
 
+          {/* Success Message */}
+          {successMessage && (
+            <div className="mb-6 p-4 bg-green-900/30 border border-green-700 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <FiAlertCircle className="text-green-400" />
+                <p className="text-green-300 text-sm">{successMessage}</p>
+              </div>
+            </div>
+          )}
+          
           {/* Error Message */}
           {error && (
             <div className="mb-6 p-4 bg-red-900/30 border border-red-700 rounded-lg">

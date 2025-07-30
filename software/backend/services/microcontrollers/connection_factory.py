@@ -2,7 +2,7 @@
 from typing import Dict, Any
 import logging
 
-from software.backend.models.microcontroller import MicrocontrollerType, ConnectionType
+from models.microcontroller import MicrocontrollerType, ConnectionType
 from .base_connection import BaseConnection
 from .serial_connection import SerialConnection
 from .network_connection import NetworkConnection

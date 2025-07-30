@@ -18,16 +18,34 @@ import base64
 from datetime import datetime
 from enum import Enum
 
+# Configure logging
+logger = logging.getLogger(__name__)
+
 # Import vision processor
 import sys
 # sys.path handled by main module
-from software.ai.vision.vision_processor import (
-    VisionProcessor, VisionConfig, VisionTask, SafetyAlert,
-    Detection, SafetyEvent
-)
-
-# Configure logging
-logger = logging.getLogger(__name__)
+try:
+    from ai.vision.vision_processor import (
+        VisionProcessor, VisionConfig, VisionTask, SafetyAlert,
+        Detection, SafetyEvent
+    )
+    VISION_AVAILABLE = True
+except ImportError:
+    logger.warning("Vision processor not available")
+    VISION_AVAILABLE = False
+    # Placeholder classes
+    class VisionProcessor:
+        pass
+    class VisionConfig:
+        pass
+    class VisionTask:
+        pass
+    class SafetyAlert:
+        pass
+    class Detection:
+        pass
+    class SafetyEvent:
+        pass
 
 # Create router
 router = APIRouter(prefix="/api/v1/vision", tags=["vision"])

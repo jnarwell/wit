@@ -8,8 +8,8 @@ import anthropic
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
-from software.backend.services.database_services import User, Project, TeamMember, Equipment
-from software.backend.services.ai_tools import (
+from services.database_services import User, Project, TeamMember, Equipment
+from services.ai_tools import (
     list_files,
     read_file,
     write_file,
@@ -19,7 +19,7 @@ from software.backend.services.ai_tools import (
     run_equipment_command,
     search_logs
 )
-from software.backend.services.ai_project_tools import (
+from services.ai_project_tools import (
     create_task,
     list_tasks,
     update_task,

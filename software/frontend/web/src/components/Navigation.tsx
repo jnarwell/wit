@@ -1,6 +1,6 @@
 // src/components/Navigation.tsx
 import React, { useState } from 'react';
-import { FiHome, FiCpu, FiFolder, FiActivity, FiTerminal, FiUser, FiLogOut, FiChevronDown } from 'react-icons/fi';
+import { FiHome, FiCpu, FiFolder, FiActivity, FiTerminal, FiUser, FiLogOut, FiChevronDown, FiSettings } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -91,14 +91,22 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate }) => {
                 
                 <div className="p-2">
                   <button
+                    onClick={() => {
+                      onNavigate('settings');
+                      setShowUserMenu(false);
+                    }}
                     className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded transition-colors"
                   >
-                    <FiUser className="inline-block w-4 h-4 mr-2" />
-                    Profile Settings
+                    <FiSettings className="inline-block w-4 h-4 mr-2" />
+                    Account Settings
                   </button>
                   
                   {user?.is_admin && (
                     <button
+                      onClick={() => {
+                        window.open('http://localhost:8080/admin.html', '_blank');
+                        setShowUserMenu(false);
+                      }}
                       className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded transition-colors"
                     >
                       <FiActivity className="inline-block w-4 h-4 mr-2" />

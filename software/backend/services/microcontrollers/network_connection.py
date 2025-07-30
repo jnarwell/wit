@@ -7,7 +7,7 @@ import logging
 import json
 from datetime import datetime
 
-from software.backend.models.microcontroller import ConnectionType
+from models.microcontroller import ConnectionType
 from .base_connection import BaseConnection
 
 logger = logging.getLogger(__name__)

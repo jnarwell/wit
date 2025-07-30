@@ -39,13 +39,17 @@ async def login(
     db: AsyncSession = Depends(get_session)
 ):
     """OAuth2 compatible token login"""
-    # Query user
-    stmt = select(DBUser).where(DBUser.username == form_data.username)
-    result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
+    # Use raw SQL to avoid ORM issues with User model
+    from sqlalchemy import text
     
-    # Verify user and password
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    result = await db.execute(
+        text("SELECT id, username, hashed_password, is_active, email FROM users WHERE username = :username"),
+        {"username": form_data.username}
+    )
+    user_row = result.fetchone()
+    
+    # Verify user exists and password is correct
+    if not user_row or not verify_password(form_data.password, user_row.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -53,7 +57,7 @@ async def login(
         )
     
     # Check if active
-    if not user.is_active:
+    if not user_row.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail="Inactive user"
@@ -61,7 +65,7 @@ async def login(
     
     # Create token
     access_token = create_access_token(
-        subject=user.username,
+        subject=user_row.username,
         expires_delta=timedelta(minutes=30)
     )
     

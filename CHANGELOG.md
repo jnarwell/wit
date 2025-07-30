@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] - 2025-07-27
+## [Unreleased] - 2025-07-30
 
 ### Added
 - **Enhanced Signup Page**: Complete user registration experience with advanced features
@@ -48,6 +48,31 @@
 
 ### Fixed
 - **Task Creation Backend**: Fixed missing `due_date` field assignment in task creation endpoint
+- **Development Server Enhancements**: Major fixes to dev_server.py for full functionality
+  - Added missing `projects_db` and `tasks_db` storage definitions
+  - Fixed project endpoints to handle both UUID and project_id formats (e.g., PROJ-0001)
+  - Fixed task endpoints to use correct field names (`name` instead of `title`, `assigned_to` instead of `assignee`)
+  - Added PATCH endpoint for tasks
+  - Fixed project and task deletion to work with both ID formats
+  - Fixed `get_project_tasks` to properly match projects by either ID format
+- **Admin Panel Integration**: Fixed user management persistence
+  - User creation now properly persists to dev_server's `users_db`
+  - User deletion removes users from authentication system
+  - User listing shows real users from `users_db` instead of mock data
+  - Admin statistics reflect actual user counts
+- **File Operations**: Implemented real filesystem operations
+  - Replaced mock file storage with actual filesystem using pathlib
+  - Files stored in `./wit_storage/users/` and `./wit_storage/projects/`
+  - Full CRUD operations for files and folders
+  - File upload with proper path handling
+- **Frontend Compatibility**: Fixed API response formats
+  - FileBrowser now receives proper array format preventing "nodes.map is not a function" error
+  - Added empty `/api/v1/accounts/linked` endpoint to prevent login redirects
+  - Fixed OAuth client_id error by adding environment variable loading
+- **SQLAlchemy Duplicate Model Issue**: Fixed "Multiple classes found for path 'SensorReading'" error
+  - Identified conflicting model definitions in `models/microcontroller.py`
+  - Created fix script to comment out duplicate model imports
+  - Prevents model registration conflicts in declarative base
 - **Task Status Mismatch**: Aligned frontend and backend task status values (not_started, in_progress, blocked, complete, cancelled)
 - **Tasks Widget Error**: Fixed TypeError when rendering tasks with undefined status values
 

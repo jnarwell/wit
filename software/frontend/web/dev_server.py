@@ -19,7 +19,6 @@ from software.backend.services.database_services import create_db_and_tables
 import software.backend.models
 from software.backend.services.claude_service import claude_terminal_service
 from software.frontend.web.routers import (
-    auth_router, 
     users_router,
     projects_router,
     tasks_router,
@@ -33,6 +32,10 @@ from software.frontend.web.routers import (
     project_files_router,
     microcontrollers_router
 )
+# Import backend auth and accounts API
+from software.backend.auth.auth_router import router as auth_router
+from software.backend.api.accounts_api import router as accounts_router
+from software.backend.auth.simple_auth import router as simple_auth_router
 from software.frontend.web.routers.file_operations_router import active_file_connections
 # Import backend equipment API for printer support
 from software.backend.api.equipment_api import router as backend_equipment_router, shutdown_equipment
@@ -71,7 +74,7 @@ app.add_middleware(
 )
 
 # Include all API routers
-app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(auth_router, tags=["auth"])
 app.include_router(users_router, prefix="/api/v1/users", tags=["users"])
 app.include_router(projects_router, prefix="/api/v1/projects", tags=["projects"])
 app.include_router(tasks_router, prefix="/api/v1", tags=["tasks"])
@@ -87,6 +90,8 @@ app.include_router(terminal_router.router, prefix="/api/v1/terminal", tags=["ter
 app.include_router(files_api.router, prefix="/api/v1", tags=["files_api"])
 app.include_router(file_operations_router.router, prefix="/api/v1", tags=["file_operations"])
 app.include_router(project_files_router, prefix="/api/v1", tags=["project_files"])
+app.include_router(accounts_router, tags=["accounts"])
+app.include_router(simple_auth_router, tags=["simple_auth"])
 
 @app.websocket("/api/v1/files/ws/files")
 async def websocket_endpoint(websocket: WebSocket):

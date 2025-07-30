@@ -5,7 +5,7 @@ import asyncio
 import pytest
 from datetime import datetime
 
-from software.backend.services.mqtt_service_v2 import MQTTService
+from services.mqtt_service_v2 import MQTTService
 
 
 @pytest.mark.asyncio

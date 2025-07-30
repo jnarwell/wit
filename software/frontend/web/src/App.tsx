@@ -17,10 +17,11 @@ import LoginPage from './pages/LoginPage';
 import CreateUserPage from './pages/CreateUserPage';
 import SignupPage from './pages/SignupPage';
 import EmailVerificationPage from './pages/EmailVerificationPage';
+import SettingsPage from './pages/SettingsPage';
 import Terminal from './components/Terminal';
 import './components/Terminal.css';
 
-type Page = 'dashboard' | 'machines' | 'projects' | 'sensors' | 'wit' | 
+type Page = 'dashboard' | 'machines' | 'projects' | 'sensors' | 'wit' | 'settings' |
            'machine-detail' | 'sensor-detail' | 'project-detail';
 
 interface DetailPageState {
@@ -34,7 +35,7 @@ function AppContent() {
     const savedPage = localStorage.getItem('wit-current-page');
     if (savedPage) {
       // Validate that it's a valid page
-      const validPages = ['dashboard', 'machines', 'projects', 'sensors', 'wit', 
+      const validPages = ['dashboard', 'machines', 'projects', 'sensors', 'wit', 'settings',
                          'machine-detail', 'sensor-detail', 'project-detail'];
       if (validPages.includes(savedPage)) {
         console.log('[App] Restoring page:', savedPage);
@@ -175,6 +176,8 @@ function AppContent() {
         ) : null;
       case 'wit':
         return <Terminal />;
+      case 'settings':
+        return <SettingsPage />;
       default:
         return <Dashboard />;
     }

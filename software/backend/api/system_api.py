@@ -23,7 +23,7 @@ import aiofiles
 # Import services
 import sys
 # sys.path handled by main module
-from software.backend.services.auth_services import get_current_user, is_admin
+from services.auth_services import get_current_user, is_admin
 
 # Configure logging
 logger = logging.getLogger(__name__)

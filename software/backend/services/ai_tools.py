@@ -14,7 +14,7 @@ from software.frontend.web.routers.file_operations_router import (
     get_base_dir,
 )
 from sqlalchemy import select
-from software.backend.services.database_services import User, get_session
+from services.database_services import User, get_session
 
 # --- File System Tools ---
 
@@ -60,7 +60,16 @@ async def delete_file(user: User, path: str, base_dir: str, project_id: str = No
     return response["message"]
 
 
-from software.backend.api.equipment_api import get_printers, get_printer_status, send_gcode, GCodeRequest
+# Import equipment API functions if available
+try:
+    from api.equipment_api import get_printers, get_printer_status, send_gcode, GCodeRequest
+    EQUIPMENT_API_AVAILABLE = True
+except ImportError:
+    EQUIPMENT_API_AVAILABLE = False
+    get_printers = None
+    get_printer_status = None
+    send_gcode = None
+    GCodeRequest = None
 
 # ... (existing code) ...
 
@@ -68,11 +77,15 @@ from software.backend.api.equipment_api import get_printers, get_printer_status,
 
 async def get_equipment_status() -> str:
     """Gets the status of all connected equipment."""
+    if not EQUIPMENT_API_AVAILABLE:
+        return "Equipment API not available"
     printers = await get_printers()
     return json.dumps(printers, indent=2)
 
 async def run_equipment_command(equipment_id: str, command: str) -> str:
     """Runs a command on a piece of equipment."""
+    if not EQUIPMENT_API_AVAILABLE:
+        return "Equipment API not available"
     if "gcode" in command.lower():
         # For now, we only support G-code commands
         gcode_command = command.split("gcode")[-1].strip()
@@ -88,7 +101,7 @@ async def run_equipment_command(equipment_id: str, command: str) -> str:
 async def list_projects(user: User) -> str:
     """Lists all projects for the current user."""
     async for db in get_session():
-        from software.backend.services.database_services import Project
+        from services.database_services import Project
         result = await db.execute(
             select(Project).where(Project.owner_id == user.id)
         )
@@ -113,7 +126,7 @@ async def list_projects(user: User) -> str:
 async def create_project(user: User, name: str, description: str = "", priority: str = "medium") -> str:
     """Creates a new project."""
     async for db in get_session():
-        from software.backend.services.database_services import Project
+        from services.database_services import Project
         import uuid
         
         # Generate project ID
@@ -136,7 +149,7 @@ async def create_project(user: User, name: str, description: str = "", priority:
 async def update_project(user: User, project_id: str, name: str = None, description: str = None, status: str = None, priority: str = None) -> str:
     """Updates an existing project."""
     async for db in get_session():
-        from software.backend.services.database_services import Project
+        from services.database_services import Project
         
         result = await db.execute(
             select(Project).where(
@@ -168,7 +181,7 @@ async def update_project(user: User, project_id: str, name: str = None, descript
 async def delete_project(user: User, project_id: str) -> str:
     """Deletes a project."""
     async for db in get_session():
-        from software.backend.services.database_services import Project
+        from services.database_services import Project
         
         result = await db.execute(
             select(Project).where(
@@ -191,7 +204,7 @@ async def delete_project(user: User, project_id: str) -> str:
 async def list_tasks(user: User, project_id: str = None, status: str = None) -> str:
     """Lists tasks, optionally filtered by project or status."""
     async for db in get_session():
-        from software.backend.services.database_services import Task, Project
+        from services.database_services import Task, Project
         
         query = select(Task, Project).join(Project, Task.project_id == Project.id)
         
@@ -227,7 +240,7 @@ async def list_tasks(user: User, project_id: str = None, status: str = None) -> 
 async def create_task(user: User, project_id: str, name: str, description: str = "", priority: str = "medium", due_date: str = None) -> str:
     """Creates a new task in a project."""
     async for db in get_session():
-        from software.backend.services.database_services import Task, Project
+        from services.database_services import Task, Project
         
         # Find the project
         result = await db.execute(
@@ -266,7 +279,7 @@ async def create_task(user: User, project_id: str, name: str, description: str =
 async def update_task(user: User, task_id: str, name: str = None, description: str = None, status: str = None, priority: str = None, due_date: str = None) -> str:
     """Updates a task."""
     async for db in get_session():
-        from software.backend.services.database_services import Task, Project
+        from services.database_services import Task, Project
         import uuid
         
         # Parse task_id as UUID
@@ -313,7 +326,7 @@ async def update_task(user: User, task_id: str, name: str = None, description: s
 async def delete_task(user: User, task_id: str) -> str:
     """Deletes a task."""
     async for db in get_session():
-        from software.backend.services.database_services import Task, Project
+        from services.database_services import Task, Project
         import uuid
         
         # Parse task_id as UUID
@@ -345,7 +358,7 @@ async def delete_task(user: User, task_id: str) -> str:
 async def list_team_members(user: User, project_id: str) -> str:
     """Lists team members for a project."""
     async for db in get_session():
-        from software.backend.services.database_services import TeamMember, Project, User as DBUser
+        from services.database_services import TeamMember, Project, User as DBUser
         
         # Find the project
         result = await db.execute(
@@ -383,7 +396,7 @@ async def list_team_members(user: User, project_id: str) -> str:
 async def add_team_member(user: User, project_id: str, username: str, role: str = "viewer") -> str:
     """Adds a team member to a project."""
     async for db in get_session():
-        from software.backend.services.database_services import TeamMember, Project, User as DBUser
+        from services.database_services import TeamMember, Project, User as DBUser
         
         # Find the project
         result = await db.execute(

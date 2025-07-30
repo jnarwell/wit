@@ -6,7 +6,7 @@ from datetime import datetime
 import enum
 import uuid
 
-from software.backend.services.database_services import Base
+from services.database_services import Base
 
 
 class MicrocontrollerType(str, enum.Enum):
@@ -42,6 +42,7 @@ class ConnectionStatus(str, enum.Enum):
 
 class Microcontroller(Base):
     __tablename__ = "microcontrollers"
+    __table_args__ = {'extend_existing': True}
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, nullable=False)
@@ -66,7 +67,7 @@ class Microcontroller(Base):
     
     # Relationships
     owner_id = Column(String, ForeignKey('users.id'), nullable=False)
-    owner = relationship("User", back_populates="microcontrollers")
+    # owner = relationship("User", back_populates="microcontrollers")  # TODO: Fix this relationship
     
     # Timestamps
     created_at = Column(DateTime, default=func.now())
@@ -79,6 +80,7 @@ class Microcontroller(Base):
 
 class SensorReading(Base):
     __tablename__ = "sensor_readings"
+    __table_args__ = {'extend_existing': True}
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     microcontroller_id = Column(String, ForeignKey('microcontrollers.id'), nullable=False)
@@ -95,6 +97,7 @@ class SensorReading(Base):
 
 class DeviceLog(Base):
     __tablename__ = "device_logs"
+    __table_args__ = {'extend_existing': True}
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     microcontroller_id = Column(String, ForeignKey('microcontrollers.id'), nullable=False)

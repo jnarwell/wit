@@ -18,19 +18,33 @@ import json
 from datetime import datetime
 import time
 
-# Import integrations
-from software.frontend.web.integrations.octoprint_integration import (
-    OctoPrintManager, OctoPrintConfig, PrinterState as OctoPrintState
-)
-from software.frontend.web.integrations.prusa_serial import (
-    PrusaSerial, PrusaConfig, PrinterState as PrusaState
-)
-from software.frontend.web.integrations.grbl_integration import (
-    GRBLController, GRBLConfig, MachineState
-)
+# Import integrations - Try to import, but provide fallbacks if not available
+try:
+    from software.frontend.web.integrations.octoprint_integration import (
+        OctoPrintManager, OctoPrintConfig, PrinterState as OctoPrintState
+    )
+    from software.frontend.web.integrations.prusa_serial import (
+        PrusaSerial, PrusaConfig, PrinterState as PrusaState
+    )
+    from software.frontend.web.integrations.grbl_integration import (
+        GRBLController, GRBLConfig, MachineState
+    )
+    INTEGRATIONS_AVAILABLE = True
+except ImportError:
+    # Fallback if integrations not available
+    INTEGRATIONS_AVAILABLE = False
+    OctoPrintManager = None
+    OctoPrintConfig = None
+    OctoPrintState = None
+    PrusaSerial = None
+    PrusaConfig = None
+    PrusaState = None
+    GRBLController = None
+    GRBLConfig = None
+    MachineState = None
 
 # Import auth
-from software.backend.services.auth_services import get_current_user
+from services.auth_services import get_current_user
 
 # Configure logging
 logger = logging.getLogger(__name__)
