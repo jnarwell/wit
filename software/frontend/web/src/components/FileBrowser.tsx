@@ -105,7 +105,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect }) => {
         e.stopPropagation();
 
         const items = [];
-        const basePath = node ? (node.is_dir ? node.path : node.path.substring(0, node.path.lastIndexOf('/'))) : (baseDir === 'user' ? `storage/users/${user?.id}` : `storage/projects/${projectId}`);
+        const basePath = node ? (node.is_dir ? node.path : node.path.substring(0, node.path.lastIndexOf('/'))) : '';
 
         if (node) {
             items.push({ label: 'Rename', action: () => handleRename(node, baseDir, projectId) });
@@ -130,7 +130,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect }) => {
             await fetch(`${API_BASE_URL}/api/v1/files/rename`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokens.access_token}` },
-                body: JSON.stringify({ path: node.path, new_path: newPath, base_dir: baseDir, project_id: projectId })
+                body: JSON.stringify({ old_path: node.path, new_path: newPath, base_dir: baseDir, project_id: projectId })
             });
             fetchFiles();
         }
@@ -155,12 +155,22 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ onFileSelect }) => {
             if (type === 'file' && !name.includes('.')) {
                 name += '.md';
             }
-            const path = `${basePath}/${name}${type === 'folder' ? '/' : ''}`;
-            await fetch(`${API_BASE_URL}/api/v1/files/create`, {
+            // Construct path correctly
+            const path = basePath ? `${basePath}/${name}${type === 'folder' ? '/' : ''}` : `${name}${type === 'folder' ? '/' : ''}`;
+            
+            console.log('Creating:', { path, base_dir: baseDir, project_id: projectId });
+            
+            const response = await fetch(`${API_BASE_URL}/api/v1/files/create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokens.access_token}` },
-                body: JSON.stringify({ path, base_dir: baseDir, project_id: projectId })
+                body: JSON.stringify({ path, base_dir: baseDir === 'user' ? 'users' : baseDir, project_id: projectId })
             });
+            
+            if (!response.ok) {
+                const error = await response.text();
+                console.error('Create failed:', error);
+            }
+            
             fetchFiles();
         }
     };

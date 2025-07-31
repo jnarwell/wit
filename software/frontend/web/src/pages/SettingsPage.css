@@ -120,8 +120,52 @@
   gap: 1.5rem;
 }
 
-.account-card {
+/* Category Sections */
+.categories-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.category-section {
   background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.category-header:hover {
+  background-color: #f3f4f6;
+}
+
+.category-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.category-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+  padding: 0 1.5rem 1.5rem 1.5rem;
+}
+
+.account-card {
+  background-color: white;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 1.5rem;
@@ -357,6 +401,10 @@
   }
 
   .accounts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .category-content {
     grid-template-columns: 1fr;
   }
 

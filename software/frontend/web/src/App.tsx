@@ -20,6 +20,8 @@ import EmailVerificationPage from './pages/EmailVerificationPage';
 import SettingsPage from './pages/SettingsPage';
 import Terminal from './components/Terminal';
 import './components/Terminal.css';
+import HomePage from './pages/HomePage';
+import AboutPage from './pages/AboutPage';
 
 type Page = 'dashboard' | 'machines' | 'projects' | 'sensors' | 'wit' | 'settings' |
            'machine-detail' | 'sensor-detail' | 'project-detail';
@@ -205,6 +207,8 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route path="/login" element={<LoginPage redirectTo="/dashboard" />} />
           <Route path="/create-user" element={<CreateUserPage />} />
           <Route path="/signup" element={<SignupPage />} />

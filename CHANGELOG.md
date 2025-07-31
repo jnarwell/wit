@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] - 2025-07-30
+## [Unreleased] - 2025-07-31
 
 ### Added
 - **Enhanced Signup Page**: Complete user registration experience with advanced features
@@ -45,6 +45,30 @@
   - **File Operations**: Enhanced existing file commands
   - **Equipment Management**: list all equipment and check status
   - Created detailed command documentation in `/docs/WIT_AI_COMMANDS.md`
+- **Homepage Terminal Interface**: Added landing page with terminal-style navigation
+  - Large terminal display with "Hello WIT" greeting and ASCII art logo
+  - Three navigation options: Sign In, Sign Up, and Learn More
+  - Full keyboard support (number keys 1-3, arrow keys, Enter) and mouse interaction
+  - 4x text size with responsive scaling for different screen sizes
+  - Auto-redirect to dashboard for authenticated users
+  - Consistent design matching existing terminal component
+- **About Page**: Created informational page about W.I.T. features
+  - Lists current features and upcoming additions
+  - Responsive design with proper overflow handling
+  - Consistent dark theme matching the application
+- **Settings Page Enhancement**: Improved external connections interface
+  - Added collapsible category sections (Project Management, File Management, Development, Cloud)
+  - Added new AI connections tab featuring Anthropic, OpenAI, Gemini, and DeepSeek
+  - Fixed icon import error (replaced non-existent FiBrain with FaBrain)
+  - Responsive design improvements for better mobile experience
+- **Backend File Management System**: Complete overhaul of file operations
+  - Added GET `/content` endpoint for file viewing with Query parameters
+  - Added GET `/project/{project_id}` endpoint for project-specific files
+  - Added WebSocket endpoints for real-time file updates (`/ws/project/{project_id}`, `/ws/files`)
+  - Fixed file paths to not include "default_user" prefix for cleaner URLs
+  - Updated all file operation endpoints to accept `base_dir` and `project_id` parameters
+  - Fixed path handling to prevent duplication issues
+  - Implemented proper file creation with actual disk writes
 
 ### Fixed
 - **Task Creation Backend**: Fixed missing `due_date` field assignment in task creation endpoint
@@ -75,6 +99,15 @@
   - Prevents model registration conflicts in declarative base
 - **Task Status Mismatch**: Aligned frontend and backend task status values (not_started, in_progress, blocked, complete, cancelled)
 - **Tasks Widget Error**: Fixed TypeError when rendering tasks with undefined status values
+- **File Management Path Issues**: Resolved multiple backend file operation errors
+  - Fixed 422 errors on file creation by updating request models
+  - Fixed 404 errors on file operations by handling path prefixes correctly
+  - Fixed rename operation to use `old_path` field instead of `path`
+  - Fixed file upload form field handling
+  - Resolved path duplication issue ("default_user/default_user")
+- **CSS Class Conflicts**: Fixed terminal page file explorer positioning
+  - Renamed HomePage terminal classes to avoid conflicts with existing Terminal component
+  - File explorer now correctly appears on the right side of the terminal page
 
 ### Changed
 - **Task Model**: Added `due_date` field to the Task SQLAlchemy model

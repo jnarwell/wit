@@ -1451,6 +1451,36 @@ async def send_printer_command(
 
 # ============== WEBSOCKET FOR REAL-TIME UPDATES ==============
 
+@app.websocket("/api/v1/equipment/ws/printers")
+async def websocket_equipment_printer_updates(websocket: WebSocket):
+    """WebSocket for real-time printer updates - equipment API path"""
+    await websocket.accept()
+    active_websockets.append(websocket)
+    
+    try:
+        # Send initial printer list
+        printers = await list_printers()
+        await websocket.send_json({
+            "type": "initial",
+            "printers": printers
+        })
+        
+        # Keep connection alive and send updates
+        while True:
+            # Wait for client messages (ping/pong)
+            data = await websocket.receive_text()
+            
+            # Could handle commands here if needed
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        active_websockets.remove(websocket)
+        logger.info("WebSocket client disconnected")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        if websocket in active_websockets:
+            active_websockets.remove(websocket)
+
 @app.websocket("/ws/printers")
 async def websocket_printer_updates(websocket: WebSocket):
     """WebSocket for real-time printer updates"""
@@ -1924,6 +1954,35 @@ async def get_project(project_id: str, current_user: User = Depends(get_current_
 @app.put("/api/v1/projects/{project_id}")
 async def update_project(project_id: str, updates: dict, current_user: User = Depends(get_current_user)):
     """Update project details"""
+    for i, project in enumerate(projects_db):
+        if project["id"] == project_id or project["project_id"] == project_id:
+            # Update allowed fields
+            if "name" in updates:
+                project["name"] = updates["name"]
+            if "description" in updates:
+                project["description"] = updates["description"]
+            if "status" in updates:
+                project["status"] = updates["status"]
+            if "priority" in updates:
+                project["priority"] = updates["priority"]
+            if "type" in updates:
+                project["type"] = updates["type"]
+            if "extra_data" in updates:
+                project["extra_data"].update(updates["extra_data"])
+            
+            project["updated_at"] = datetime.now().isoformat()
+            projects_db[i] = project
+            logger.info(f"Updated project: {project['name']} ({project['project_id']})")
+            return project
+    
+    raise HTTPException(
+        status_code=404,
+        detail=f"Project {project_id} not found"
+    )
+
+@app.patch("/api/v1/projects/{project_id}")
+async def patch_project(project_id: str, updates: dict, current_user: User = Depends(get_current_user)):
+    """Partially update project details"""
     for i, project in enumerate(projects_db):
         if project["id"] == project_id or project["project_id"] == project_id:
             # Update allowed fields

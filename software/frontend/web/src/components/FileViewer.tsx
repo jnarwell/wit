@@ -325,7 +325,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ path, baseDir, projectId, onClo
         setSaveStatus('unsaved');
         try {
             await fetch(`${API_BASE_URL}/api/v1/files/update`, {
-                method: 'POST',
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokens.access_token}` },
                 body: JSON.stringify({ path, content, base_dir: baseDir, project_id: projectId })
             });

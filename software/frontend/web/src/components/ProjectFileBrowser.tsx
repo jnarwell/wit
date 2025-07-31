@@ -227,7 +227,7 @@ const ProjectFileBrowser: React.FC<ProjectFileBrowserProps> = ({
                         'Authorization': `Bearer ${tokens?.access_token}` 
                     },
                     body: JSON.stringify({ 
-                        path: node.path, 
+                        old_path: node.path, 
                         new_path: newPath, 
                         base_dir: baseDir, 
                         project_id: projectId 

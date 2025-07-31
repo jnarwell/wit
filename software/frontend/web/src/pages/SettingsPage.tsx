@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FiSettings, FiUser, FiShield, FiLink, FiCheck, FiX, FiRefreshCw } from 'react-icons/fi';
-import { FaGoogle, FaGithub, FaAws, FaMicrosoft, FaApple, FaJira } from 'react-icons/fa';
-import { SiNotion, SiLinear } from 'react-icons/si';
+import { FiSettings, FiUser, FiShield, FiLink, FiCheck, FiX, FiRefreshCw, FiChevronDown, FiChevronUp, FiCpu } from 'react-icons/fi';
+import { FaGoogle, FaGithub, FaAws, FaMicrosoft, FaApple, FaJira, FaRobot, FaBrain } from 'react-icons/fa';
+import { SiNotion, SiLinear, SiOpenai, SiGooglegemini } from 'react-icons/si';
 import { useAuth } from '../contexts/AuthContext';
 import accountService from '../services/accountService';
 import './SettingsPage.css';
@@ -25,6 +25,7 @@ interface ProviderConfig {
   bgColor: string;
   description: string;
   scopes: string[];
+  category: 'project_management' | 'file_management' | 'development' | 'cloud' | 'ai';
 }
 
 const PROVIDERS: ProviderConfig[] = [
@@ -35,7 +36,8 @@ const PROVIDERS: ProviderConfig[] = [
     color: 'text-red-500',
     bgColor: 'bg-red-50',
     description: 'Access Google Drive, Gmail, and Calendar',
-    scopes: ['drive', 'gmail', 'calendar']
+    scopes: ['drive', 'gmail', 'calendar'],
+    category: 'file_management'
   },
   {
     id: 'github',
@@ -44,7 +46,8 @@ const PROVIDERS: ProviderConfig[] = [
     color: 'text-gray-800',
     bgColor: 'bg-gray-100',
     description: 'Access repositories, issues, and pull requests',
-    scopes: ['repo', 'user', 'gist']
+    scopes: ['repo', 'user', 'gist'],
+    category: 'development'
   },
   {
     id: 'notion',
@@ -53,7 +56,8 @@ const PROVIDERS: ProviderConfig[] = [
     color: 'text-black',
     bgColor: 'bg-gray-50',
     description: 'Access and sync Notion workspaces',
-    scopes: ['read_content', 'write_content']
+    scopes: ['read_content', 'write_content'],
+    category: 'project_management'
   },
   {
     id: 'microsoft',
@@ -62,7 +66,8 @@ const PROVIDERS: ProviderConfig[] = [
     color: 'text-blue-600',
     bgColor: 'bg-blue-50',
     description: 'Access Outlook, OneDrive, and Teams',
-    scopes: ['mail', 'files', 'calendar']
+    scopes: ['mail', 'files', 'calendar'],
+    category: 'file_management'
   },
   {
     id: 'apple',
@@ -71,7 +76,8 @@ const PROVIDERS: ProviderConfig[] = [
     color: 'text-gray-700',
     bgColor: 'bg-gray-50',
     description: 'Access iCloud services',
-    scopes: ['icloud_drive', 'mail']
+    scopes: ['icloud_drive', 'mail'],
+    category: 'file_management'
   },
   {
     id: 'aws',
@@ -80,7 +86,8 @@ const PROVIDERS: ProviderConfig[] = [
     color: 'text-orange-500',
     bgColor: 'bg-orange-50',
     description: 'Manage AWS resources and services',
-    scopes: ['ec2', 's3', 'lambda']
+    scopes: ['ec2', 's3', 'lambda'],
+    category: 'cloud'
   },
   {
     id: 'jira',
@@ -89,7 +96,8 @@ const PROVIDERS: ProviderConfig[] = [
     color: 'text-blue-500',
     bgColor: 'bg-blue-50',
     description: 'Access Jira projects and issues',
-    scopes: ['read_jira', 'write_jira']
+    scopes: ['read_jira', 'write_jira'],
+    category: 'project_management'
   },
   {
     id: 'linear',
@@ -98,16 +106,61 @@ const PROVIDERS: ProviderConfig[] = [
     color: 'text-purple-600',
     bgColor: 'bg-purple-50',
     description: 'Sync Linear issues and projects',
-    scopes: ['read', 'write', 'admin']
+    scopes: ['read', 'write', 'admin'],
+    category: 'project_management'
+  }
+];
+
+const AI_PROVIDERS: ProviderConfig[] = [
+  {
+    id: 'anthropic',
+    name: 'Anthropic',
+    icon: FaRobot,
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-50',
+    description: 'Connect to Claude AI for intelligent assistance',
+    scopes: ['chat', 'completions'],
+    category: 'ai'
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    icon: SiOpenai,
+    color: 'text-green-600',
+    bgColor: 'bg-green-50',
+    description: 'Access GPT models and DALL-E for AI capabilities',
+    scopes: ['chat', 'completions', 'images'],
+    category: 'ai'
+  },
+  {
+    id: 'gemini',
+    name: 'Google Gemini',
+    icon: SiGooglegemini,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
+    description: 'Use Google\'s Gemini AI models',
+    scopes: ['chat', 'completions'],
+    category: 'ai'
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    icon: FaRobot,
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50',
+    description: 'Connect to DeepSeek AI models',
+    scopes: ['chat', 'completions'],
+    category: 'ai'
   }
 ];
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'profile' | 'accounts' | 'security' | 'preferences'>('accounts');
+  const [activeTab, setActiveTab] = useState<'profile' | 'accounts' | 'ai' | 'security' | 'preferences'>('accounts');
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['project_management', 'file_management', 'development', 'cloud']));
 
   useEffect(() => {
     // Check for OAuth callback parameters
@@ -188,6 +241,57 @@ const SettingsPage: React.FC = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(category)) {
+        newSet.delete(category);
+      } else {
+        newSet.add(category);
+      }
+      return newSet;
+    });
+  };
+
+  const getCategoryName = (category: string): string => {
+    switch (category) {
+      case 'project_management':
+        return 'Project Management';
+      case 'file_management':
+        return 'File Management';
+      case 'development':
+        return 'Development Tools';
+      case 'cloud':
+        return 'Cloud Services';
+      default:
+        return category;
+    }
+  };
+
+  const renderCategorySection = (category: string, providers: ProviderConfig[]) => {
+    const isExpanded = expandedCategories.has(category);
+    const categoryProviders = providers.filter(p => p.category === category);
+
+    if (categoryProviders.length === 0) return null;
+
+    return (
+      <div key={category} className="category-section">
+        <button
+          className="category-header"
+          onClick={() => toggleCategory(category)}
+        >
+          <h3 className="category-title">{getCategoryName(category)}</h3>
+          {isExpanded ? <FiChevronUp className="w-5 h-5" /> : <FiChevronDown className="w-5 h-5" />}
+        </button>
+        {isExpanded && (
+          <div className="category-content">
+            {categoryProviders.map(provider => renderAccountCard(provider))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const renderAccountCard = (provider: ProviderConfig) => {
@@ -312,8 +416,34 @@ const SettingsPage: React.FC = () => {
                 <p>Loading connected accounts...</p>
               </div>
             ) : (
+              <div className="categories-container">
+                {renderCategorySection('project_management', PROVIDERS)}
+                {renderCategorySection('file_management', PROVIDERS)}
+                {renderCategorySection('development', PROVIDERS)}
+                {renderCategorySection('cloud', PROVIDERS)}
+              </div>
+            )}
+          </div>
+        );
+
+      case 'ai':
+        return (
+          <div className="settings-section">
+            <div className="section-header">
+              <h2 className="section-title">AI Connections</h2>
+              <p className="section-description">
+                Connect to AI providers for intelligent assistance and automation
+              </p>
+            </div>
+            
+            {isLoading ? (
+              <div className="loading-state">
+                <FiRefreshCw className="w-6 h-6 animate-spin" />
+                <p>Loading AI connections...</p>
+              </div>
+            ) : (
               <div className="accounts-grid">
-                {PROVIDERS.map(provider => renderAccountCard(provider))}
+                {AI_PROVIDERS.map(provider => renderAccountCard(provider))}
               </div>
             )}
           </div>
@@ -394,6 +524,13 @@ const SettingsPage: React.FC = () => {
           >
             <FiLink className="w-4 h-4" />
             Connected Accounts
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'ai' ? 'active' : ''}`}
+            onClick={() => setActiveTab('ai')}
+          >
+            <FaBrain className="w-4 h-4" />
+            AI Connections
           </button>
           <button
             className={`tab-btn ${activeTab === 'security' ? 'active' : ''}`}

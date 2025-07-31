@@ -1,0 +1,91 @@
+.about-page {
+    width: 100%;
+    height: 100vh;
+    background: #0a0a0a;
+    color: #f0f0f0;
+    padding: 40px 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+.about-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding-bottom: 40px;
+}
+
+.about-page h1 {
+    color: #f0f0f0;
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.about-page h2 {
+    color: #888;
+    font-size: 1.5em;
+    margin-bottom: 40px;
+    text-align: center;
+    font-weight: 300;
+}
+
+.about-content {
+    background: #1a1a1a;
+    border-radius: 8px;
+    padding: 30px;
+    margin-bottom: 30px;
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+}
+
+.about-content p {
+    font-size: 1.1em;
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+.features, .coming-soon {
+    margin-bottom: 30px;
+}
+
+.features h3, .coming-soon h3 {
+    color: #f0f0f0;
+    font-size: 1.3em;
+    margin-bottom: 15px;
+    opacity: 0.9;
+}
+
+.features ul, .coming-soon ul {
+    list-style: none;
+    padding: 0;
+}
+
+.features li, .coming-soon li {
+    padding: 10px 0;
+    border-bottom: 1px solid #333;
+}
+
+.features li:last-child, .coming-soon li:last-child {
+    border-bottom: none;
+}
+
+.back-button {
+    display: block;
+    margin: 0 auto;
+    padding: 12px 30px;
+    background: #333;
+    color: #f0f0f0;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: normal;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.back-button:hover {
+    background: #444;
+    border-color: #666;
+    transform: translateY(-1px);
+}

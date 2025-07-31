@@ -24,7 +24,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate }) => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   return (
