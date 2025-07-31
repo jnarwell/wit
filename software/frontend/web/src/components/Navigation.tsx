@@ -1,6 +1,6 @@
 // src/components/Navigation.tsx
 import React, { useState } from 'react';
-import { FiHome, FiCpu, FiFolder, FiActivity, FiTerminal, FiUser, FiLogOut, FiChevronDown, FiSettings, FiCode } from 'react-icons/fi';
+import { FiHome, FiCpu, FiFolder, FiActivity, FiTerminal, FiUser, FiLogOut, FiChevronDown, FiSettings, FiCode, FiBox } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import MCPStatusIndicator from './MCPStatusIndicator';
@@ -21,6 +21,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate }) => {
     { id: 'projects', label: 'Projects', icon: FiFolder },
     { id: 'sensors', label: 'Sensors', icon: FiActivity },
     { id: 'software', label: 'Software', icon: FiCode },
+    { id: 'function', label: 'Function', icon: FiBox },
     { id: 'wit', label: 'W.I.T.', icon: FiTerminal }
   ];
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCode, FaCloud, FaDatabase, FaRobot, FaCubes, FaChartLine, FaMicrochip } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCode, FaCloud, FaDatabase, FaRobot, FaCubes, FaChartLine, FaMicrochip, FaCube, FaPrint } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import './SoftwareIntegrationsPage.css';
 
@@ -33,6 +33,8 @@ const SOFTWARE_TYPES = {
   'pcb': { label: 'PCB & Electronics', icon: FaMicrochip },
   'data_acquisition': { label: 'Data Acquisition', icon: FaChartLine },
   'manufacturing': { label: 'Manufacturing & CAM', icon: FaCubes },
+  'slicer': { label: '3D Slicers', icon: FaCube },
+  'printer_control': { label: 'Printer Control', icon: FaPrint },
   'api': { label: 'API', icon: FaCode },
   'database': { label: 'Database', icon: FaDatabase },
   'cloud': { label: 'Cloud Service', icon: FaCloud },
@@ -387,6 +389,146 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       type: 'manufacturing',
       status: 'pending',
       description: "Siemens' manufacturing solution",
+      comingSoon: true
+    },
+    
+    // 3D Slicers
+    {
+      id: 'prusaslicer-001',
+      name: 'PrusaSlicer',
+      type: 'slicer',
+      status: 'connected',
+      description: 'Advanced open-source slicer with excellent Prusa printer support',
+      comingSoon: false
+    },
+    {
+      id: 'cura-001',
+      name: 'Ultimaker Cura',
+      type: 'slicer',
+      status: 'connected',
+      description: 'Popular open-source slicer with wide printer compatibility',
+      comingSoon: false
+    },
+    {
+      id: 'bambustudio-001',
+      name: 'Bambu Studio',
+      type: 'slicer',
+      status: 'connected',
+      description: 'Optimized slicer for Bambu Lab printers with cloud features',
+      comingSoon: false
+    },
+    {
+      id: 'superslicer-001',
+      name: 'SuperSlicer',
+      type: 'slicer',
+      status: 'pending',
+      description: 'PrusaSlicer fork with additional features and calibration tools',
+      comingSoon: true
+    },
+    {
+      id: 'orcaslicer-001',
+      name: 'OrcaSlicer',
+      type: 'slicer',
+      status: 'pending',
+      description: 'Bambu Studio fork with enhanced features and UI improvements',
+      comingSoon: true
+    },
+    {
+      id: 'simplify3d-001',
+      name: 'Simplify3D',
+      type: 'slicer',
+      status: 'pending',
+      description: 'Professional slicer with advanced support generation',
+      comingSoon: true
+    },
+    {
+      id: 'ideamaker-001',
+      name: 'ideaMaker',
+      type: 'slicer',
+      status: 'pending',
+      description: 'Feature-rich slicer by Raise3D',
+      comingSoon: true
+    },
+    {
+      id: 'chitubox-001',
+      name: 'CHITUBOX',
+      type: 'slicer',
+      status: 'pending',
+      description: 'Resin printer slicer with excellent support generation',
+      comingSoon: true
+    },
+    {
+      id: 'lychee-001',
+      name: 'Lychee Slicer',
+      type: 'slicer',
+      status: 'pending',
+      description: 'Professional resin slicer with AI support detection',
+      comingSoon: true
+    },
+    
+    // Printer Control Software
+    {
+      id: 'octoprint-001',
+      name: 'OctoPrint',
+      type: 'printer_control',
+      status: 'connected',
+      description: 'Web-based 3D printer control with extensive plugin ecosystem',
+      comingSoon: false
+    },
+    {
+      id: 'mainsail-001',
+      name: 'Mainsail',
+      type: 'printer_control',
+      status: 'pending',
+      description: 'Lightweight web interface for Klipper 3D printer firmware',
+      comingSoon: true
+    },
+    {
+      id: 'fluidd-001',
+      name: 'Fluidd',
+      type: 'printer_control',
+      status: 'pending',
+      description: 'Responsive web UI for Klipper with mobile support',
+      comingSoon: true
+    },
+    {
+      id: 'duetwebcontrol-001',
+      name: 'Duet Web Control',
+      type: 'printer_control',
+      status: 'pending',
+      description: 'Web interface for Duet3D printer boards',
+      comingSoon: true
+    },
+    {
+      id: 'repetierserver-001',
+      name: 'Repetier-Server',
+      type: 'printer_control',
+      status: 'pending',
+      description: 'Professional 3D printer server with multi-printer support',
+      comingSoon: true
+    },
+    {
+      id: 'astroprint-001',
+      name: 'AstroPrint',
+      type: 'printer_control',
+      status: 'pending',
+      description: 'Cloud-based 3D printer management platform',
+      comingSoon: true
+    },
+    {
+      id: 'prusalink-001',
+      name: 'PrusaLink',
+      type: 'printer_control',
+      status: 'connected',
+      description: 'Local web interface for Prusa printers',
+      comingSoon: false
+    },
+    {
+      id: 'klipper-001',
+      name: 'Klipper',
+      type: 'printer_control',
+      status: 'pending',
+      description: '3D printer firmware with advanced features and web control',
       comingSoon: true
     }
   ];

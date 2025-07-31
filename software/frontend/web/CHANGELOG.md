@@ -17,6 +17,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Handles math, science, engineering, and general knowledge queries
   - Voice-enabled AI responses
   - Examples: "what is the square root of 144", "how do I calculate voltage drop"
+- Terminal now routes ANY unrecognized command to AI models
+  - WIT-specific commands handled first
+  - All other commands sent to AI for natural language processing
+  - Updated help text to reflect new AI-first approach
+- Function page with custom WIT tools and capabilities
+  - 11 custom tools across 5 categories (3D Modeling, Visualization, Analysis, Automation, Utilities)
+  - WIT CAD Modeler with 3D viewer demo
+  - WIT Slicer with full slicing interface demo
+  - Tool status indicators (Available, Beta, Coming Soon)
+  - Category filtering and statistics
+- 3D Slicer software integrations
+  - Added 9 popular slicers (PrusaSlicer, Cura, Bambu Studio, etc.)
+  - Added 8 printer control software (OctoPrint, Mainsail, PrusaLink, etc.)
+  - New categories: "3D Slicers" and "Printer Control" in Software page
 
 ### Fixed
 - Voice feedback loop - terminal no longer responds to its own speech

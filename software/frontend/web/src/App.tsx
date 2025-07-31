@@ -23,8 +23,9 @@ import './components/Terminal.css';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
 import SoftwareIntegrationsPage from './pages/SoftwareIntegrationsPage';
+import FunctionPage from './components/FunctionPage';
 
-type Page = 'dashboard' | 'machines' | 'projects' | 'sensors' | 'wit' | 'settings' | 'software' |
+type Page = 'dashboard' | 'machines' | 'projects' | 'sensors' | 'wit' | 'settings' | 'software' | 'function' |
            'machine-detail' | 'sensor-detail' | 'project-detail' | 'software-detail';
 
 interface DetailPageState {
@@ -187,6 +188,8 @@ function AppContent() {
         return detailPageState ? (
           <div>Software Integration Detail Page - Coming Soon</div>
         ) : null;
+      case 'function':
+        return <FunctionPage />;
       default:
         return <Dashboard />;
     }

@@ -39,9 +39,9 @@ const Terminal: React.FC = () => {
     const [history, setHistory] = useState<TerminalLine[]>(() => {
         try {
             const savedHistory = localStorage.getItem('wit-terminal-history');
-            return savedHistory ? JSON.parse(savedHistory) : [{ role: 'assistant', content: 'Welcome to the W.I.T. Terminal. Type "help" for commands or "voice on" to enable voice mode.' }];
+            return savedHistory ? JSON.parse(savedHistory) : [{ role: 'assistant', content: 'Welcome to the W.I.T. Terminal! I understand natural language - just type any command or question. Type "help" for more info or "voice on" to speak to me.' }];
         } catch (error) {
-            return [{ role: 'assistant', content: 'Welcome to the W.I.T. Terminal. Type "help" for commands or "voice on" to enable voice mode.' }];
+            return [{ role: 'assistant', content: 'Welcome to the W.I.T. Terminal! I understand natural language - just type any command or question. Type "help" for more info or "voice on" to speak to me.' }];
         }
     });
     const [input, setInput] = useState('');
@@ -200,35 +200,36 @@ const Terminal: React.FC = () => {
         }
         
         if (lowerCommand === 'help') {
-            const helpMessage = `W.I.T. Terminal Commands:
+            const helpMessage = `W.I.T. Terminal - AI-Enhanced Command Interface
 
-Basic Commands:
+The terminal now understands ANY command or question you type!
+
+Built-in Commands:
 • "clear" - Clear terminal history
 • "help" - Show this help message
-
-AI Commands:
-• "ask [question]" - Ask a general question to AI
-• "?" or "??" followed by question - Quick AI query
-• "@ai [question]" - Direct AI query
-
-Voice Commands:
-• "voice on" - Enable voice mode
-• "voice off" - Disable voice mode  
+• "voice on/off" - Toggle voice mode
 • "voice help" - Show voice-specific help
 
-When voice is enabled:
-• Say "hey wit" to wake up when sleeping
-• Say "stop" to deactivate voice mode
-• Terminal will pause after 3 seconds of silence
-• Terminal will sleep after 5 minutes of inactivity
-
-Examples:
+WIT Workshop Commands (examples):
 • "create a new project called workshop automation"
-• "add a 3d printer to my machines"
+• "add a 3d printer to my machines"  
 • "show me all sensors"
-• "ask what is the square root of 144"
-• "? how do I calculate voltage drop"
-• "@ai explain the difference between AC and DC"`;
+• "list my projects"
+• "check printer status"
+
+AI Capabilities:
+• Ask ANY question - the terminal will understand!
+• Math calculations work naturally: "what is 25 * 4"
+• Engineering queries: "how do I calculate voltage drop"
+• General knowledge: "explain the difference between AC and DC"
+• Workshop help: "what temperature should I use for PLA"
+
+Voice Mode:
+• Say "hey wit" to wake up when sleeping
+• Terminal pauses after 3 seconds of silence
+• Sleeps after 5 minutes of inactivity
+
+💡 Tip: Just type naturally! If it's not a WIT command, AI will help.`;
             setHistory(prev => [...prev, { role: 'assistant', content: helpMessage }]);
             await logMessage('assistant', helpMessage);
             setIsProcessing(false);
@@ -250,76 +251,9 @@ Examples:
             return;
         }
 
-        // Check if this is an AI query
-        const isAIQuery = 
-            command.startsWith('ask ') ||
-            command.startsWith('? ') ||
-            command.startsWith('?? ') ||
-            command.startsWith('@ai ') ||
-            command.trim().startsWith('?') ||
-            // Detect questions without prefix
-            (command.toLowerCase().includes('what is') ||
-             command.toLowerCase().includes('what are') ||
-             command.toLowerCase().includes('how do') ||
-             command.toLowerCase().includes('how to') ||
-             command.toLowerCase().includes('calculate') ||
-             command.toLowerCase().includes('explain') ||
-             command.toLowerCase().includes('define') ||
-             command.toLowerCase().includes('why') ||
-             command.toLowerCase().includes('when') ||
-             command.toLowerCase().includes('where') ||
-             command.toLowerCase().includes('who') ||
-             command.toLowerCase().includes('which') ||
-             // Math operations
-             /\d+\s*[\+\-\*\/\^]\s*\d+/.test(command) ||
-             command.includes('√') ||
-             command.toLowerCase().includes('square root') ||
-             command.toLowerCase().includes('sqrt'));
-
-        if (isAIQuery) {
-            // Extract the actual question
-            let question = command;
-            if (command.startsWith('ask ')) {
-                question = command.substring(4).trim();
-            } else if (command.startsWith('@ai ')) {
-                question = command.substring(4).trim();
-            } else if (command.startsWith('?? ')) {
-                question = command.substring(3).trim();
-            } else if (command.startsWith('? ')) {
-                question = command.substring(2).trim();
-            } else if (command.trim() === '?') {
-                const errorMsg = 'Please provide a question after the ? symbol';
-                setHistory(prev => [...prev, { role: 'assistant', content: errorMsg }]);
-                await logMessage('assistant', errorMsg);
-                setIsProcessing(false);
-                return;
-            }
-
-            try {
-                // Query the AI service with auth tokens
-                const aiResponse = await aiService.query({
-                    query: question,
-                    context: 'User is in the WIT terminal, a workshop management system',
-                    tokens: tokens
-                });
-
-                const formattedResponse = `[AI: ${aiResponse.provider}] ${aiResponse.response}`;
-                setHistory(prev => [...prev, { role: 'assistant', content: formattedResponse }]);
-                await logMessage('assistant', formattedResponse);
-
-                // Speak the response if voice is enabled
-                if (voiceEnabled && !voiceService.isSleeping()) {
-                    voiceService.speak(aiResponse.response);
-                }
-            } catch (error) {
-                const errorMsg = `AI Error: ${error instanceof Error ? error.message : 'Failed to query AI'}`;
-                setHistory(prev => [...prev, { role: 'assistant', content: errorMsg }]);
-                await logMessage('assistant', errorMsg);
-            }
-
-            setIsProcessing(false);
-            return;
-        }
+        // First, try to execute as a WIT command
+        let isWitCommand = true;
+        let witResponse = null;
 
         try {
             const response = await fetch(`${API_BASE_URL}/api/v1/terminal/command`, {
@@ -335,21 +269,38 @@ Examples:
                     synthesize: settings.synthesizeResults && settings.agents.filter(a => a.enabled).length > 1
                 }),
             });
+            
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.detail || 'API request failed');
             }
+            
             const data = await response.json();
             
+            // Check if WIT recognized the command
+            if (data.response && data.response.includes("I understand you said") && data.response.includes("I'm still learning")) {
+                // Command not recognized by WIT, mark as non-WIT command
+                isWitCommand = false;
+            } else {
+                // WIT handled the command successfully
+                witResponse = data;
+            }
+        } catch (error) {
+            // If there's an error connecting to WIT backend, treat as non-WIT command
+            isWitCommand = false;
+        }
+
+        // If WIT handled the command successfully, process the response
+        if (isWitCommand && witResponse) {
             // Handle multi-agent responses (future implementation)
             const enabledAgents = settings.agents.filter(a => a.enabled);
-            let responseContent = data.response;
+            let responseContent = witResponse.response;
             
-            if (settings.synthesizeResults && enabledAgents.length > 1 && data.synthesized) {
+            if (settings.synthesizeResults && enabledAgents.length > 1 && witResponse.synthesized) {
                 responseContent = `[Synthesized from ${enabledAgents.length} agents]\n${responseContent}`;
-            } else if (enabledAgents.length > 1 && data.multiAgentResponses) {
+            } else if (enabledAgents.length > 1 && witResponse.multiAgentResponses) {
                 // Future: Show individual agent responses
-                responseContent = data.response;
+                responseContent = witResponse.response;
             }
             
             setHistory(prev => [...prev, { role: 'assistant', content: responseContent }]);
@@ -361,7 +312,7 @@ Examples:
             }
             
             // Check if the response indicates that items were created/updated
-            const responseText = data.response.toLowerCase();
+            const responseText = witResponse.response.toLowerCase();
             
             // Check for project creation/update
             if (responseText.includes('project') && (responseText.includes('created') || responseText.includes('added') || responseText.includes('updated'))) {
@@ -394,10 +345,50 @@ Examples:
                     window.dispatchEvent(new Event('sensors-updated'));
                 }
             }
+            
+            setIsProcessing(false);
+            return;
+        }
+
+        // If WIT didn't handle the command, send it to AI
+        try {
+            // Extract question if it has AI prefix
+            let question = command;
+            if (command.startsWith('ask ')) {
+                question = command.substring(4).trim();
+            } else if (command.startsWith('@ai ')) {
+                question = command.substring(4).trim();
+            } else if (command.startsWith('?? ')) {
+                question = command.substring(3).trim();
+            } else if (command.startsWith('? ')) {
+                question = command.substring(2).trim();
+            } else if (command.trim() === '?') {
+                const errorMsg = 'Please provide a question after the ? symbol';
+                setHistory(prev => [...prev, { role: 'assistant', content: errorMsg }]);
+                await logMessage('assistant', errorMsg);
+                setIsProcessing(false);
+                return;
+            }
+
+            // Query the AI service with auth tokens
+            const aiResponse = await aiService.query({
+                query: question,
+                context: 'User is in the WIT terminal, a workshop management system. They may be asking general questions or workshop-related queries.',
+                tokens: tokens
+            });
+
+            const formattedResponse = `[AI: ${aiResponse.provider}] ${aiResponse.response}`;
+            setHistory(prev => [...prev, { role: 'assistant', content: formattedResponse }]);
+            await logMessage('assistant', formattedResponse);
+
+            // Speak the response if voice is enabled
+            if (voiceEnabled && !voiceService.isSleeping()) {
+                voiceService.speak(aiResponse.response);
+            }
         } catch (error) {
-            const errorMessage = `Error: ${error instanceof Error ? error.message : 'Could not connect to the terminal server.'}`;
-            setHistory(prev => [...prev, { role: 'assistant', content: errorMessage }]);
-            await logMessage('assistant', errorMessage);
+            const errorMsg = `AI Error: ${error instanceof Error ? error.message : 'Failed to query AI'}`;
+            setHistory(prev => [...prev, { role: 'assistant', content: errorMsg }]);
+            await logMessage('assistant', errorMsg);
         } finally {
             setIsProcessing(false);
         }
