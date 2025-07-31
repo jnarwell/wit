@@ -27,8 +27,8 @@ class VoiceService {
     enabled: false,
     wakeWord: 'hey wit',
     voice: 'default',
-    pitch: 1,
-    rate: 1,
+    pitch: 0.9,  // Lower pitch for deeper voice
+    rate: 0.9,   // Slightly slower for British accent
     volume: 1,
     continuous: true,
     autoSleep: true,
@@ -50,6 +50,16 @@ class VoiceService {
     this.initializeSpeechRecognition();
     this.synthesis = window.speechSynthesis;
     this.loadSettings();
+    
+    // Ensure voices are loaded
+    if (this.synthesis) {
+      // Some browsers need a delay to load voices
+      this.synthesis.getVoices();
+      this.synthesis.onvoiceschanged = () => {
+        const voices = this.synthesis!.getVoices();
+        console.log('[VoiceService] Available voices:', voices.map(v => `${v.name} (${v.lang})`));
+      };
+    }
   }
 
   private initializeSpeechRecognition() {
@@ -151,6 +161,13 @@ class VoiceService {
 
   private handleFinalTranscript(transcript: string) {
     console.log('[VoiceService] Final transcript:', transcript);
+    
+    // Ignore input while speaking to prevent feedback loops
+    if (this.state.isSpeaking) {
+      console.log('[VoiceService] Ignoring transcript while speaking');
+      return;
+    }
+    
     this.emit('final-transcript', transcript);
     
     const lowerTranscript = transcript.toLowerCase().trim();
@@ -311,6 +328,12 @@ class VoiceService {
       return;
     }
 
+    // Stop listening while speaking to prevent feedback loop
+    const wasListening = this.state.isListening;
+    if (wasListening) {
+      this.stopListening();
+    }
+
     // Cancel current speech if priority
     if (options?.priority && this.state.isSpeaking) {
       this.synthesis.cancel();
@@ -324,9 +347,25 @@ class VoiceService {
       utterance.rate = this.settings.rate;
       utterance.volume = this.settings.volume;
       
-      // Select voice
-      if (this.settings.voice !== 'default') {
-        const voices = this.synthesis.getVoices();
+      // Try to select a British male voice
+      const voices = this.synthesis!.getVoices();
+      const britishVoices = voices.filter(v => 
+        v.lang.includes('en-GB') && 
+        (v.name.toLowerCase().includes('male') || 
+         v.name.toLowerCase().includes('daniel') ||
+         v.name.toLowerCase().includes('arthur') ||
+         v.name.toLowerCase().includes('george'))
+      );
+      
+      // Fallback to any British voice
+      const anyBritishVoice = britishVoices.length > 0 
+        ? britishVoices[0] 
+        : voices.find(v => v.lang.includes('en-GB'));
+      
+      if (anyBritishVoice) {
+        utterance.voice = anyBritishVoice;
+        console.log('[VoiceService] Using voice:', anyBritishVoice.name);
+      } else if (this.settings.voice !== 'default') {
         const selectedVoice = voices.find(v => v.name === this.settings.voice);
         if (selectedVoice) {
           utterance.voice = selectedVoice;
@@ -341,12 +380,24 @@ class VoiceService {
       utterance.onend = () => {
         this.state.isSpeaking = false;
         this.emit('speech-end');
+        
+        // Resume listening after speaking if it was active
+        if (wasListening && this.settings.enabled && !this.state.isSleeping) {
+          setTimeout(() => this.startListening(), 500); // Small delay to avoid picking up echo
+        }
+        
         resolve();
       };
 
       utterance.onerror = (event) => {
         console.error('[VoiceService] Speech error:', event);
         this.state.isSpeaking = false;
+        
+        // Resume listening on error too
+        if (wasListening && this.settings.enabled && !this.state.isSleeping) {
+          setTimeout(() => this.startListening(), 500);
+        }
+        
         resolve();
       };
 

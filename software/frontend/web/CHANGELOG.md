@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Voice feedback loop - terminal no longer responds to its own speech
+- Added British male voice selection for deeper voice
+- Pauses speech recognition while speaking to prevent echo
+
 ### Added
 - Voice-enabled terminal with speech recognition and text-to-speech
   - Voice commands: "voice on/off" to toggle voice mode
