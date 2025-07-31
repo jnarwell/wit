@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { FiSettings, FiUser, FiShield, FiLink, FiCheck, FiX, FiRefreshCw, FiChevronDown, FiChevronUp, FiCpu } from 'react-icons/fi';
+import { FiSettings, FiUser, FiShield, FiLink, FiCheck, FiX, FiRefreshCw, FiChevronDown, FiChevronUp, FiCpu, FiServer } from 'react-icons/fi';
 import { FaGoogle, FaGithub, FaAws, FaMicrosoft, FaApple, FaJira, FaRobot, FaBrain } from 'react-icons/fa';
 import { SiNotion, SiLinear, SiOpenai, SiGooglegemini } from 'react-icons/si';
 import { useAuth } from '../contexts/AuthContext';
 import accountService from '../services/accountService';
+import MCPSettingsComponent from '../components/MCPSettings';
 import './SettingsPage.css';
 
 interface LinkedAccount {
@@ -156,11 +157,12 @@ const AI_PROVIDERS: ProviderConfig[] = [
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'profile' | 'accounts' | 'ai' | 'security' | 'preferences'>('accounts');
+  const [activeTab, setActiveTab] = useState<'profile' | 'accounts' | 'ai' | 'mcp' | 'security' | 'preferences'>('accounts');
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['project_management', 'file_management', 'development', 'cloud']));
+  const [showMCPSettings, setShowMCPSettings] = useState(false);
 
   useEffect(() => {
     // Check for OAuth callback parameters
@@ -449,6 +451,40 @@ const SettingsPage: React.FC = () => {
           </div>
         );
 
+      case 'mcp':
+        return (
+          <div className="settings-section">
+            <div className="section-header">
+              <h2 className="section-title">MCP Settings</h2>
+              <p className="section-description">
+                Configure Model Context Protocol for two-way AI model communication
+              </p>
+            </div>
+            
+            <button
+              onClick={() => setShowMCPSettings(true)}
+              className="btn-connect"
+              style={{ width: 'auto', padding: '12px 24px' }}
+            >
+              <FiServer className="w-4 h-4 mr-2" />
+              Open MCP Configuration
+            </button>
+
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-medium text-gray-700 mb-2">What is MCP?</h3>
+              <p className="text-sm text-gray-600 mb-2">
+                The Model Context Protocol (MCP) enables secure, bidirectional communication between WIT and external AI models.
+              </p>
+              <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
+                <li>Share specific data types (machines, projects, sensors) with AI models</li>
+                <li>Control read/write permissions for external models</li>
+                <li>Enable AI models to interact with your WIT workspace</li>
+                <li>Maintain data privacy with granular access controls</li>
+              </ul>
+            </div>
+          </div>
+        );
+
       case 'security':
         return (
           <div className="settings-section">
@@ -533,6 +569,13 @@ const SettingsPage: React.FC = () => {
             AI Connections
           </button>
           <button
+            className={`tab-btn ${activeTab === 'mcp' ? 'active' : ''}`}
+            onClick={() => setActiveTab('mcp')}
+          >
+            <FiServer className="w-4 h-4" />
+            MCP
+          </button>
+          <button
             className={`tab-btn ${activeTab === 'security' ? 'active' : ''}`}
             onClick={() => setActiveTab('security')}
           >
@@ -552,6 +595,10 @@ const SettingsPage: React.FC = () => {
           {renderContent()}
         </div>
       </div>
+
+      {showMCPSettings && (
+        <MCPSettingsComponent onClose={() => setShowMCPSettings(false)} />
+      )}
     </div>
   );
 };

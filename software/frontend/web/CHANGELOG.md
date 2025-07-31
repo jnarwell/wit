@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- MCP (Model Context Protocol) integration for two-way AI model communication
+  - Comprehensive MCP settings panel in user settings
+  - Data permission management (machines, projects, sensors, tasks, files, analytics, user profile)
+  - Model operation permissions (read, write, execute, delete)
+  - Trusted AI model whitelist
+  - MCP server connection configuration
+  - Auto-sync functionality with configurable intervals
+  - Real-time MCP status indicator in navigation bar
+  - WebSocket-based communication service
+  - Secure authentication with API keys
 - Audio and video recording functionality to dashboard widgets
   - One-click recording for audio widget (microphone sources)
   - One-click recording for video widget (webcam sources)
@@ -20,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced audio widget with recording controls
 - Enhanced video widget with recording controls
 - Updated widget status indicators to show recording state
+- Added MCP tab to settings page
 
 ## [0.2.0] - 2024-01-31
 

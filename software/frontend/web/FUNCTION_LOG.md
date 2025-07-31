@@ -4,6 +4,40 @@ This document tracks major functionality additions and changes to the WIT fronte
 
 ## 2024-01-31
 
+### MCP (Model Context Protocol) Integration
+
+#### MCP Settings Component (MCPSettings.tsx)
+- **Component**: `MCPSettingsComponent`
+  - Full configuration interface for MCP
+  - Data permission toggles
+  - Model permission management
+  - Trusted model whitelist
+  - Connection testing functionality
+
+#### MCP Service (mcpService.ts)
+- **Class**: `MCPService`
+  - WebSocket connection management
+  - Auto-reconnection logic
+  - Message queue for offline operation
+  - Permission-based data access control
+  
+- **Method**: `syncContext()`
+  - Gathers permitted data types
+  - Sends context updates to AI models
+  - Respects user privacy settings
+
+- **Method**: `handleMessage()`
+  - Validates model trust status
+  - Checks operation permissions
+  - Routes messages to appropriate handlers
+
+#### MCP Status Indicator (MCPStatusIndicator.tsx)
+- **Component**: `MCPStatusIndicator`
+  - Real-time connection status
+  - Active model count display
+  - Data transfer metrics
+  - Quick access to settings
+
 ### Audio/Video Recording Features
 
 #### Audio Recording (AudioOutputWidget.tsx)
