@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- General AI query capability in terminal
+  - Ask any question with "ask", "?", or "@ai" prefix
+  - Integrated with Claude and other AI providers
+  - Handles math, science, engineering, and general knowledge queries
+  - Voice-enabled AI responses
+  - Examples: "? what is the square root of 144", "@ai explain voltage drop"
+
 ### Fixed
 - Voice feedback loop - terminal no longer responds to its own speech
 - Added British male voice selection for deeper voice

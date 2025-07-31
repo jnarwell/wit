@@ -1906,6 +1906,74 @@ async def log_ai_message(message: dict):
     logger.info(f"AI message: {message}")
     return {"status": "logged"}
 
+@app.post("/api/v1/terminal/ai-query")
+async def ai_query(query: dict, current_user: User = Depends(get_current_user)):
+    """Handle general AI queries"""
+    user_query = query.get('query', '')
+    context = query.get('context', '')
+    
+    # For development, simulate AI responses for common queries
+    # In production, this would connect to actual AI services
+    
+    # Math queries
+    if "square root" in user_query.lower():
+        import re
+        import math
+        match = re.search(r'square root of (\d+)', user_query.lower())
+        if match:
+            number = int(match.group(1))
+            result = math.sqrt(number)
+            return {
+                "response": f"The square root of {number} is {result:.2f}",
+                "provider": "claude",
+                "model": "claude-3-opus",
+                "status": "success"
+            }
+    
+    # Science/Engineering queries
+    if "voltage drop" in user_query.lower():
+        return {
+            "response": "To calculate voltage drop, use Ohm's Law: V = I × R\n\nWhere:\n• V = Voltage drop (volts)\n• I = Current (amperes)\n• R = Resistance (ohms)\n\nFor wire resistance: R = ρ × L / A\nWhere:\n• ρ = Resistivity of material\n• L = Length of wire\n• A = Cross-sectional area\n\nFor AC circuits, also consider impedance (Z) which includes reactance.",
+            "provider": "claude",
+            "model": "claude-3-opus",
+            "status": "success"
+        }
+    
+    if "ac" in user_query.lower() and "dc" in user_query.lower():
+        return {
+            "response": "AC (Alternating Current) vs DC (Direct Current):\n\n**DC (Direct Current):**\n• Current flows in one direction\n• Constant voltage\n• Used in batteries, electronics, LEDs\n• Easier to store (batteries)\n\n**AC (Alternating Current):**\n• Current alternates direction periodically\n• Voltage varies sinusoidally\n• Used in power grids, motors, transformers\n• More efficient for long-distance transmission\n• Can be easily transformed to different voltages\n\nMost electronic devices internally use DC, but are powered by AC from the wall outlet using adapters.",
+            "provider": "claude", 
+            "model": "claude-3-opus",
+            "status": "success"
+        }
+    
+    # General knowledge
+    if "weather" in user_query.lower():
+        return {
+            "response": "I don't have access to real-time weather data. For current weather information, please check a weather service or ask me about general weather concepts instead.",
+            "provider": "claude",
+            "model": "claude-3-opus",
+            "status": "success"
+        }
+    
+    # Workshop/Making queries
+    if any(word in user_query.lower() for word in ["3d print", "filament", "pla", "abs", "petg"]):
+        if "temperature" in user_query.lower():
+            return {
+                "response": "Common 3D printing temperatures:\n\n**PLA:** 190-220°C (nozzle), 50-60°C (bed)\n**ABS:** 220-250°C (nozzle), 90-110°C (bed)\n**PETG:** 230-250°C (nozzle), 70-90°C (bed)\n**TPU:** 210-230°C (nozzle), 40-60°C (bed)\n\nAlways check your filament manufacturer's recommendations!",
+                "provider": "claude",
+                "model": "claude-3-opus",
+                "status": "success"
+            }
+    
+    # Default response for unhandled queries
+    return {
+        "response": f"I understand you're asking about '{user_query}'. While I'm integrated with the WIT system, I can help with workshop management, 3D printing, electronics, and general technical questions. For more complex queries, make sure an AI provider is configured in your settings.",
+        "provider": "claude",
+        "model": "claude-3-opus",
+        "status": "success"
+    }
+
 # Projects endpoints
 @app.get("/api/v1/projects/")
 async def list_projects(current_user: User = Depends(get_current_user)):

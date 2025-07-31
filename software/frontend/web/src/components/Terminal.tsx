@@ -7,6 +7,7 @@ import Resizer from './Resizer';
 import FileViewer from './FileViewer';
 import { FaCog, FaTimes, FaMicrophone, FaMicrophoneSlash, FaVolumeUp, FaVolumeMute } from 'react-icons/fa';
 import voiceService from '../services/voiceService';
+import aiService from '../services/aiService';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -205,6 +206,11 @@ Basic Commands:
 • "clear" - Clear terminal history
 • "help" - Show this help message
 
+AI Commands:
+• "ask [question]" - Ask a general question to AI
+• "?" or "??" followed by question - Quick AI query
+• "@ai [question]" - Direct AI query
+
 Voice Commands:
 • "voice on" - Enable voice mode
 • "voice off" - Disable voice mode  
@@ -219,7 +225,10 @@ When voice is enabled:
 Examples:
 • "create a new project called workshop automation"
 • "add a 3d printer to my machines"
-• "show me all sensors"`;
+• "show me all sensors"
+• "ask what is the square root of 144"
+• "? how do I calculate voltage drop"
+• "@ai explain the difference between AC and DC"`;
             setHistory(prev => [...prev, { role: 'assistant', content: helpMessage }]);
             await logMessage('assistant', helpMessage);
             setIsProcessing(false);
@@ -237,6 +246,58 @@ Examples:
 • While sleeping, only the wake word "hey wit" will activate`;
             setHistory(prev => [...prev, { role: 'assistant', content: helpMessage }]);
             await logMessage('assistant', helpMessage);
+            setIsProcessing(false);
+            return;
+        }
+
+        // Check if this is an AI query
+        const isAIQuery = 
+            command.startsWith('ask ') ||
+            command.startsWith('? ') ||
+            command.startsWith('?? ') ||
+            command.startsWith('@ai ') ||
+            command.trim().startsWith('?');
+
+        if (isAIQuery) {
+            // Extract the actual question
+            let question = command;
+            if (command.startsWith('ask ')) {
+                question = command.substring(4).trim();
+            } else if (command.startsWith('@ai ')) {
+                question = command.substring(4).trim();
+            } else if (command.startsWith('?? ')) {
+                question = command.substring(3).trim();
+            } else if (command.startsWith('? ')) {
+                question = command.substring(2).trim();
+            } else if (command.trim() === '?') {
+                const errorMsg = 'Please provide a question after the ? symbol';
+                setHistory(prev => [...prev, { role: 'assistant', content: errorMsg }]);
+                await logMessage('assistant', errorMsg);
+                setIsProcessing(false);
+                return;
+            }
+
+            try {
+                // Query the AI service
+                const aiResponse = await aiService.query({
+                    query: question,
+                    context: 'User is in the WIT terminal, a workshop management system'
+                });
+
+                const formattedResponse = `[AI: ${aiResponse.provider}] ${aiResponse.response}`;
+                setHistory(prev => [...prev, { role: 'assistant', content: formattedResponse }]);
+                await logMessage('assistant', formattedResponse);
+
+                // Speak the response if voice is enabled
+                if (voiceEnabled && !voiceService.isSleeping()) {
+                    voiceService.speak(aiResponse.response);
+                }
+            } catch (error) {
+                const errorMsg = `AI Error: ${error instanceof Error ? error.message : 'Failed to query AI'}`;
+                setHistory(prev => [...prev, { role: 'assistant', content: errorMsg }]);
+                await logMessage('assistant', errorMsg);
+            }
+
             setIsProcessing(false);
             return;
         }

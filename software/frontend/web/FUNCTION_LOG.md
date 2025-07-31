@@ -38,6 +38,37 @@ This document tracks major functionality additions and changes to the WIT fronte
   - Data transfer metrics
   - Quick access to settings
 
+### General AI Query Integration
+
+#### AI Service (aiService.ts)
+- **Class**: `AIService`
+  - Multi-provider support (Claude, OpenAI, Gemini)
+  - Provider configuration management
+  - Fallback to terminal's built-in AI
+  
+- **Method**: `query()`
+  - Routes queries to appropriate AI provider
+  - Handles API authentication
+  - Returns standardized responses
+
+#### Terminal AI Integration (Terminal.tsx)
+- **Command Prefixes**:
+  - "ask [question]" - Natural language queries
+  - "? [question]" - Quick query shortcut
+  - "@ai [question]" - Direct AI routing
+  
+- **Features**:
+  - Seamless integration with voice mode
+  - Provider indication in responses
+  - Error handling and fallbacks
+
+#### Backend AI Endpoint (dev_server.py)
+- **Endpoint**: `/api/v1/terminal/ai-query`
+  - Simulated responses for development
+  - Math calculations (square root, etc.)
+  - Engineering formulas (voltage drop, etc.)
+  - Workshop-specific knowledge (3D printing temps)
+
 ### Voice-Enabled Terminal
 
 #### Voice Service (voiceService.ts)
