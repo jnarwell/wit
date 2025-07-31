@@ -16,6 +16,7 @@ interface AIQuery {
   provider?: string;
   temperature?: number;
   maxTokens?: number;
+  tokens?: any; // Auth tokens from the app
 }
 
 interface AIResponse {
@@ -195,7 +196,7 @@ class AIService {
 
   private async queryBuiltIn(params: AIQuery): Promise<AIResponse> {
     // Use the terminal's existing AI backend
-    const tokens = this.getAuthTokens();
+    const tokens = params.tokens || this.getAuthTokens();
     if (!tokens) {
       throw new Error('Not authenticated');
     }
@@ -233,11 +234,43 @@ class AIService {
   }
 
   private getAuthTokens() {
+    // Try multiple sources for auth tokens
+    // 1. Check localStorage for wit-auth
     const authData = localStorage.getItem('wit-auth');
     if (authData) {
-      const { tokens } = JSON.parse(authData);
-      return tokens;
+      try {
+        const parsed = JSON.parse(authData);
+        if (parsed.tokens) {
+          return parsed.tokens;
+        }
+      } catch (e) {
+        console.error('[AIService] Error parsing auth data:', e);
+      }
     }
+    
+    // 2. Check for wit-tokens directly
+    const tokensData = localStorage.getItem('wit-tokens');
+    if (tokensData) {
+      try {
+        return JSON.parse(tokensData);
+      } catch (e) {
+        console.error('[AIService] Error parsing tokens data:', e);
+      }
+    }
+    
+    // 3. Check sessionStorage as fallback
+    const sessionAuth = sessionStorage.getItem('wit-auth');
+    if (sessionAuth) {
+      try {
+        const parsed = JSON.parse(sessionAuth);
+        if (parsed.tokens) {
+          return parsed.tokens;
+        }
+      } catch (e) {
+        console.error('[AIService] Error parsing session auth:', e);
+      }
+    }
+    
     return null;
   }
 

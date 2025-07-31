@@ -256,7 +256,25 @@ Examples:
             command.startsWith('? ') ||
             command.startsWith('?? ') ||
             command.startsWith('@ai ') ||
-            command.trim().startsWith('?');
+            command.trim().startsWith('?') ||
+            // Detect questions without prefix
+            (command.toLowerCase().includes('what is') ||
+             command.toLowerCase().includes('what are') ||
+             command.toLowerCase().includes('how do') ||
+             command.toLowerCase().includes('how to') ||
+             command.toLowerCase().includes('calculate') ||
+             command.toLowerCase().includes('explain') ||
+             command.toLowerCase().includes('define') ||
+             command.toLowerCase().includes('why') ||
+             command.toLowerCase().includes('when') ||
+             command.toLowerCase().includes('where') ||
+             command.toLowerCase().includes('who') ||
+             command.toLowerCase().includes('which') ||
+             // Math operations
+             /\d+\s*[\+\-\*\/\^]\s*\d+/.test(command) ||
+             command.includes('√') ||
+             command.toLowerCase().includes('square root') ||
+             command.toLowerCase().includes('sqrt'));
 
         if (isAIQuery) {
             // Extract the actual question
@@ -278,10 +296,11 @@ Examples:
             }
 
             try {
-                // Query the AI service
+                // Query the AI service with auth tokens
                 const aiResponse = await aiService.query({
                     query: question,
-                    context: 'User is in the WIT terminal, a workshop management system'
+                    context: 'User is in the WIT terminal, a workshop management system',
+                    tokens: tokens
                 });
 
                 const formattedResponse = `[AI: ${aiResponse.provider}] ${aiResponse.response}`;

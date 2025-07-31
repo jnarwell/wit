@@ -57,10 +57,17 @@ This document tracks major functionality additions and changes to the WIT fronte
   - "? [question]" - Quick query shortcut
   - "@ai [question]" - Direct AI routing
   
+- **Natural Language Detection**:
+  - Questions without prefixes (what is, how do, why, when, where, who, which)
+  - Math operations (5 + 5, 10 * 3, numbers with +, -, *, /, ^)
+  - Square root notation (√, sqrt, square root of)
+  - Action words (calculate, explain, define)
+  
 - **Features**:
   - Seamless integration with voice mode
   - Provider indication in responses
   - Error handling and fallbacks
+  - Authentication token passing from context
 
 #### Backend AI Endpoint (dev_server.py)
 - **Endpoint**: `/api/v1/terminal/ai-query`

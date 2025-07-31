@@ -10,15 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - General AI query capability in terminal
   - Ask any question with "ask", "?", or "@ai" prefix
+  - Natural language detection - recognizes questions without prefixes
+  - Math operations automatically detected (e.g., "what is 5 + 5", "10 * 3")
+  - Square root support with multiple formats (√, sqrt, "square root of")
   - Integrated with Claude and other AI providers
   - Handles math, science, engineering, and general knowledge queries
   - Voice-enabled AI responses
-  - Examples: "? what is the square root of 144", "@ai explain voltage drop"
+  - Examples: "what is the square root of 144", "how do I calculate voltage drop"
 
 ### Fixed
 - Voice feedback loop - terminal no longer responds to its own speech
 - Added British male voice selection for deeper voice
 - Pauses speech recognition while speaking to prevent echo
+- AI query authentication - properly passes auth tokens from context to AI service
+- Natural language question detection now works without AI prefixes
+- Fixed "I'm still learning..." responses for valid questions
 
 ### Added
 - Voice-enabled terminal with speech recognition and text-to-speech

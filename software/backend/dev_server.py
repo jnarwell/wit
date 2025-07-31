@@ -1906,6 +1906,23 @@ async def log_ai_message(message: dict):
     logger.info(f"AI message: {message}")
     return {"status": "logged"}
 
+def simplify_sqrt(n):
+    """Simplify square root to radical form"""
+    import math
+    
+    # Find the largest perfect square factor
+    i = int(math.sqrt(n))
+    while i > 1:
+        if n % (i * i) == 0:
+            factor = i
+            remainder = n // (i * i)
+            if remainder == 1:
+                return str(factor)
+            else:
+                return f"{factor}√{remainder}"
+        i -= 1
+    return f"√{n}"
+
 @app.post("/api/v1/terminal/ai-query")
 async def ai_query(query: dict, current_user: User = Depends(get_current_user)):
     """Handle general AI queries"""
@@ -1916,19 +1933,85 @@ async def ai_query(query: dict, current_user: User = Depends(get_current_user)):
     # In production, this would connect to actual AI services
     
     # Math queries
-    if "square root" in user_query.lower():
-        import re
-        import math
-        match = re.search(r'square root of (\d+)', user_query.lower())
-        if match:
-            number = int(match.group(1))
-            result = math.sqrt(number)
-            return {
-                "response": f"The square root of {number} is {result:.2f}",
-                "provider": "claude",
-                "model": "claude-3-opus",
-                "status": "success"
-            }
+    import re
+    import math
+    
+    # Square root queries
+    if "square root" in user_query.lower() or "sqrt" in user_query.lower() or "√" in user_query:
+        # Match various formats: "square root of 27", "sqrt(27)", "√27", etc.
+        patterns = [
+            r'square root of (\d+)',
+            r'sqrt\s*\(?\s*(\d+)',
+            r'√\s*(\d+)',
+            r'what is (?:the )?√(\d+)',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, user_query.lower())
+            if match:
+                number = int(match.group(1))
+                result = math.sqrt(number)
+                
+                # Check if it's a perfect square
+                if result == int(result):
+                    return {
+                        "response": f"The square root of {number} is {int(result)}",
+                        "provider": "claude",
+                        "model": "claude-3-opus",
+                        "status": "success"
+                    }
+                else:
+                    # Provide both exact and approximate values
+                    simplified = simplify_sqrt(number)
+                    return {
+                        "response": f"The square root of {number} is approximately {result:.4f}\n\nExact form: {simplified}",
+                        "provider": "claude",
+                        "model": "claude-3-opus",
+                        "status": "success"
+                    }
+    
+    # Basic arithmetic
+    arithmetic_match = re.search(r'(\d+)\s*([\+\-\*\/\^])\s*(\d+)', user_query)
+    if arithmetic_match:
+        num1 = float(arithmetic_match.group(1))
+        operator = arithmetic_match.group(2)
+        num2 = float(arithmetic_match.group(3))
+        
+        if operator == '+':
+            result = num1 + num2
+            op_name = "plus"
+        elif operator == '-':
+            result = num1 - num2
+            op_name = "minus"
+        elif operator == '*':
+            result = num1 * num2
+            op_name = "times"
+        elif operator == '/':
+            if num2 == 0:
+                return {
+                    "response": "Cannot divide by zero!",
+                    "provider": "claude",
+                    "model": "claude-3-opus",
+                    "status": "success"
+                }
+            result = num1 / num2
+            op_name = "divided by"
+        elif operator == '^':
+            result = num1 ** num2
+            op_name = "to the power of"
+        
+        # Format result nicely
+        if result == int(result):
+            result_str = str(int(result))
+        else:
+            result_str = f"{result:.4f}".rstrip('0').rstrip('.')
+            
+        return {
+            "response": f"{int(num1) if num1 == int(num1) else num1} {op_name} {int(num2) if num2 == int(num2) else num2} equals {result_str}",
+            "provider": "claude",
+            "model": "claude-3-opus",
+            "status": "success"
+        }
     
     # Science/Engineering queries
     if "voltage drop" in user_query.lower():
