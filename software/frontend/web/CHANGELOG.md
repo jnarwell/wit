@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Voice-enabled terminal with speech recognition and text-to-speech
+  - Voice commands: "voice on/off" to toggle voice mode
+  - Wake word detection: "hey wit" activates when sleeping
+  - Auto-pause after 3 seconds of silence
+  - Auto-sleep after 5 minutes of inactivity
+  - Real-time voice status indicators
+  - Voice transcript display while listening
+  - Persistent voice state across tab switches
+  - Help command with voice instructions
 - MCP (Model Context Protocol) integration for two-way AI model communication
   - Comprehensive MCP settings panel in user settings
   - Data permission management (machines, projects, sensors, tasks, files, analytics, user profile)
@@ -27,10 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - WebM format for both audio and video recordings
 
 ### Changed
+- Enhanced terminal with voice controls and indicators
 - Enhanced audio widget with recording controls
 - Enhanced video widget with recording controls
 - Updated widget status indicators to show recording state
 - Added MCP tab to settings page
+- Updated terminal welcome message with voice instructions
 
 ## [0.2.0] - 2024-01-31
 

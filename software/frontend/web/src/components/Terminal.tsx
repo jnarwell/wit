@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import FileBrowser from './FileBrowser';
 import Resizer from './Resizer';
 import FileViewer from './FileViewer';
-import { FaCog, FaTimes } from 'react-icons/fa';
+import { FaCog, FaTimes, FaMicrophone, FaMicrophoneSlash, FaVolumeUp, FaVolumeMute } from 'react-icons/fa';
+import voiceService from '../services/voiceService';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -37,9 +38,9 @@ const Terminal: React.FC = () => {
     const [history, setHistory] = useState<TerminalLine[]>(() => {
         try {
             const savedHistory = localStorage.getItem('wit-terminal-history');
-            return savedHistory ? JSON.parse(savedHistory) : [{ role: 'assistant', content: 'Welcome to the W.I.T. Terminal.' }];
+            return savedHistory ? JSON.parse(savedHistory) : [{ role: 'assistant', content: 'Welcome to the W.I.T. Terminal. Type "help" for commands or "voice on" to enable voice mode.' }];
         } catch (error) {
-            return [{ role: 'assistant', content: 'Welcome to the W.I.T. Terminal.' }];
+            return [{ role: 'assistant', content: 'Welcome to the W.I.T. Terminal. Type "help" for commands or "voice on" to enable voice mode.' }];
         }
     });
     const [input, setInput] = useState('');
@@ -68,6 +69,10 @@ const Terminal: React.FC = () => {
             synthesizeResults: false
         };
     });
+    const [voiceEnabled, setVoiceEnabled] = useState(voiceService.isEnabled());
+    const [isListening, setIsListening] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [voiceTranscript, setVoiceTranscript] = useState('');
     
     const terminalEndRef = useRef<HTMLDivElement>(null);
     const hiddenInputRef = useRef<HTMLTextAreaElement>(null);
@@ -88,6 +93,50 @@ const Terminal: React.FC = () => {
 
     useEffect(() => {
         focusInput();
+        
+        // Setup voice service listeners
+        const handleVoiceCommand = (command: string) => {
+            if (command.trim()) {
+                handleCommandSubmit(command);
+            }
+        };
+
+        const handleInterimTranscript = (transcript: string) => {
+            setVoiceTranscript(transcript);
+        };
+
+        const handleListeningStart = () => {
+            setIsListening(true);
+        };
+
+        const handleListeningEnd = () => {
+            setIsListening(false);
+            setVoiceTranscript('');
+        };
+
+        const handleSpeechStart = () => {
+            setIsSpeaking(true);
+        };
+
+        const handleSpeechEnd = () => {
+            setIsSpeaking(false);
+        };
+
+        voiceService.on('command', handleVoiceCommand);
+        voiceService.on('interim-transcript', handleInterimTranscript);
+        voiceService.on('listening-start', handleListeningStart);
+        voiceService.on('listening-end', handleListeningEnd);
+        voiceService.on('speech-start', handleSpeechStart);
+        voiceService.on('speech-end', handleSpeechEnd);
+
+        return () => {
+            voiceService.off('command', handleVoiceCommand);
+            voiceService.off('interim-transcript', handleInterimTranscript);
+            voiceService.off('listening-start', handleListeningStart);
+            voiceService.off('listening-end', handleListeningEnd);
+            voiceService.off('speech-start', handleSpeechStart);
+            voiceService.off('speech-end', handleSpeechEnd);
+        };
     }, []);
 
     const logMessage = async (role: 'user' | 'assistant', content: string) => {
@@ -127,6 +176,71 @@ const Terminal: React.FC = () => {
             return;
         }
 
+        // Handle voice commands
+        const lowerCommand = command.toLowerCase().trim();
+        if (lowerCommand === 'voice on' || lowerCommand === 'enable voice' || lowerCommand === 'start voice') {
+            voiceService.start();
+            setVoiceEnabled(true);
+            const message = 'Voice mode activated. Say "hey wit" to wake me up, or "stop" to deactivate voice mode.';
+            setHistory(prev => [...prev, { role: 'assistant', content: message }]);
+            await logMessage('assistant', message);
+            setIsProcessing(false);
+            return;
+        }
+        
+        if (lowerCommand === 'voice off' || lowerCommand === 'disable voice' || lowerCommand === 'stop voice') {
+            voiceService.stop();
+            setVoiceEnabled(false);
+            const message = 'Voice mode deactivated.';
+            setHistory(prev => [...prev, { role: 'assistant', content: message }]);
+            await logMessage('assistant', message);
+            setIsProcessing(false);
+            return;
+        }
+        
+        if (lowerCommand === 'help') {
+            const helpMessage = `W.I.T. Terminal Commands:
+
+Basic Commands:
+• "clear" - Clear terminal history
+• "help" - Show this help message
+
+Voice Commands:
+• "voice on" - Enable voice mode
+• "voice off" - Disable voice mode  
+• "voice help" - Show voice-specific help
+
+When voice is enabled:
+• Say "hey wit" to wake up when sleeping
+• Say "stop" to deactivate voice mode
+• Terminal will pause after 3 seconds of silence
+• Terminal will sleep after 5 minutes of inactivity
+
+Examples:
+• "create a new project called workshop automation"
+• "add a 3d printer to my machines"
+• "show me all sensors"`;
+            setHistory(prev => [...prev, { role: 'assistant', content: helpMessage }]);
+            await logMessage('assistant', helpMessage);
+            setIsProcessing(false);
+            return;
+        }
+        
+        if (lowerCommand === 'voice help' || lowerCommand === 'help voice') {
+            const helpMessage = `Voice Commands:
+• "voice on" - Enable voice mode
+• "voice off" - Disable voice mode
+• "hey wit" - Wake word when voice is sleeping
+• "stop" - Stop listening (when spoken)
+• Voice will pause after 3 seconds of silence
+• Voice will sleep after 5 minutes of inactivity
+• While sleeping, only the wake word "hey wit" will activate`;
+            setHistory(prev => [...prev, { role: 'assistant', content: helpMessage }]);
+            await logMessage('assistant', helpMessage);
+            setIsProcessing(false);
+            return;
+        }
+
         try {
             const response = await fetch(`${API_BASE_URL}/api/v1/terminal/command`, {
                 method: 'POST',
@@ -160,6 +274,11 @@ const Terminal: React.FC = () => {
             
             setHistory(prev => [...prev, { role: 'assistant', content: responseContent }]);
             await logMessage('assistant', responseContent);
+            
+            // Speak the response if voice is enabled
+            if (voiceEnabled && !voiceService.isSleeping()) {
+                voiceService.speak(responseContent);
+            }
             
             // Check if the response indicates that items were created/updated
             const responseText = data.response.toLowerCase();
@@ -296,17 +415,65 @@ const Terminal: React.FC = () => {
             <div className="terminal-main-area">
                 {viewingFile && <FileViewer {...viewingFile} onClose={() => setViewingFile(null)} />}
                 <div className="terminal" onClick={focusInput}>
-                    {/* Settings Button */}
-                    <button 
-                        className="terminal-settings-button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setShowSettings(!showSettings);
-                        }}
-                        title="Terminal Settings"
-                    >
-                        <FaCog size={20} />
-                    </button>
+                    {/* Terminal Controls */}
+                    <div className="terminal-controls">
+                        {/* Voice Indicator */}
+                        {voiceEnabled && (
+                            <div className="voice-indicator">
+                                {isListening ? (
+                                    <div className="voice-status listening">
+                                        <FaMicrophone className="voice-icon pulse" />
+                                        <span className="voice-text">Listening{voiceTranscript && '...'}</span>
+                                    </div>
+                                ) : isSpeaking ? (
+                                    <div className="voice-status speaking">
+                                        <FaVolumeUp className="voice-icon" />
+                                        <span className="voice-text">Speaking</span>
+                                    </div>
+                                ) : voiceService.isSleeping() ? (
+                                    <div className="voice-status sleeping">
+                                        <FaMicrophoneSlash className="voice-icon" />
+                                        <span className="voice-text">Say "hey wit"</span>
+                                    </div>
+                                ) : (
+                                    <div className="voice-status ready">
+                                        <FaMicrophone className="voice-icon" />
+                                        <span className="voice-text">Ready</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        
+                        {/* Voice Toggle Button */}
+                        <button 
+                            className={`terminal-voice-button ${voiceEnabled ? 'active' : ''}`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (voiceEnabled) {
+                                    voiceService.stop();
+                                    setVoiceEnabled(false);
+                                } else {
+                                    voiceService.start();
+                                    setVoiceEnabled(true);
+                                }
+                            }}
+                            title={voiceEnabled ? "Disable voice mode" : "Enable voice mode"}
+                        >
+                            {voiceEnabled ? <FaMicrophone size={20} /> : <FaMicrophoneSlash size={20} />}
+                        </button>
+                        
+                        {/* Settings Button */}
+                        <button 
+                            className="terminal-settings-button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowSettings(!showSettings);
+                            }}
+                            title="Terminal Settings"
+                        >
+                            <FaCog size={20} />
+                        </button>
+                    </div>
 
                     <div className="terminal-output">
                         {history.map((line, index) => (
@@ -319,7 +486,11 @@ const Terminal: React.FC = () => {
                     </div>
                     <div className="terminal-input-line">
                         <span className="terminal-prompt">&gt;</span>
-                        {renderInput()}
+                        {voiceTranscript && isListening ? (
+                            <span className="terminal-input-text voice-transcript">{voiceTranscript}</span>
+                        ) : (
+                            renderInput()
+                        )}
                     </div>
                     <textarea
                         ref={hiddenInputRef}

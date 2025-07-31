@@ -99,11 +99,79 @@
     margin: 0;
 }
 
-/* Terminal Settings Button */
-.terminal-settings-button {
+/* Terminal Controls */
+.terminal-controls {
   position: absolute;
   top: 20px;
   right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 10;
+}
+
+/* Voice Indicator */
+.voice-indicator {
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 20px;
+  padding: 8px 16px;
+  transition: all 0.2s;
+}
+
+.voice-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.voice-icon {
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.voice-icon.pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.voice-text {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.voice-status.listening {
+  color: #10b981;
+}
+
+.voice-status.speaking {
+  color: #3b82f6;
+}
+
+.voice-status.sleeping {
+  color: #666;
+}
+
+.voice-status.ready {
+  color: #888;
+}
+
+/* Voice Toggle Button */
+.terminal-voice-button {
   background-color: #1a1a1a;
   border: 1px solid #333;
   color: #888;
@@ -111,7 +179,36 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
-  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.terminal-voice-button:hover {
+  background-color: #2a2a2a;
+  border-color: #555;
+}
+
+.terminal-voice-button.active {
+  background-color: #10b981;
+  color: white;
+  border-color: #10b981;
+}
+
+.terminal-voice-button.active:hover {
+  background-color: #059669;
+  border-color: #059669;
+}
+
+/* Terminal Settings Button */
+.terminal-settings-button {
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  color: #888;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -121,6 +218,12 @@
   background-color: #2a2a2a;
   color: #f0f0f0;
   border-color: #555;
+}
+
+/* Voice Transcript */
+.voice-transcript {
+  color: #10b981;
+  font-style: italic;
 }
 
 /* Settings Modal */

@@ -38,6 +38,38 @@ This document tracks major functionality additions and changes to the WIT fronte
   - Data transfer metrics
   - Quick access to settings
 
+### Voice-Enabled Terminal
+
+#### Voice Service (voiceService.ts)
+- **Class**: `VoiceService`
+  - Web Speech API integration
+  - Wake word detection ("hey wit")
+  - Auto-sleep after inactivity
+  - Continuous listening with auto-restart
+  
+- **Method**: `handleFinalTranscript()`
+  - Processes voice commands
+  - Detects wake word when sleeping
+  - Handles stop command
+  - Manages silence detection
+
+- **Method**: `speak()`
+  - Text-to-speech for terminal responses
+  - Configurable voice settings
+  - Priority speech interruption
+
+#### Terminal Voice Integration (Terminal.tsx)
+- **Voice Commands**:
+  - "voice on/off" - Toggle voice mode
+  - "help" - Shows commands including voice
+  - "voice help" - Voice-specific help
+  
+- **UI Elements**:
+  - Real-time voice status indicator
+  - Voice transcript display
+  - Microphone toggle button
+  - Status states: Listening, Speaking, Sleeping, Ready
+
 ### Audio/Video Recording Features
 
 #### Audio Recording (AudioOutputWidget.tsx)
