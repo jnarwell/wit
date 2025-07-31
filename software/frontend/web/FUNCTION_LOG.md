@@ -4,6 +4,46 @@ This document tracks major functionality additions and changes to the WIT fronte
 
 ## 2024-01-31
 
+### 3D Tools Platform Integration
+
+#### Dashboard 3D Widgets
+- **3D Model Viewer Widget** (ThreeDViewerWidget.tsx)
+  - STL/OBJ/3MF file upload support
+  - Compact and full view modes
+  - Integration with Simple3DViewer component
+  - Fullscreen toggle functionality
+  
+- **Slicer Preview Widget** (SlicerWidget.tsx)
+  - Print settings panel (layer height, infill, support)
+  - Real-time print time and material estimates
+  - Compact view with key metrics
+  - Full view with settings and preview areas
+  
+- **G-Code Visualizer Widget** (GCodePreviewWidget.tsx)
+  - Layer-by-layer navigation
+  - Play/pause animation controls
+  - G-code syntax highlighting
+  - Progress slider for layer selection
+
+#### Machine Integration (SpecificWidget.tsx)
+- **Slice Button Addition**:
+  - Added to all 3D printer machine cards
+  - Blue styling to distinguish from green Print button
+  - Dispatches 'open-slicer' custom event
+  - 2x2 grid layout for buttons
+
+#### Projects Page Enhancement (ProjectsPage.tsx)
+- **Context-Aware Quick Actions**:
+  - Design/Manufacturing/Hardware projects:
+    - "3D Model" button → CAD modeler
+    - "Slice" button → WIT Slicer
+  - Software projects:
+    - "Scripts" button → Script runner
+    - "Visualize" button → Data visualizer
+  - Custom event dispatching with project context
+
+## 2024-01-31
+
 ### Function Page Implementation
 
 #### Function Page (FunctionPage.tsx)
