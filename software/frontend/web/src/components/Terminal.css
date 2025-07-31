@@ -31,6 +31,7 @@
     display: flex;
     flex-direction: column;
     cursor: text;
+    position: relative;
 }
 
 .terminal:focus {
@@ -96,4 +97,231 @@
     border: none;
     padding: 0;
     margin: 0;
+}
+
+/* Terminal Settings Button */
+.terminal-settings-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  color: #888;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.terminal-settings-button:hover {
+  background-color: #2a2a2a;
+  color: #f0f0f0;
+  border-color: #555;
+}
+
+/* Settings Modal */
+.terminal-settings-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.terminal-settings-modal {
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  border-bottom: 1px solid #333;
+}
+
+.terminal-settings-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #f0f0f0;
+  margin: 0;
+}
+
+.terminal-settings-close {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.terminal-settings-close:hover {
+  background-color: #333;
+  color: #f0f0f0;
+}
+
+.terminal-settings-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.terminal-settings-section {
+  margin-bottom: 32px;
+}
+
+.terminal-settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.terminal-settings-section h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f0f0f0;
+  margin-bottom: 12px;
+}
+
+.terminal-settings-description {
+  color: #888;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+/* AI Agents List */
+.terminal-agents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.terminal-agent-item {
+  background-color: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.terminal-agent-item:hover {
+  border-color: #555;
+  background-color: #1a1a1a;
+}
+
+.terminal-agent-label {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  cursor: pointer;
+  gap: 16px;
+}
+
+.terminal-agent-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: #10b981;
+  cursor: pointer;
+}
+
+.terminal-agent-info {
+  flex: 1;
+}
+
+.terminal-agent-name {
+  font-size: 16px;
+  font-weight: 500;
+  color: #f0f0f0;
+  margin-bottom: 4px;
+}
+
+.terminal-agent-description {
+  font-size: 14px;
+  color: #888;
+}
+
+/* Synthesis Section */
+.terminal-synthesis-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  background-color: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.terminal-synthesis-label:hover {
+  border-color: #555;
+  background-color: #1a1a1a;
+}
+
+.terminal-synthesis-checkbox {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  accent-color: #10b981;
+  cursor: pointer;
+}
+
+.terminal-synthesis-checkbox:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.terminal-synthesis-info {
+  flex: 1;
+}
+
+.terminal-synthesis-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #f0f0f0;
+  margin-bottom: 4px;
+}
+
+.terminal-synthesis-description {
+  font-size: 14px;
+  color: #888;
+  line-height: 1.5;
+}
+
+.terminal-synthesis-note {
+  color: #666;
+  font-style: italic;
+}
+
+/* Settings Footer */
+.terminal-settings-footer {
+  padding: 20px 24px;
+  border-top: 1px solid #333;
+  background-color: #0a0a0a;
+}
+
+.terminal-settings-status {
+  font-size: 14px;
+  color: #888;
+  text-align: center;
 }

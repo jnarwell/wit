@@ -1,6 +1,6 @@
 // src/pages/MachineDetailPage.tsx
 import React, { useState, useEffect } from 'react';
-import { FaTimes, FaEdit, FaSave, FaWifi, FaUsb, FaBluetooth, FaEthernet } from 'react-icons/fa';
+import { FaTimes, FaEdit, FaSave, FaWifi, FaUsb, FaBluetooth, FaEthernet, FaVideo, FaMicrophone } from 'react-icons/fa';
 
 interface Machine {
   id: string;
@@ -18,6 +18,20 @@ interface Machine {
   username?: string;
   password?: string;
   apiKey?: string;
+  // Audio/Video properties
+  audioDevices?: {
+    enabled: boolean;
+    deviceId?: string;
+    deviceName?: string;
+    streamUrl?: string;
+  };
+  videoDevices?: {
+    enabled: boolean;
+    deviceId?: string;
+    deviceName?: string;
+    streamUrl?: string;
+    streamType?: 'webcam' | 'rtsp' | 'http' | 'custom';
+  };
 }
 
 interface MachineDetailPageProps {
@@ -354,6 +368,217 @@ const MachineDetailPage: React.FC<MachineDetailPageProps> = ({ machineId, onClos
                 minute: '2-digit'
               })}
             </div>
+          </div>
+        </div>
+
+        {/* Audio/Video Devices */}
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h3 className="text-xl font-medium text-white mb-4">Audio/Video Devices</h3>
+          
+          {/* Audio Device Configuration */}
+          <div className="mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <FaMicrophone className="text-green-500" />
+              <h4 className="text-lg font-medium text-white">Audio Device</h4>
+              {isEditing && (
+                <label className="flex items-center gap-2 ml-auto">
+                  <input
+                    type="checkbox"
+                    checked={editedMachine.audioDevices?.enabled || false}
+                    onChange={(e) => setEditedMachine({
+                      ...editedMachine,
+                      audioDevices: {
+                        ...editedMachine.audioDevices,
+                        enabled: e.target.checked
+                      }
+                    })}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-gray-400">Enable Audio</span>
+                </label>
+              )}
+            </div>
+            
+            {(isEditing || machine.audioDevices?.enabled) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-7">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Audio Device</label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={editedMachine.audioDevices?.deviceName || ''}
+                      onChange={(e) => setEditedMachine({
+                        ...editedMachine,
+                        audioDevices: {
+                          ...editedMachine.audioDevices,
+                          deviceName: e.target.value
+                        }
+                      })}
+                      placeholder="e.g., Machine Microphone"
+                      className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                      disabled={!editedMachine.audioDevices?.enabled}
+                    />
+                  ) : (
+                    <div className="text-white">{machine.audioDevices?.deviceName || 'Not configured'}</div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Stream URL (Optional)</label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={editedMachine.audioDevices?.streamUrl || ''}
+                      onChange={(e) => setEditedMachine({
+                        ...editedMachine,
+                        audioDevices: {
+                          ...editedMachine.audioDevices,
+                          streamUrl: e.target.value
+                        }
+                      })}
+                      placeholder="e.g., http://192.168.1.100:8080/audio"
+                      className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                      disabled={!editedMachine.audioDevices?.enabled}
+                    />
+                  ) : (
+                    <div className="text-white font-mono text-sm">{machine.audioDevices?.streamUrl || 'Local device'}</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Video Device Configuration */}
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <FaVideo className="text-purple-500" />
+              <h4 className="text-lg font-medium text-white">Video Device</h4>
+              {isEditing && (
+                <label className="flex items-center gap-2 ml-auto">
+                  <input
+                    type="checkbox"
+                    checked={editedMachine.videoDevices?.enabled || false}
+                    onChange={(e) => setEditedMachine({
+                      ...editedMachine,
+                      videoDevices: {
+                        ...editedMachine.videoDevices,
+                        enabled: e.target.checked
+                      }
+                    })}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-gray-400">Enable Video</span>
+                </label>
+              )}
+            </div>
+            
+            {(isEditing || machine.videoDevices?.enabled) && (
+              <div className="space-y-4 pl-7">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-1">Video Device</label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editedMachine.videoDevices?.deviceName || ''}
+                        onChange={(e) => setEditedMachine({
+                          ...editedMachine,
+                          videoDevices: {
+                            ...editedMachine.videoDevices,
+                            deviceName: e.target.value
+                          }
+                        })}
+                        placeholder="e.g., Machine Camera"
+                        className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                        disabled={!editedMachine.videoDevices?.enabled}
+                      />
+                    ) : (
+                      <div className="text-white">{machine.videoDevices?.deviceName || 'Not configured'}</div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-1">Stream Type</label>
+                    {isEditing ? (
+                      <select
+                        value={editedMachine.videoDevices?.streamType || 'webcam'}
+                        onChange={(e) => setEditedMachine({
+                          ...editedMachine,
+                          videoDevices: {
+                            ...editedMachine.videoDevices,
+                            streamType: e.target.value as any
+                          }
+                        })}
+                        className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                        disabled={!editedMachine.videoDevices?.enabled}
+                      >
+                        <option value="webcam">Webcam</option>
+                        <option value="rtsp">RTSP Stream</option>
+                        <option value="http">HTTP Stream</option>
+                        <option value="custom">Custom Stream</option>
+                      </select>
+                    ) : (
+                      <div className="text-white">{machine.videoDevices?.streamType || 'webcam'}</div>
+                    )}
+                  </div>
+                </div>
+                
+                {editedMachine.videoDevices?.streamType !== 'webcam' && (
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-1">Stream URL</label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editedMachine.videoDevices?.streamUrl || ''}
+                        onChange={(e) => setEditedMachine({
+                          ...editedMachine,
+                          videoDevices: {
+                            ...editedMachine.videoDevices,
+                            streamUrl: e.target.value
+                          }
+                        })}
+                        placeholder={
+                          editedMachine.videoDevices?.streamType === 'rtsp' 
+                            ? 'rtsp://192.168.1.100:554/stream1'
+                            : 'http://192.168.1.100:8080/video'
+                        }
+                        className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                        disabled={!editedMachine.videoDevices?.enabled}
+                      />
+                    ) : (
+                      <div className="text-white font-mono text-sm">{machine.videoDevices?.streamUrl || 'Not configured'}</div>
+                    )}
+                  </div>
+                )}
+                
+                {!isEditing && machine.videoDevices?.enabled && (
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => {
+                        // Open audio widget with this machine's audio
+                        if (window.__witNavigate) {
+                          window.__witNavigate('dashboard');
+                          // TODO: Add audio widget with this machine's settings
+                        }
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm transition-colors flex items-center gap-2"
+                    >
+                      <FaMicrophone /> Open Audio
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Open video widget with this machine's video
+                        if (window.__witNavigate) {
+                          window.__witNavigate('dashboard');
+                          // TODO: Add video widget with this machine's settings
+                        }
+                      }}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm transition-colors flex items-center gap-2"
+                    >
+                      <FaVideo /> Open Video
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

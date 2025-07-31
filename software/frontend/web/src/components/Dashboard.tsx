@@ -13,10 +13,12 @@ import SensorDataWidget from './widgets/SensorDataWidget';
 import ProjectProgressWidget from './widgets/ProjectProgressWidget';
 import ScriptResultsWidget from './widgets/ScriptResultsWidget';
 import CustomGraphWidget from './widgets/CustomGraphWidget';
+import AudioOutputWidget from './widgets/AudioOutputWidget';
+import VideoStreamWidget from './widgets/VideoStreamWidget';
 
 interface Widget {
   id: string;
-  type: 'project' | 'machine' | 'sensor' | 'projects-list' | 'machines-list' | 'sensors-list' | 'tasks-list' | 'wits' | 'utility' | 'file-explorer' | 'file-viewer' | 'machine-status' | 'sensor-data' | 'project-progress' | 'script-results' | 'custom-graph';
+  type: 'project' | 'machine' | 'sensor' | 'projects-list' | 'machines-list' | 'sensors-list' | 'tasks-list' | 'wits' | 'utility' | 'file-explorer' | 'file-viewer' | 'machine-status' | 'sensor-data' | 'project-progress' | 'script-results' | 'custom-graph' | 'audio-output' | 'video-stream';
   subType?: string;
   position: { x: number; y: number };
   size: { width: number; height: number };
@@ -619,6 +621,8 @@ const Dashboard: React.FC = () => {
                       <button onClick={() => addWidget('project-progress')} className="widget-menu-item">Project Progress</button>
                       <button onClick={() => addWidget('script-results')} className="widget-menu-item">Script Results</button>
                       <button onClick={() => addWidget('custom-graph')} className="widget-menu-item">Custom Graph</button>
+                      <button onClick={() => addWidget('audio-output')} className="widget-menu-item">Audio Output</button>
+                      <button onClick={() => addWidget('video-stream')} className="widget-menu-item">Video Stream</button>
                     </div>
                   )}
                 </div>
@@ -898,6 +902,22 @@ const Dashboard: React.FC = () => {
               )}
               {widget.type === 'custom-graph' && (
                 <CustomGraphWidget 
+                  width={size.width}
+                  height={size.height}
+                  data={widget.data}
+                  {...commonProps}
+                />
+              )}
+              {widget.type === 'audio-output' && (
+                <AudioOutputWidget 
+                  width={size.width}
+                  height={size.height}
+                  data={widget.data}
+                  {...commonProps}
+                />
+              )}
+              {widget.type === 'video-stream' && (
+                <VideoStreamWidget 
                   width={size.width}
                   height={size.height}
                   data={widget.data}

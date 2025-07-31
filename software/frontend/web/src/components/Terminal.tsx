@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import FileBrowser from './FileBrowser';
 import Resizer from './Resizer';
 import FileViewer from './FileViewer';
+import { FaCog, FaTimes } from 'react-icons/fa';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -17,6 +18,18 @@ interface ViewingFile {
     path: string;
     baseDir: string;
     projectId?: string;
+}
+
+interface AIAgent {
+    id: string;
+    name: string;
+    description: string;
+    enabled: boolean;
+}
+
+interface TerminalSettings {
+    agents: AIAgent[];
+    synthesizeResults: boolean;
 }
 
 const Terminal: React.FC = () => {
@@ -35,6 +48,26 @@ const Terminal: React.FC = () => {
     const [sidebarWidth, setSidebarWidth] = useState(window.innerWidth / 4);
     const [isResizing, setIsResizing] = useState(false);
     const [viewingFile, setViewingFile] = useState<ViewingFile | null>(null);
+    const [showSettings, setShowSettings] = useState(false);
+    const [settings, setSettings] = useState<TerminalSettings>(() => {
+        const savedSettings = localStorage.getItem('wit-terminal-settings');
+        if (savedSettings) {
+            try {
+                return JSON.parse(savedSettings);
+            } catch (e) {
+                // Fall through to default
+            }
+        }
+        return {
+            agents: [
+                { id: 'wit-primary', name: 'W.I.T. Primary', description: 'Main workshop assistant AI', enabled: true },
+                { id: 'wit-analyst', name: 'W.I.T. Analyst', description: 'Data analysis and insights AI', enabled: false },
+                { id: 'wit-engineer', name: 'W.I.T. Engineer', description: 'Technical engineering assistant', enabled: false },
+                { id: 'wit-safety', name: 'W.I.T. Safety', description: 'Safety and compliance monitor', enabled: false }
+            ],
+            synthesizeResults: false
+        };
+    });
     
     const terminalEndRef = useRef<HTMLDivElement>(null);
     const hiddenInputRef = useRef<HTMLTextAreaElement>(null);
@@ -103,7 +136,9 @@ const Terminal: React.FC = () => {
                 },
                 body: JSON.stringify({ 
                     command,
-                    history: newHistory.slice(-10)
+                    history: newHistory.slice(-10),
+                    agents: settings.agents.filter(a => a.enabled).map(a => a.id),
+                    synthesize: settings.synthesizeResults && settings.agents.filter(a => a.enabled).length > 1
                 }),
             });
             if (!response.ok) {
@@ -111,8 +146,20 @@ const Terminal: React.FC = () => {
                 throw new Error(errorData.detail || 'API request failed');
             }
             const data = await response.json();
-            setHistory(prev => [...prev, { role: 'assistant', content: data.response }]);
-            await logMessage('assistant', data.response);
+            
+            // Handle multi-agent responses (future implementation)
+            const enabledAgents = settings.agents.filter(a => a.enabled);
+            let responseContent = data.response;
+            
+            if (settings.synthesizeResults && enabledAgents.length > 1 && data.synthesized) {
+                responseContent = `[Synthesized from ${enabledAgents.length} agents]\n${responseContent}`;
+            } else if (enabledAgents.length > 1 && data.multiAgentResponses) {
+                // Future: Show individual agent responses
+                responseContent = data.response;
+            }
+            
+            setHistory(prev => [...prev, { role: 'assistant', content: responseContent }]);
+            await logMessage('assistant', responseContent);
             
             // Check if the response indicates that items were created/updated
             const responseText = data.response.toLowerCase();
@@ -228,11 +275,39 @@ const Terminal: React.FC = () => {
         );
     };
 
+    const toggleAgent = (agentId: string) => {
+        setSettings(prev => ({
+            ...prev,
+            agents: prev.agents.map(agent => 
+                agent.id === agentId ? { ...agent, enabled: !agent.enabled } : agent
+            )
+        }));
+    };
+
+    const toggleSynthesize = () => {
+        setSettings(prev => ({
+            ...prev,
+            synthesizeResults: !prev.synthesizeResults
+        }));
+    };
+
     return (
         <div className="terminal-container">
             <div className="terminal-main-area">
                 {viewingFile && <FileViewer {...viewingFile} onClose={() => setViewingFile(null)} />}
                 <div className="terminal" onClick={focusInput}>
+                    {/* Settings Button */}
+                    <button 
+                        className="terminal-settings-button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowSettings(!showSettings);
+                        }}
+                        title="Terminal Settings"
+                    >
+                        <FaCog size={20} />
+                    </button>
+
                     <div className="terminal-output">
                         {history.map((line, index) => (
                             <div key={index} className="terminal-line">
@@ -262,6 +337,82 @@ const Terminal: React.FC = () => {
             <div style={{ width: `${sidebarWidth}px`, flexShrink: 0 }}>
                 <FileBrowser onFileSelect={(path, baseDir, projectId) => setViewingFile({ path, baseDir, projectId })} />
             </div>
+
+            {/* Settings Modal */}
+            {showSettings && (
+                <div className="terminal-settings-modal-overlay" onClick={() => setShowSettings(false)}>
+                    <div className="terminal-settings-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="terminal-settings-header">
+                            <h2>Terminal Settings</h2>
+                            <button 
+                                className="terminal-settings-close"
+                                onClick={() => setShowSettings(false)}
+                            >
+                                <FaTimes />
+                            </button>
+                        </div>
+                        
+                        <div className="terminal-settings-content">
+                            <div className="terminal-settings-section">
+                                <h3>AI Agents</h3>
+                                <p className="terminal-settings-description">
+                                    Select which AI agents to query. When multiple agents are selected, 
+                                    you can choose to synthesize their responses into a unified answer.
+                                </p>
+                                
+                                <div className="terminal-agents-list">
+                                    {settings.agents.map(agent => (
+                                        <div key={agent.id} className="terminal-agent-item">
+                                            <label className="terminal-agent-label">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={agent.enabled}
+                                                    onChange={() => toggleAgent(agent.id)}
+                                                    className="terminal-agent-checkbox"
+                                                />
+                                                <div className="terminal-agent-info">
+                                                    <div className="terminal-agent-name">{agent.name}</div>
+                                                    <div className="terminal-agent-description">{agent.description}</div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="terminal-settings-section">
+                                <h3>Result Synthesis</h3>
+                                <label className="terminal-synthesis-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={settings.synthesizeResults}
+                                        onChange={toggleSynthesize}
+                                        disabled={settings.agents.filter(a => a.enabled).length <= 1}
+                                        className="terminal-synthesis-checkbox"
+                                    />
+                                    <div className="terminal-synthesis-info">
+                                        <div className="terminal-synthesis-title">
+                                            Synthesize Results
+                                        </div>
+                                        <div className="terminal-synthesis-description">
+                                            When multiple agents are selected, combine their responses into a single, unified answer.
+                                            {settings.agents.filter(a => a.enabled).length <= 1 && (
+                                                <span className="terminal-synthesis-note"> (Requires at least 2 agents)</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div className="terminal-settings-footer">
+                                <div className="terminal-settings-status">
+                                    Active agents: {settings.agents.filter(a => a.enabled).length} / {settings.agents.length}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
