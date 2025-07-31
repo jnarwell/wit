@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- 3D Tools integration across the platform
+  - New Dashboard widgets category "3D Tools" with 3 widgets:
+    - 3D Model Viewer widget with file upload support
+    - Slicer Preview widget with print settings
+    - G-Code Visualizer widget with layer preview
+  - Added "Slice" button to all 3D printer machine cards
+  - Quick access buttons in Projects page for design/manufacturing projects
+  - Context-aware tool buttons based on project type
 - General AI query capability in terminal
   - Ask any question with "ask", "?", or "@ai" prefix
   - Natural language detection - recognizes questions without prefixes

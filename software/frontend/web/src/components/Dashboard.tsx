@@ -15,10 +15,13 @@ import ScriptResultsWidget from './widgets/ScriptResultsWidget';
 import CustomGraphWidget from './widgets/CustomGraphWidget';
 import AudioOutputWidget from './widgets/AudioOutputWidget';
 import VideoStreamWidget from './widgets/VideoStreamWidget';
+import ThreeDViewerWidget from './widgets/ThreeDViewerWidget';
+import SlicerWidget from './widgets/SlicerWidget';
+import GCodePreviewWidget from './widgets/GCodePreviewWidget';
 
 interface Widget {
   id: string;
-  type: 'project' | 'machine' | 'sensor' | 'projects-list' | 'machines-list' | 'sensors-list' | 'tasks-list' | 'wits' | 'utility' | 'file-explorer' | 'file-viewer' | 'machine-status' | 'sensor-data' | 'project-progress' | 'script-results' | 'custom-graph' | 'audio-output' | 'video-stream';
+  type: 'project' | 'machine' | 'sensor' | 'projects-list' | 'machines-list' | 'sensors-list' | 'tasks-list' | 'wits' | 'utility' | 'file-explorer' | 'file-viewer' | 'machine-status' | 'sensor-data' | 'project-progress' | 'script-results' | 'custom-graph' | 'audio-output' | 'video-stream' | '3d-viewer' | 'slicer' | 'gcode-preview';
   subType?: string;
   position: { x: number; y: number };
   size: { width: number; height: number };
@@ -48,6 +51,7 @@ const Dashboard: React.FC = () => {
   const [expandedCategories, setExpandedCategories] = useState<{ [key: string]: boolean }>({
     lists: true,
     utilities: false,
+    modeling: false,
     special: false
   });
   
@@ -627,6 +631,24 @@ const Dashboard: React.FC = () => {
                   )}
                 </div>
                 
+                {/* 3D Tools Category */}
+                <div>
+                  <button
+                    onClick={() => toggleCategory('modeling')}
+                    className="w-full flex items-center justify-between text-gray-300 hover:text-white transition-colors p-2 rounded hover:bg-gray-600"
+                  >
+                    <span className="font-medium">3D Tools</span>
+                    {expandedCategories.modeling ? <FaChevronDown size={12} /> : <FaChevronRight size={12} />}
+                  </button>
+                  {expandedCategories.modeling && (
+                    <div className="ml-4 mt-1 space-y-1">
+                      <button onClick={() => addWidget('3d-viewer')} className="widget-menu-item">3D Model Viewer</button>
+                      <button onClick={() => addWidget('slicer')} className="widget-menu-item">Slicer Preview</button>
+                      <button onClick={() => addWidget('gcode-preview')} className="widget-menu-item">G-Code Visualizer</button>
+                    </div>
+                  )}
+                </div>
+                
                 {/* Special Category */}
                 <div>
                   <button
@@ -923,6 +945,15 @@ const Dashboard: React.FC = () => {
                   data={widget.data}
                   {...commonProps}
                 />
+              )}
+              {widget.type === '3d-viewer' && (
+                <ThreeDViewerWidget widget={widget} />
+              )}
+              {widget.type === 'slicer' && (
+                <SlicerWidget widget={widget} />
+              )}
+              {widget.type === 'gcode-preview' && (
+                <GCodePreviewWidget widget={widget} />
               )}
             </div>
           );

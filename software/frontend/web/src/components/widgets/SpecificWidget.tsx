@@ -1,6 +1,6 @@
 // src/components/widgets/SpecificWidget.tsx
 import React, { useState, useRef, useEffect } from 'react';
-import { FaTimes, FaCog, FaProjectDiagram, FaMicrochip, FaThermometerHalf, FaHome, FaPrint, FaPowerOff, FaCheck, FaPause, FaExclamationTriangle } from 'react-icons/fa';
+import { FaTimes, FaCog, FaProjectDiagram, FaMicrochip, FaThermometerHalf, FaHome, FaPrint, FaPowerOff, FaCheck, FaPause, FaExclamationTriangle, FaCube } from 'react-icons/fa';
 
 interface SpecificWidgetProps {
   type: 'project' | 'machine' | 'sensor';
@@ -497,7 +497,7 @@ const handleHomeClick = async (e: React.MouseEvent) => {
       {/* Control Buttons (for machines only) */}
       {type === 'machine' && (
         <div className="px-4 pb-4">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <button
               onClick={handleHomeClick}
               className="control-button flex items-center justify-center gap-1 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300 transition-colors"
@@ -507,8 +507,16 @@ const handleHomeClick = async (e: React.MouseEvent) => {
               <span>Home</span>
             </button>
             <button
+              onClick={() => window.dispatchEvent(new CustomEvent('open-slicer', { detail: { machine: widgetData } }))}
+              className="control-button flex items-center justify-center gap-1 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm text-white transition-colors"
+              title="Open Slicer"
+            >
+              <FaCube className="w-4 h-4" />
+              <span>Slice</span>
+            </button>
+            <button
               onClick={handlePrintClick}
-              className="control-button flex items-center justify-center gap-1 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300 transition-colors"
+              className="control-button flex items-center justify-center gap-1 py-2 bg-green-600 hover:bg-green-700 rounded text-sm text-white transition-colors"
               title="Print Controls"
             >
               <FaPrint className="w-4 h-4" />

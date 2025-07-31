@@ -1,6 +1,6 @@
 // src/pages/ProjectsPage.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCube, FaCode } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext'; // Assuming you have an AuthContext
 import './ProjectsPage.css';
 
@@ -471,6 +471,62 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ onNavigateToDetail }) => {
                     <div className="bg-blue-500 h-2 rounded-full" style={{ width: '0%' }} />
                   </div>
                 </div>
+                
+                {/* Quick Actions for Design/Manufacturing Projects */}
+                {(project.type === 'design' || project.type === 'manufacturing' || project.type === 'hardware') && (
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.dispatchEvent(new CustomEvent('open-function-tool', { detail: { tool: 'cad-modeler', project } }));
+                      }}
+                      className="flex items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-3 rounded text-sm transition-colors"
+                      title="Open 3D Modeler"
+                    >
+                      <FaCube className="w-4 h-4" />
+                      <span>3D Model</span>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.dispatchEvent(new CustomEvent('open-function-tool', { detail: { tool: 'wit-slicer', project } }));
+                      }}
+                      className="flex items-center justify-center gap-1 bg-purple-600 hover:bg-purple-700 text-white py-1.5 px-3 rounded text-sm transition-colors"
+                      title="Open Slicer"
+                    >
+                      <FaCube className="w-4 h-4" />
+                      <span>Slice</span>
+                    </button>
+                  </div>
+                )}
+                
+                {/* Quick Actions for Software Projects */}
+                {project.type === 'software' && (
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.dispatchEvent(new CustomEvent('open-function-tool', { detail: { tool: 'script-runner', project } }));
+                      }}
+                      className="flex items-center justify-center gap-1 bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded text-sm transition-colors"
+                      title="Run Scripts"
+                    >
+                      <FaCode className="w-4 h-4" />
+                      <span>Scripts</span>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.dispatchEvent(new CustomEvent('open-function-tool', { detail: { tool: 'data-visualizer', project } }));
+                      }}
+                      className="flex items-center justify-center gap-1 bg-orange-600 hover:bg-orange-700 text-white py-1.5 px-3 rounded text-sm transition-colors"
+                      title="Data Visualization"
+                    >
+                      <FaCode className="w-4 h-4" />
+                      <span>Visualize</span>
+                    </button>
+                  </div>
+                )}
                 
                 {/* Navigate Button */}
                 <button
