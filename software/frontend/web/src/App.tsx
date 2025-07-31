@@ -22,9 +22,10 @@ import Terminal from './components/Terminal';
 import './components/Terminal.css';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
+import SoftwareIntegrationsPage from './pages/SoftwareIntegrationsPage';
 
-type Page = 'dashboard' | 'machines' | 'projects' | 'sensors' | 'wit' | 'settings' |
-           'machine-detail' | 'sensor-detail' | 'project-detail';
+type Page = 'dashboard' | 'machines' | 'projects' | 'sensors' | 'wit' | 'settings' | 'software' |
+           'machine-detail' | 'sensor-detail' | 'project-detail' | 'software-detail';
 
 interface DetailPageState {
   id: string;
@@ -37,8 +38,8 @@ function AppContent() {
     const savedPage = localStorage.getItem('wit-current-page');
     if (savedPage) {
       // Validate that it's a valid page
-      const validPages = ['dashboard', 'machines', 'projects', 'sensors', 'wit', 'settings',
-                         'machine-detail', 'sensor-detail', 'project-detail'];
+      const validPages = ['dashboard', 'machines', 'projects', 'sensors', 'wit', 'settings', 'software',
+                         'machine-detail', 'sensor-detail', 'project-detail', 'software-detail'];
       if (validPages.includes(savedPage)) {
         console.log('[App] Restoring page:', savedPage);
         return savedPage as Page;
@@ -180,13 +181,19 @@ function AppContent() {
         return <Terminal />;
       case 'settings':
         return <SettingsPage />;
+      case 'software':
+        return <SoftwareIntegrationsPage onNavigateToDetail={(id) => handleNavigate('software', id)} />;
+      case 'software-detail':
+        return detailPageState ? (
+          <div>Software Integration Detail Page - Coming Soon</div>
+        ) : null;
       default:
         return <Dashboard />;
     }
   };
 
   // Don't show navigation bar on detail pages
-  const showNavigation = !['machine-detail', 'sensor-detail', 'project-detail'].includes(currentPage);
+  const showNavigation = !['machine-detail', 'sensor-detail', 'project-detail', 'software-detail'].includes(currentPage);
 
   return (
     <ProtectedRoute>

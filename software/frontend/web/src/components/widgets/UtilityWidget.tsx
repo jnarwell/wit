@@ -3,13 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { FaTimes, FaMicrochip, FaMemory, FaHdd, FaNetworkWired, FaThermometerHalf } from 'react-icons/fa';
 
 interface UtilityWidgetProps {
-  type: 'cpu' | 'ram' | 'disk' | 'network' | 'temp';
+  type: 'cpu' | 'ram' | 'disk' | 'network' | 'temp' | 'machine-status' | 'sensor-data' | 'project-progress' | 'script-results';
   onRemove: () => void;
   width?: number; // Grid units
   height?: number; // Grid units
+  data?: any; // Additional data for specific widgets
 }
 
-const UtilityWidget: React.FC<UtilityWidgetProps> = ({ type, onRemove, width = 1, height = 1 }) => {
+const UtilityWidget: React.FC<UtilityWidgetProps> = ({ type, onRemove, width = 1, height = 1, data }) => {
   const [value, setValue] = useState(0);
   const [trend, setTrend] = useState<'up' | 'down' | 'stable'>('stable');
 

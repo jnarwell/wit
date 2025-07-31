@@ -2,6 +2,59 @@
 
 ## [Unreleased] - 2025-07-31
 
+### Added - Software Integrations & Dashboard Widgets
+- **Software Integrations Page**: New page for managing external software connections
+  - Grid layout with filtering by status and type
+  - Category tabs for organized browsing (CAD, Simulation, Embedded, PCB, Data Acquisition, Manufacturing)
+  - Predefined software catalog with 38 industry-standard tools:
+    - CAD & Design: SolidWorks, Fusion 360, OnShape, AutoCAD, Inventor, Creo, CATIA, Rhino 3D, FreeCAD
+    - Simulation & Analysis: ANSYS, COMSOL, Abaqus, NASTRAN, Simulink, Adams, LS-DYNA
+    - Programming & Embedded: Arduino IDE, PlatformIO, MPLAB X, Keil, Code Composer Studio, STM32CubeIDE
+    - PCB & Electronics: Altium Designer, KiCad, Eagle, Proteus, LTspice, Multisim
+    - Data Acquisition: DEWESoft, LabVIEW, MATLAB, dSPACE, HBM nCode
+    - Manufacturing & CAM: Mastercam, PowerMill, HSMWorks, EdgeCAM, NX CAM
+  - "Coming Soon" badges for future integrations
+  - Modal dialog for adding custom integrations
+  - Responsive 4-column grid layout with pagination
+
+- **Enhanced Dashboard Utility Widgets**: Five new specialized widgets for monitoring and analysis
+  - **Machine Status Widget**: Real-time machine monitoring
+    - Running/idle/maintenance/error status indicators
+    - Efficiency metrics and runtime tracking
+    - Machine selector dropdown or specific machine display
+    - Visual status indicators with color coding
+  
+  - **Sensor Data Widget**: Live sensor visualization
+    - Support for temperature, pressure, flow rate, and voltage sensors
+    - Real-time chart with historical data (using Chart.js)
+    - Current value display with appropriate units
+    - Trend analysis and averages for larger widgets
+  
+  - **Project Progress Widget**: Project tracking and visualization
+    - Progress percentage with deadline tracking
+    - Task breakdown showing completed/in-progress/pending/blocked
+    - Doughnut chart visualization for task distribution
+    - Color-coded status indicators
+  
+  - **Script Results Widget**: Custom script execution display
+    - Auto-refresh capability with configurable intervals
+    - Simulated outputs for sensor data, system status, analysis results
+    - Execution history tracking for larger widgets
+    - Success/error status indicators with execution time
+  
+  - **Custom Graph Widget**: Highly configurable data visualization
+    - 7 chart types: Line, Bar, Area, Pie, Doughnut, Radar, Numeric Display
+    - Settings panel with full customization:
+      - Data source selection (Random, Sensor, System, API, Manual)
+      - 5 color schemes (Default, Blue, Green, Purple, Orange)
+      - Adjustable data points (3-20)
+      - Auto-refresh interval (1-60 seconds)
+      - Legend and grid toggles
+    - Numeric display mode for KPIs and counts
+    - Responsive design adapting to widget size
+
+## [Unreleased] - 2025-07-31
+
 ### Added
 - **Enhanced Signup Page**: Complete user registration experience with advanced features
   - Comprehensive form validation with real-time feedback

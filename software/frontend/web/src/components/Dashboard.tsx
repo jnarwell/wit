@@ -8,10 +8,15 @@ import UtilityWidget from './widgets/UtilityWidget';
 import FileExplorerWidget from './widgets/FileExplorerWidget';
 import FileViewerWidget from './widgets/FileViewerWidget';
 import { TasksListWidget } from './widgets/TasksListWidget';
+import MachineStatusWidget from './widgets/MachineStatusWidget';
+import SensorDataWidget from './widgets/SensorDataWidget';
+import ProjectProgressWidget from './widgets/ProjectProgressWidget';
+import ScriptResultsWidget from './widgets/ScriptResultsWidget';
+import CustomGraphWidget from './widgets/CustomGraphWidget';
 
 interface Widget {
   id: string;
-  type: 'project' | 'machine' | 'sensor' | 'projects-list' | 'machines-list' | 'sensors-list' | 'tasks-list' | 'wits' | 'utility' | 'file-explorer' | 'file-viewer';
+  type: 'project' | 'machine' | 'sensor' | 'projects-list' | 'machines-list' | 'sensors-list' | 'tasks-list' | 'wits' | 'utility' | 'file-explorer' | 'file-viewer' | 'machine-status' | 'sensor-data' | 'project-progress' | 'script-results' | 'custom-graph';
   subType?: string;
   position: { x: number; y: number };
   size: { width: number; height: number };
@@ -609,6 +614,11 @@ const Dashboard: React.FC = () => {
                       <button onClick={() => addWidget('utility', 'disk')} className="widget-menu-item">Disk Space</button>
                       <button onClick={() => addWidget('utility', 'network')} className="widget-menu-item">Network</button>
                       <button onClick={() => addWidget('utility', 'temp')} className="widget-menu-item">Temperature</button>
+                      <button onClick={() => addWidget('machine-status')} className="widget-menu-item">Machine Status</button>
+                      <button onClick={() => addWidget('sensor-data')} className="widget-menu-item">Sensor Data</button>
+                      <button onClick={() => addWidget('project-progress')} className="widget-menu-item">Project Progress</button>
+                      <button onClick={() => addWidget('script-results')} className="widget-menu-item">Script Results</button>
+                      <button onClick={() => addWidget('custom-graph')} className="widget-menu-item">Custom Graph</button>
                     </div>
                   )}
                 </div>
@@ -853,6 +863,46 @@ const Dashboard: React.FC = () => {
               )}
               {widget.type === 'file-viewer' && (
                 <FileViewerWidget {...commonProps} />
+              )}
+              {widget.type === 'machine-status' && (
+                <MachineStatusWidget 
+                  width={size.width}
+                  height={size.height}
+                  data={widget.data}
+                  {...commonProps}
+                />
+              )}
+              {widget.type === 'sensor-data' && (
+                <SensorDataWidget 
+                  width={size.width}
+                  height={size.height}
+                  data={widget.data}
+                  {...commonProps}
+                />
+              )}
+              {widget.type === 'project-progress' && (
+                <ProjectProgressWidget 
+                  width={size.width}
+                  height={size.height}
+                  data={widget.data}
+                  {...commonProps}
+                />
+              )}
+              {widget.type === 'script-results' && (
+                <ScriptResultsWidget 
+                  width={size.width}
+                  height={size.height}
+                  data={widget.data}
+                  {...commonProps}
+                />
+              )}
+              {widget.type === 'custom-graph' && (
+                <CustomGraphWidget 
+                  width={size.width}
+                  height={size.height}
+                  data={widget.data}
+                  {...commonProps}
+                />
               )}
             </div>
           );
