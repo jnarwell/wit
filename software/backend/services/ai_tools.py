@@ -2,74 +2,156 @@
 import os
 import json
 from datetime import datetime
-from typing import List, Dict, Any
-from software.frontend.web.routers.files_api import get_user_files, get_projects_files, build_tree
-from software.frontend.web.routers.file_operations_router import (
-    get_file_content,
-    update_file,
-    create_file_or_folder,
-    delete_file_or_folder,
-    FileUpdateRequest,
-    FileOperationRequest,
-    get_base_dir,
-)
+from typing import List, Dict, Any, Optional
 from sqlalchemy import select
 from services.database_services import User, get_session
+
+# Local implementations of file operations to avoid frontend dependencies
+def get_base_dir(base_dir: str, username: str = None, project_id: str = None) -> str:
+    """Get the base directory path"""
+    if base_dir == "user" and username:
+        return os.path.join("storage", "users", username)
+    elif base_dir == "project" and project_id:
+        return os.path.join("storage", "projects", project_id)
+    else:
+        raise ValueError(f"Invalid base_dir: {base_dir}")
+
+def build_tree(path: str, base_path: str = "") -> List[Dict[str, Any]]:
+    """Build a file tree structure"""
+    items = []
+    full_path = os.path.join(base_path, path) if base_path else path
+    
+    if not os.path.exists(full_path):
+        return items
+    
+    for item in os.listdir(full_path):
+        item_path = os.path.join(full_path, item)
+        relative_path = os.path.join(path, item) if path else item
+        
+        if os.path.isdir(item_path):
+            items.append({
+                "name": item,
+                "path": relative_path,
+                "is_dir": True,
+                "children": []
+            })
+        else:
+            items.append({
+                "name": item,
+                "path": relative_path,
+                "is_dir": False,
+                "children": []
+            })
+    
+    return items
 
 # --- File System Tools ---
 
 async def list_files(user: User, path: str, base_dir: str, project_id: str = None, **kwargs) -> str:
     """Lists files and directories at a given path."""
-    async for db in get_session():
-        base_path = get_base_dir(base_dir, user, project_id)
+    try:
+        base_path = get_base_dir(base_dir, user.username if hasattr(user, 'username') else str(user.id), project_id)
+        full_path = os.path.join(base_path, path) if path else base_path
+        
+        if not os.path.abspath(full_path).startswith(os.path.abspath(base_path)):
+            return "Error: Access denied."
+            
+        if not os.path.exists(full_path):
+            os.makedirs(full_path, exist_ok=True)
+            
+        structure = build_tree(path, base_path)
+        return json.dumps(structure, indent=2)
+    except Exception as e:
+        return f"Error listing files: {str(e)}"
+
+async def read_file(user: User, path: str, base_dir: str, project_id: str = None) -> str:
+    """Reads the content of a file."""
+    try:
+        base_path = get_base_dir(base_dir, user.username if hasattr(user, 'username') else str(user.id), project_id)
         full_path = os.path.join(base_path, path)
         
         if not os.path.abspath(full_path).startswith(os.path.abspath(base_path)):
             return "Error: Access denied."
             
-        structure = build_tree(full_path)
-        return json.dumps([node.dict() for node in structure], indent=2)
-
-async def read_file(user: User, path: str, base_dir: str, project_id: str = None) -> str:
-    """Reads the content of a file."""
-    response = await get_file_content(path=path, base_dir=base_dir, project_id=project_id, current_user=user)
-    return response.content
+        if not os.path.exists(full_path):
+            return "Error: File not found."
+            
+        with open(full_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except Exception as e:
+        return f"Error reading file: {str(e)}"
 
 async def write_file(user: User, path: str, content: str, base_dir: str, project_id: str = None) -> str:
     """Writes content to a file."""
-    request = FileUpdateRequest(path=path, content=content, base_dir=base_dir, project_id=project_id)
-    response = await update_file(data=request, current_user=user)
-    return response["message"]
+    try:
+        base_path = get_base_dir(base_dir, user.username if hasattr(user, 'username') else str(user.id), project_id)
+        full_path = os.path.join(base_path, path)
+        
+        if not os.path.abspath(full_path).startswith(os.path.abspath(base_path)):
+            return "Error: Access denied."
+            
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        
+        with open(full_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+            
+        return f"File written successfully: {path}"
+    except Exception as e:
+        return f"Error writing file: {str(e)}"
 
 async def create_file(user: User, path: str, base_dir: str, project_id: str = None) -> str:
     """Creates a new file."""
-    request = FileOperationRequest(path=path, base_dir=base_dir, project_id=project_id)
-    response = await create_file_or_folder(data=request, current_user=user)
-    return response["message"]
+    try:
+        base_path = get_base_dir(base_dir, user.username if hasattr(user, 'username') else str(user.id), project_id)
+        full_path = os.path.join(base_path, path)
+        
+        if not os.path.abspath(full_path).startswith(os.path.abspath(base_path)):
+            return "Error: Access denied."
+            
+        if os.path.exists(full_path):
+            return "Error: File already exists."
+            
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        
+        # Create empty file
+        with open(full_path, 'w', encoding='utf-8') as f:
+            f.write("")
+            
+        return f"File created successfully: {path}"
+    except Exception as e:
+        return f"Error creating file: {str(e)}"
 
 async def delete_file(user: User, path: str, base_dir: str, project_id: str = None) -> str:
     """Deletes a file."""
-    base_path = get_base_dir(base_dir, user, project_id)
-    full_path = os.path.join(base_path, path)
+    try:
+        base_path = get_base_dir(base_dir, user.username if hasattr(user, 'username') else str(user.id), project_id)
+        full_path = os.path.join(base_path, path)
+        
+        if not os.path.abspath(full_path).startswith(os.path.abspath(base_path)):
+            return "Error: Access denied."
+            
+        if not os.path.exists(full_path):
+            return "Error: File not found."
+            
+        if os.path.isdir(full_path):
+            import shutil
+            shutil.rmtree(full_path)
+        else:
+            os.remove(full_path)
+            
+        return f"File deleted successfully: {path}"
+    except Exception as e:
+        return f"Error deleting file: {str(e)}"
 
-    if not os.path.exists(full_path):
-        return "Error: File not found."
 
-    request = FileOperationRequest(path=path, base_dir=base_dir, project_id=project_id)
-    response = await delete_file_or_folder(data=request, current_user=user)
-    return response["message"]
-
-
-# Import equipment API functions if available
-try:
-    from api.equipment_api import get_printers, get_printer_status, send_gcode, GCodeRequest
-    EQUIPMENT_API_AVAILABLE = True
-except ImportError:
-    EQUIPMENT_API_AVAILABLE = False
-    get_printers = None
-    get_printer_status = None
-    send_gcode = None
-    GCodeRequest = None
+# Equipment API functions will be imported later to avoid circular imports
+EQUIPMENT_API_AVAILABLE = False
+get_printers = None
+get_printer_status = None
+send_gcode = None
+GCodeRequest = None
 
 # ... (existing code) ...
 

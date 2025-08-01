@@ -20,7 +20,8 @@ from routers import (
     projects, tasks, teams, materials, files_router,
     auth_router, voice_router, vision_router, 
     equipment_router, workspace_router, system_router,
-    network_router, accounts_router
+    network_router, accounts_router, terminal_router,
+    ai_config_router
 )
 # Use simplified admin router for development
 from admin_dev import router as admin_router
@@ -100,9 +101,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Note: Dependencies will be injected after get_current_user is defined
+
 # Include all routers from main.py
-# Commented out to use dev_server's built-in projects endpoints
-# app.include_router(projects, prefix="/api/v1/projects", tags=["projects"])
+app.include_router(projects, prefix="/api/v1/projects", tags=["projects"])
 app.include_router(tasks, prefix="/api/v1/tasks", tags=["tasks"])
 app.include_router(teams, prefix="/api/v1/teams", tags=["teams"])
 app.include_router(materials, prefix="/api/v1/materials", tags=["materials"])
@@ -117,6 +119,8 @@ app.include_router(system_router)
 app.include_router(network_router)
 app.include_router(accounts_router)
 app.include_router(admin_router)
+app.include_router(terminal_router)
+app.include_router(ai_config_router)
 
 
 # ============== AUTH CONFIGURATION ==============
@@ -283,6 +287,14 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+# Inject dependencies into imported routers after defining get_current_user
+import api.projects_api
+import api.terminal_api
+import api.ai_config_api
+api.projects_api.get_current_user = get_current_user
+api.terminal_api.get_current_user = get_current_user
+api.ai_config_api.get_current_user = get_current_user
 
 # ============== AUTH ENDPOINTS ==============
 
@@ -1822,89 +1834,89 @@ async def printer_status_updater():
 
 # ============== MISSING ENDPOINTS ==============
 
-# Terminal endpoints
-@app.post("/api/v1/terminal/command")
-async def terminal_command(command: dict, current_user: User = Depends(get_current_user)):
-    """Execute terminal command with AI assistant"""
-    user_command = command.get('command', '')
+# Terminal endpoints - COMMENTED OUT: Using terminal_api router instead
+# @app.post("/api/v1/terminal/command")
+## async def terminal_command(command: dict, current_user: User = Depends(get_current_user)):
+#    """Execute terminal command with AI assistant"""
+#    user_command = command.get('command', '')
     
-    # Simulate AI responses for common commands
-    ai_responses = {
-        "hi": "Hello! I'm W.I.T., your Workshop Intelligence Terminal. How can I assist you today?",
-        "hello": "Hello! I'm W.I.T., your Workshop Intelligence Terminal. How can I assist you today?",
-        "help": "I can help you with:\n• Managing projects and tasks\n• Controlling 3D printers and equipment\n• File management and organization\n• Workshop automation\n\nTry commands like 'list projects', 'check printers', or ask me anything!",
-        "how are you": "I'm functioning optimally! Ready to help you manage your workshop. What would you like to work on today?",
-        "list projects": "You currently have no active projects. Use 'create project <name>' to start a new one.",
-        "check printers": "No printers are currently connected. Use the Equipment page to add printers.",
-        "whoami": f"You are logged in as: {current_user.username}",
-        "date": f"Current date and time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-        "clear": "Terminal cleared.",
-    }
+#    # Simulate AI responses for common commands
+#    ai_responses = {
+#        "hi": "Hello! I'm W.I.T., your Workshop Intelligence Terminal. How can I assist you today?",
+#        "hello": "Hello! I'm W.I.T., your Workshop Intelligence Terminal. How can I assist you today?",
+#        "help": "I can help you with:\n• Managing projects and tasks\n• Controlling 3D printers and equipment\n• File management and organization\n• Workshop automation\n\nTry commands like 'list projects', 'check printers', or ask me anything!",
+#        "how are you": "I'm functioning optimally! Ready to help you manage your workshop. What would you like to work on today?",
+#        "list projects": "You currently have no active projects. Use 'create project <name>' to start a new one.",
+#        "check printers": "No printers are currently connected. Use the Equipment page to add printers.",
+#        "whoami": f"You are logged in as: {current_user.username}",
+#        "date": f"Current date and time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+#        "clear": "Terminal cleared.",
+#    }
     
-    # Check for exact matches first
-    command_lower = user_command.lower().strip()
-    if command_lower in ai_responses:
-        response = ai_responses[command_lower]
-    # Check for partial matches
-    elif "project" in command_lower:
-        if "create" in command_lower or "new" in command_lower:
-            # Extract project name from command
-            import re
-            match = re.search(r'(?:create|new)\s+project\s+(.+)', command_lower)
-            if match:
-                project_name = match.group(1).strip()
-                # Create the project
-                import uuid
-                project_id = str(uuid.uuid4())
-                project_code = f"PROJ-{len(projects_db) + 1:04d}"
-                new_project = {
-                    "id": project_id,
-                    "project_id": project_code,
-                    "name": project_name.title(),
-                    "description": f"Created via WIT terminal",
-                    "type": "general",
-                    "status": "not_started",
-                    "priority": "medium",
-                    "owner_id": current_user.username,
-                    "created_at": datetime.now().isoformat(),
-                    "updated_at": datetime.now().isoformat(),
-                    "extra_data": {}
-                }
-                projects_db.append(new_project)
-                response = f"✅ Project '{project_name.title()}' created successfully! Project ID: {project_code}"
-            else:
-                response = "To create a project, use: 'create project <name>' or 'new project <name>'"
-        elif "list" in command_lower or "show" in command_lower:
-            if len(projects_db) == 0:
-                response = "You currently have no active projects. Use 'create project <name>' to start one."
-            else:
-                response = "📋 Your projects:\n"
-                for proj in projects_db:
-                    response += f"• {proj['project_id']}: {proj['name']} ({proj['status']})\n"
-        else:
-            response = "I can help you manage projects. Try 'list projects' or 'create project <name>'"
-    elif "printer" in command_lower:
-        response = "No printers are currently connected. Visit the Equipment page to add and manage printers."
-    elif "task" in command_lower:
-        response = "No tasks found. Tasks are usually associated with projects. Create a project first!"
-    elif "file" in command_lower:
-        response = "File operations are available through the File Browser in the sidebar."
-    elif any(greeting in command_lower for greeting in ["hi", "hello", "hey"]):
-        response = "Hello! I'm W.I.T., your Workshop Intelligence Terminal. How can I assist you today?"
-    else:
-        # Default AI-like response for unknown commands
-        response = f"I understand you said '{user_command}'. I'm still learning and expanding my capabilities. Try 'help' to see what I can do, or rephrase your request."
+#    # Check for exact matches first
+#    command_lower = user_command.lower().strip()
+#    if command_lower in ai_responses:
+#        response = ai_responses[command_lower]
+#    # Check for partial matches
+#    elif "project" in command_lower:
+#        if "create" in command_lower or "new" in command_lower:
+#            # Extract project name from command
+#            import re
+#            match = re.search(r'(?:create|new)\s+project\s+(.+)', command_lower)
+#            if match:
+#                project_name = match.group(1).strip()
+#                # Create the project
+#                import uuid
+#                project_id = str(uuid.uuid4())
+#                project_code = f"PROJ-{len(projects_db) + 1:04d}"
+#                new_project = {
+#                    "id": project_id,
+#                    "project_id": project_code,
+#                    "name": project_name.title(),
+#                    "description": f"Created via WIT terminal",
+#                    "type": "general",
+#                    "status": "not_started",
+#                    "priority": "medium",
+#                    "owner_id": current_user.username,
+#                    "created_at": datetime.now().isoformat(),
+#                    "updated_at": datetime.now().isoformat(),
+#                    "extra_data": {}
+#                }
+#                projects_db.append(new_project)
+#                response = f"✅ Project '{project_name.title()}' created successfully! Project ID: {project_code}"
+#            else:
+#                response = "To create a project, use: 'create project <name>' or 'new project <name>'"
+#        elif "list" in command_lower or "show" in command_lower:
+#            if len(projects_db) == 0:
+#                response = "You currently have no active projects. Use 'create project <name>' to start one."
+#            else:
+#                response = "📋 Your projects:\n"
+#                for proj in projects_db:
+#                    response += f"• {proj['project_id']}: {proj['name']} ({proj['status']})\n"
+#        else:
+#            response = "I can help you manage projects. Try 'list projects' or 'create project <name>'"
+#    elif "printer" in command_lower:
+#        response = "No printers are currently connected. Visit the Equipment page to add and manage printers."
+#    elif "task" in command_lower:
+#        response = "No tasks found. Tasks are usually associated with projects. Create a project first!"
+#    elif "file" in command_lower:
+#        response = "File operations are available through the File Browser in the sidebar."
+#    elif any(greeting in command_lower for greeting in ["hi", "hello", "hey"]):
+#        response = "Hello! I'm W.I.T., your Workshop Intelligence Terminal. How can I assist you today?"
+#    else:
+#        # Default AI-like response for unknown commands
+#        response = f"I understand you said '{user_command}'. I'm still learning and expanding my capabilities. Try 'help' to see what I can do, or rephrase your request."
     
-    return {
-        "response": response,
-        "status": "success"
-    }
+#    return {
+#        "response": response,
+#        "status": "success"
+#    }
 
-@app.post("/api/v1/log-ai-message")
-async def log_ai_message(message: dict):
-    """Log AI message"""
-    logger.info(f"AI message: {message}")
-    return {"status": "logged"}
+# @app.post("/api/v1/log-ai-message")
+## async def log_ai_message(message: dict):
+#    """Log AI message"""
+#    logger.info(f"AI message: {message}")
+#    return {"status": "logged"}
 
 def simplify_sqrt(n):
     """Simplify square root to radical form"""
@@ -1923,139 +1935,140 @@ def simplify_sqrt(n):
         i -= 1
     return f"√{n}"
 
-@app.post("/api/v1/terminal/ai-query")
-async def ai_query(query: dict, current_user: User = Depends(get_current_user)):
-    """Handle general AI queries"""
-    user_query = query.get('query', '')
-    context = query.get('context', '')
+# COMMENTED OUT: Using terminal_api router instead
+# @app.post("/api/v1/terminal/ai-query")
+# async def ai_query(query: dict, current_user: User = Depends(get_current_user)):
+#     """Handle general AI queries"""
+#     user_query = query.get('query', '')
+#     context = query.get('context', '')
     
     # For development, simulate AI responses for common queries
     # In production, this would connect to actual AI services
     
     # Math queries
-    import re
-    import math
+#     import re
+#     import math
     
     # Square root queries
-    if "square root" in user_query.lower() or "sqrt" in user_query.lower() or "√" in user_query:
+#     if "square root" in user_query.lower() or "sqrt" in user_query.lower() or "√" in user_query:
         # Match various formats: "square root of 27", "sqrt(27)", "√27", etc.
-        patterns = [
-            r'square root of (\d+)',
-            r'sqrt\s*\(?\s*(\d+)',
-            r'√\s*(\d+)',
-            r'what is (?:the )?√(\d+)',
-        ]
+#         patterns = [
+#             r'square root of (\d+)',
+#             r'sqrt\s*\(?\s*(\d+)',
+#             r'√\s*(\d+)',
+#             r'what is (?:the )?√(\d+)',
+#         ]
         
-        for pattern in patterns:
-            match = re.search(pattern, user_query.lower())
-            if match:
-                number = int(match.group(1))
-                result = math.sqrt(number)
+#         for pattern in patterns:
+#             match = re.search(pattern, user_query.lower())
+#             if match:
+#                 number = int(match.group(1))
+#                 result = math.sqrt(number)
                 
                 # Check if it's a perfect square
-                if result == int(result):
-                    return {
-                        "response": f"The square root of {number} is {int(result)}",
-                        "provider": "claude",
-                        "model": "claude-3-opus",
-                        "status": "success"
-                    }
-                else:
+#                 if result == int(result):
+#                     return {
+#                         "response": f"The square root of {number} is {int(result)}",
+#                         "provider": "claude",
+#                         "model": "claude-3-opus",
+#                         "status": "success"
+#                     }
+#                 else:
                     # Provide both exact and approximate values
-                    simplified = simplify_sqrt(number)
-                    return {
-                        "response": f"The square root of {number} is approximately {result:.4f}\n\nExact form: {simplified}",
-                        "provider": "claude",
-                        "model": "claude-3-opus",
-                        "status": "success"
-                    }
+#                     simplified = simplify_sqrt(number)
+#                     return {
+#                         "response": f"The square root of {number} is approximately {result:.4f}\n\nExact form: {simplified}",
+#                         "provider": "claude",
+#                         "model": "claude-3-opus",
+#                         "status": "success"
+#                     }
     
     # Basic arithmetic
-    arithmetic_match = re.search(r'(\d+)\s*([\+\-\*\/\^])\s*(\d+)', user_query)
-    if arithmetic_match:
-        num1 = float(arithmetic_match.group(1))
-        operator = arithmetic_match.group(2)
-        num2 = float(arithmetic_match.group(3))
+#     arithmetic_match = re.search(r'(\d+)\s*([\+\-\*\/\^])\s*(\d+)', user_query)
+#     if arithmetic_match:
+#         num1 = float(arithmetic_match.group(1))
+#         operator = arithmetic_match.group(2)
+#         num2 = float(arithmetic_match.group(3))
         
-        if operator == '+':
-            result = num1 + num2
-            op_name = "plus"
-        elif operator == '-':
-            result = num1 - num2
-            op_name = "minus"
-        elif operator == '*':
-            result = num1 * num2
-            op_name = "times"
-        elif operator == '/':
-            if num2 == 0:
-                return {
-                    "response": "Cannot divide by zero!",
-                    "provider": "claude",
-                    "model": "claude-3-opus",
-                    "status": "success"
-                }
-            result = num1 / num2
-            op_name = "divided by"
-        elif operator == '^':
-            result = num1 ** num2
-            op_name = "to the power of"
+#         if operator == '+':
+#             result = num1 + num2
+#             op_name = "plus"
+#         elif operator == '-':
+#             result = num1 - num2
+#             op_name = "minus"
+#         elif operator == '*':
+#             result = num1 * num2
+#             op_name = "times"
+#         elif operator == '/':
+#             if num2 == 0:
+#                 return {
+#                     "response": "Cannot divide by zero!",
+#                     "provider": "claude",
+#                     "model": "claude-3-opus",
+#                     "status": "success"
+#                 }
+#             result = num1 / num2
+#             op_name = "divided by"
+#         elif operator == '^':
+#             result = num1 ** num2
+#             op_name = "to the power of"
         
         # Format result nicely
-        if result == int(result):
-            result_str = str(int(result))
-        else:
-            result_str = f"{result:.4f}".rstrip('0').rstrip('.')
+#         if result == int(result):
+#             result_str = str(int(result))
+#         else:
+#             result_str = f"{result:.4f}".rstrip('0').rstrip('.')
             
-        return {
-            "response": f"{int(num1) if num1 == int(num1) else num1} {op_name} {int(num2) if num2 == int(num2) else num2} equals {result_str}",
-            "provider": "claude",
-            "model": "claude-3-opus",
-            "status": "success"
-        }
+#         return {
+#             "response": f"{int(num1) if num1 == int(num1) else num1} {op_name} {int(num2) if num2 == int(num2) else num2} equals {result_str}",
+#             "provider": "claude",
+#             "model": "claude-3-opus",
+#             "status": "success"
+#         }
     
     # Science/Engineering queries
-    if "voltage drop" in user_query.lower():
-        return {
-            "response": "To calculate voltage drop, use Ohm's Law: V = I × R\n\nWhere:\n• V = Voltage drop (volts)\n• I = Current (amperes)\n• R = Resistance (ohms)\n\nFor wire resistance: R = ρ × L / A\nWhere:\n• ρ = Resistivity of material\n• L = Length of wire\n• A = Cross-sectional area\n\nFor AC circuits, also consider impedance (Z) which includes reactance.",
-            "provider": "claude",
-            "model": "claude-3-opus",
-            "status": "success"
-        }
+#     if "voltage drop" in user_query.lower():
+#         return {
+#             "response": "To calculate voltage drop, use Ohm's Law: V = I × R\n\nWhere:\n• V = Voltage drop (volts)\n• I = Current (amperes)\n• R = Resistance (ohms)\n\nFor wire resistance: R = ρ × L / A\nWhere:\n• ρ = Resistivity of material\n• L = Length of wire\n• A = Cross-sectional area\n\nFor AC circuits, also consider impedance (Z) which includes reactance.",
+#             "provider": "claude",
+#             "model": "claude-3-opus",
+#             "status": "success"
+#         }
     
-    if "ac" in user_query.lower() and "dc" in user_query.lower():
-        return {
-            "response": "AC (Alternating Current) vs DC (Direct Current):\n\n**DC (Direct Current):**\n• Current flows in one direction\n• Constant voltage\n• Used in batteries, electronics, LEDs\n• Easier to store (batteries)\n\n**AC (Alternating Current):**\n• Current alternates direction periodically\n• Voltage varies sinusoidally\n• Used in power grids, motors, transformers\n• More efficient for long-distance transmission\n• Can be easily transformed to different voltages\n\nMost electronic devices internally use DC, but are powered by AC from the wall outlet using adapters.",
-            "provider": "claude", 
-            "model": "claude-3-opus",
-            "status": "success"
-        }
+#     if "ac" in user_query.lower() and "dc" in user_query.lower():
+#         return {
+#             "response": "AC (Alternating Current) vs DC (Direct Current):\n\n**DC (Direct Current):**\n• Current flows in one direction\n• Constant voltage\n• Used in batteries, electronics, LEDs\n• Easier to store (batteries)\n\n**AC (Alternating Current):**\n• Current alternates direction periodically\n• Voltage varies sinusoidally\n• Used in power grids, motors, transformers\n• More efficient for long-distance transmission\n• Can be easily transformed to different voltages\n\nMost electronic devices internally use DC, but are powered by AC from the wall outlet using adapters.",
+#             "provider": "claude", 
+#             "model": "claude-3-opus",
+#             "status": "success"
+#         }
     
     # General knowledge
-    if "weather" in user_query.lower():
-        return {
-            "response": "I don't have access to real-time weather data. For current weather information, please check a weather service or ask me about general weather concepts instead.",
-            "provider": "claude",
-            "model": "claude-3-opus",
-            "status": "success"
-        }
+#     if "weather" in user_query.lower():
+#         return {
+#             "response": "I don't have access to real-time weather data. For current weather information, please check a weather service or ask me about general weather concepts instead.",
+#             "provider": "claude",
+#             "model": "claude-3-opus",
+#             "status": "success"
+#         }
     
     # Workshop/Making queries
-    if any(word in user_query.lower() for word in ["3d print", "filament", "pla", "abs", "petg"]):
-        if "temperature" in user_query.lower():
-            return {
-                "response": "Common 3D printing temperatures:\n\n**PLA:** 190-220°C (nozzle), 50-60°C (bed)\n**ABS:** 220-250°C (nozzle), 90-110°C (bed)\n**PETG:** 230-250°C (nozzle), 70-90°C (bed)\n**TPU:** 210-230°C (nozzle), 40-60°C (bed)\n\nAlways check your filament manufacturer's recommendations!",
-                "provider": "claude",
-                "model": "claude-3-opus",
-                "status": "success"
-            }
+#     if any(word in user_query.lower() for word in ["3d print", "filament", "pla", "abs", "petg"]):
+#         if "temperature" in user_query.lower():
+#             return {
+#                 "response": "Common 3D printing temperatures:\n\n**PLA:** 190-220°C (nozzle), 50-60°C (bed)\n**ABS:** 220-250°C (nozzle), 90-110°C (bed)\n**PETG:** 230-250°C (nozzle), 70-90°C (bed)\n**TPU:** 210-230°C (nozzle), 40-60°C (bed)\n\nAlways check your filament manufacturer's recommendations!",
+#                 "provider": "claude",
+#                 "model": "claude-3-opus",
+#                 "status": "success"
+#             }
     
     # Default response for unhandled queries
-    return {
-        "response": f"I understand you're asking about '{user_query}'. While I'm integrated with the WIT system, I can help with workshop management, 3D printing, electronics, and general technical questions. For more complex queries, make sure an AI provider is configured in your settings.",
-        "provider": "claude",
-        "model": "claude-3-opus",
-        "status": "success"
-    }
+#     return {
+#         "response": f"I understand you're asking about '{user_query}'. While I'm integrated with the WIT system, I can help with workshop management, 3D printing, electronics, and general technical questions. For more complex queries, make sure an AI provider is configured in your settings.",
+#         "provider": "claude",
+#         "model": "claude-3-opus",
+#         "status": "success"
+#     }
 
 # Projects endpoints
 @app.get("/api/v1/projects/")

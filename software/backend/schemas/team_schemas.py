@@ -1,49 +1,32 @@
-"""Team schemas for W.I.T."""
+# software/backend/schemas/team_schemas.py
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
+from enum import Enum
+import uuid
 
-class TeamBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100)
-    description: Optional[str] = None
+class TeamRole(str, Enum):
+    OWNER = "owner"
+    ADMIN = "admin"
+    EDITOR = "editor"
+    VIEWER = "viewer"
 
-class TeamCreate(TeamBase):
-    member_ids: Optional[List[int]] = []
+class TeamMemberAdd(BaseModel):
+    """Model for adding a team member"""
+    username: str = Field(..., min_length=1, max_length=50)
+    role: TeamRole = Field(default=TeamRole.VIEWER)
 
-class TeamUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+class TeamMemberUpdate(BaseModel):
+    """Model for updating team member role"""
+    role: TeamRole
 
-class TeamResponse(TeamBase):
-    id: int
-    created_at: datetime
-    member_count: int = 0
+class TeamMemberResponse(BaseModel):
+    """Team member response model"""
+    id: uuid.UUID
+    project_id: uuid.UUID
+    user_id: uuid.UUID
+    role: str
+    user: Optional[dict] = None  # Will contain user info
     
     class Config:
         from_attributes = True
-
-class TeamMemberAdd(BaseModel):
-    user_id: int
-    role: Optional[str] = "member"
-
-class TeamMemberResponse(BaseModel):
-    user_id: int
-    username: str
-    role: str
-    joined_at: datetime
-
-class TeamMemberUpdate(BaseModel):
-    """Update team member role"""
-    role: str = Field(..., min_length=1, max_length=50)
-
-# Additional schemas for teams router
-
-class TeamInviteRequest(BaseModel):
-    """Auto-generated schema for TeamInviteRequest"""
-    # TODO: Add proper fields
-    data: Optional[dict] = None
-
-class TeamRoleUpdate(BaseModel):
-    """Auto-generated schema for TeamRoleUpdate"""
-    # TODO: Add proper fields
-    data: Optional[dict] = None

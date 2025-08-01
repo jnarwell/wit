@@ -5,61 +5,74 @@ from datetime import datetime
 from enum import Enum
 
 class ProjectStatus(str, Enum):
-    ACTIVE = "active"
-    COMPLETED = "completed"
-    PAUSED = "paused"
-    ARCHIVED = "archived"
+    NOT_STARTED = "not_started"
+    IN_PROGRESS = "in_progress"
+    BLOCKED = "blocked"
+    COMPLETE = "complete"
+
+class ProjectPriority(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+class ProjectType(str, Enum):
+    SOFTWARE = "software"
+    HARDWARE = "hardware"
+    RESEARCH = "research"
+    DESIGN = "design"
+    MANUFACTURING = "manufacturing"
+    OTHER = "other"
 
 class ProjectBase(BaseModel):
+    """Base project model"""
     name: str = Field(..., min_length=1, max_length=200)
-    description: Optional[str] = None
-    status: ProjectStatus = ProjectStatus.ACTIVE
-    metadata: Optional[Dict[str, Any]] = {}
+    description: str = Field(..., min_length=1, max_length=1000)
+    type: ProjectType = Field(default=ProjectType.SOFTWARE)
+    status: ProjectStatus = Field(default=ProjectStatus.NOT_STARTED)
+    priority: ProjectPriority = Field(default=ProjectPriority.MEDIUM)
+    extra_data: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 class ProjectCreate(ProjectBase):
-    """Schema for creating a project"""
+    """Project creation model"""
     pass
 
 class ProjectUpdate(BaseModel):
-    """Schema for updating a project"""
-    name: Optional[str] = None
-    description: Optional[str] = None
+    """Project update model - all fields optional"""
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, min_length=1, max_length=1000)
+    type: Optional[ProjectType] = None
     status: Optional[ProjectStatus] = None
-    metadata: Optional[Dict[str, Any]] = None
+    priority: Optional[ProjectPriority] = None
+    extra_data: Optional[Dict[str, Any]] = None
 
 class ProjectResponse(ProjectBase):
-    """Schema for project response"""
-    id: int
+    """Project response model"""
+    id: str
+    project_id: str
+    owner_id: str
     created_at: datetime
     updated_at: datetime
     
     class Config:
         from_attributes = True
 
-class ProjectList(BaseModel):
-    """List of projects with pagination"""
-    items: List[ProjectResponse]
+class ProjectListResponse(BaseModel):
+    """Project list response with pagination"""
+    projects: List[ProjectResponse]
     total: int
-    page: int = 1
-    page_size: int = 50
-
-# Additional schemas for router compatibility
+    skip: int
+    limit: int
 
 class ProjectDetailResponse(ProjectResponse):
-    """Detailed project response with additional information"""
-    tasks_count: int = 0
-    team_members: List[str] = []
-    completion_percentage: float = 0.0
-    last_activity: Optional[datetime] = None
-    tags: List[str] = []
-    files_count: int = 0
+    """Detailed project response with team and tasks"""
+    team_members: List[Dict[str, Any]] = []  # Will be TeamMemberResponse
+    tasks: List[Dict[str, Any]] = []  # Will be TaskResponse
+    statistics: Dict[str, Any] = {}
 
 class ProjectStatsResponse(BaseModel):
-    """Auto-generated schema for ProjectStatsResponse"""
-    # TODO: Add proper fields
-    pass
-
-class ProjectFilterParams(BaseModel):
-    """Auto-generated schema for ProjectFilterParams"""
-    # TODO: Add proper fields
-    pass
+    """Project statistics response"""
+    total_tasks: int = 0
+    completed_tasks: int = 0
+    completion_rate: float = 0.0
+    task_breakdown: Dict[str, int] = {}
+    file_count: int = 0

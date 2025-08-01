@@ -15,13 +15,16 @@ from api.network_api import router as network_router
 from api.accounts_api_simple import router as accounts_router
 from api.files_api_simple import router as files_router
 from api.admin_api import router as admin_router
+from api.terminal_api import router as terminal_router
+from api.projects_api import router as projects_router
+from api.ai_config_api import router as ai_config_router
 
 # Import the auth router with email verification from frontend
 # We'll create a proper backend auth router
 from auth.auth_router import router as auth_router
 
 # Create placeholder routers for missing ones
-projects = APIRouter()
+projects = projects_router  # Use the actual projects router
 tasks = APIRouter()
 teams = APIRouter()
 materials = APIRouter()
@@ -61,5 +64,7 @@ __all__ = [
     "system_router",
     "network_router",
     "accounts_router",
-    "admin_router"
+    "admin_router",
+    "terminal_router",
+    "ai_config_router"
 ]
