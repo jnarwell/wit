@@ -1,0 +1,52 @@
+{
+  "id": "arduino-ide",
+  "name": "Arduino IDE Integration",
+  "version": "1.0.0",
+  "description": "Integrates Arduino IDE with W.I.T. for hardware development",
+  "author": "W.I.T. Team",
+  "main": "index.js",
+  "permissions": [
+    "app:launch",
+    "file:read",
+    "file:write",
+    "hardware:serial",
+    "system:execute"
+  ],
+  "config": {
+    "arduinoPath": {
+      "type": "string",
+      "label": "Arduino IDE Path",
+      "description": "Path to Arduino IDE executable",
+      "default": "",
+      "platform": {
+        "darwin": "/Applications/Arduino.app/Contents/MacOS/Arduino",
+        "win32": "C:\\Program Files\\Arduino\\arduino.exe",
+        "linux": "/usr/bin/arduino"
+      }
+    },
+    "defaultPort": {
+      "type": "string",
+      "label": "Default Serial Port",
+      "description": "Default port for Arduino boards",
+      "default": ""
+    },
+    "defaultBoard": {
+      "type": "string",
+      "label": "Default Board",
+      "description": "Default Arduino board type",
+      "default": "arduino:avr:uno"
+    },
+    "sketchesPath": {
+      "type": "string",
+      "label": "Sketches Directory",
+      "description": "Path to Arduino sketches directory",
+      "default": "~/Documents/Arduino"
+    },
+    "enableSerial": {
+      "type": "boolean",
+      "label": "Enable Serial Monitor",
+      "description": "Enable serial port monitoring",
+      "default": true
+    }
+  }
+}

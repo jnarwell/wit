@@ -6,7 +6,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "@react-three/drei": "^10.6.0",
     "@react-three/fiber": "^9.2.0",
@@ -44,5 +43,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "echo \"No tests yet\""
-  }
+  },
+  "directories": {
+    "doc": "docs"
+  },
+  "description": ""
 }

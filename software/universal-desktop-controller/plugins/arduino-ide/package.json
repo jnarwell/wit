@@ -1,0 +1,9 @@
+{
+  "name": "wit-arduino-ide-plugin",
+  "version": "1.0.0",
+  "description": "Arduino IDE integration plugin for W.I.T. Universal Desktop Controller",
+  "main": "index.js",
+  "dependencies": {
+    "serialport": "^10.5.0"
+  }
+}

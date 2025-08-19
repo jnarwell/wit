@@ -299,6 +299,130 @@
 }
 
 /* Security Section */
+.auth-token-section {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.auth-token-header {
+  margin-bottom: 1.5rem;
+}
+
+.auth-token-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+
+.auth-token-description {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.auth-token-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auth-token-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.25rem;
+}
+
+.auth-token-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: none;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.875rem;
+  color: #111827;
+  outline: none;
+}
+
+.auth-token-input:disabled {
+  color: #9ca3af;
+}
+
+.auth-token-toggle,
+.auth-token-copy {
+  padding: 0.5rem;
+  background-color: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-token-toggle:hover:not(:disabled),
+.auth-token-copy:hover:not(:disabled) {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.auth-token-toggle:disabled,
+.auth-token-copy:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-token-copy.copied {
+  color: #10b981;
+}
+
+.auth-token-error {
+  padding: 0.75rem;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.auth-token-info {
+  padding: 1rem;
+  background-color: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 6px;
+}
+
+.auth-token-info p {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.auth-token-usage {
+  list-style: disc;
+  list-style-position: inside;
+  margin: 0;
+  padding-left: 0.5rem;
+  font-size: 0.875rem;
+  color: #4b5563;
+}
+
+.auth-token-usage li {
+  margin: 0.25rem 0;
+}
+
 .security-options {
   display: flex;
   flex-direction: column;
@@ -410,5 +534,14 @@
 
   .profile-info {
     grid-template-columns: 1fr;
+  }
+
+  .auth-token-input-wrapper {
+    flex-wrap: wrap;
+  }
+
+  .auth-token-input {
+    width: 100%;
+    margin-bottom: 0.5rem;
   }
 }

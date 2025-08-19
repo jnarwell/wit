@@ -27,7 +27,7 @@ interface Machine {
   type: string;
   status: 'green' | 'yellow' | 'red';
   metrics: { label: string; value: string }[];
-  connectionType: 'usb' | 'network' | 'serial' | 'bluetooth' | 'network-prusalink' | 'network-octoprint';
+  connectionType: 'usb' | 'serial' | 'network-octoprint' | 'network-moonraker' | 'network-bambu' | 'network-prusalink' | 'network-elegoo' | 'network-prusaconnect';
   connectionDetails: string;
   manufacturer: string;
   model?: string;
@@ -42,8 +42,8 @@ interface Machine {
 
 interface MachineTypeConfig {
   defaultName: string;
-  connectionTypes: Array<'usb' | 'network' | 'serial' | 'bluetooth' | 'network-prusalink' | 'network-octoprint'>;
-  defaultConnection: 'usb' | 'network' | 'serial' | 'bluetooth' | 'network-prusalink' | 'network-octoprint';
+  connectionTypes: Array<'usb' | 'serial' | 'network-octoprint' | 'network-moonraker' | 'network-bambu' | 'network-prusalink' | 'network-elegoo' | 'network-prusaconnect'>;
+  defaultConnection: 'usb' | 'serial' | 'network-octoprint' | 'network-moonraker' | 'network-bambu' | 'network-prusalink' | 'network-elegoo' | 'network-prusaconnect';
   manufacturers: string[];
 }
 
@@ -54,84 +54,41 @@ interface MachinesPageProps {
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
 const MACHINE_TYPES: Record<string, MachineTypeConfig> = {
-  '3d-printer': {
-    defaultName: '3D Printer',
-    connectionTypes: ['usb', 'network-prusalink', 'network-octoprint', 'serial'],
+  '3d-printer-generic': {
+    defaultName: '3D Printer (Generic)',
+    connectionTypes: ['usb', 'serial'],
     defaultConnection: 'usb',
-    manufacturers: ['Prusa', 'Ultimaker', 'MakerBot', 'Creality', 'Anycubic', 'Other']
+    manufacturers: ['Generic', 'RepRap', 'Custom', 'Other']
   },
-  'laser-cutter': {
-    defaultName: 'Laser Cutter',
-    connectionTypes: ['usb', 'network-prusalink', 'network-octoprint'],
+  '3d-printer-octoprint': {
+    defaultName: '3D Printer (OctoPrint)',
+    connectionTypes: ['network-octoprint'],
     defaultConnection: 'network-octoprint',
-    manufacturers: ['Epilog', 'Trotec', 'Universal Laser', 'Glowforge', 'Other']
+    manufacturers: ['Any', 'Prusa', 'Creality', 'Ender', 'Anycubic', 'Ultimaker', 'Other']
   },
-  'cnc-mill': {
-    defaultName: 'CNC Mill',
-    connectionTypes: ['usb', 'serial', 'network-octoprint'],
-    defaultConnection: 'serial',
-    manufacturers: ['Haas', 'Tormach', 'ShopBot', 'Carbide 3D', 'Other']
+  '3d-printer-klipper': {
+    defaultName: '3D Printer (Klipper/Moonraker)',
+    connectionTypes: ['network-moonraker'],
+    defaultConnection: 'network-moonraker',
+    manufacturers: ['Voron', 'RatRig', 'Custom Klipper', 'Other']
   },
-  'vinyl-cutter': {
-    defaultName: 'Vinyl Cutter',
-    connectionTypes: ['usb', 'serial'],
-    defaultConnection: 'usb',
-    manufacturers: ['Cricut', 'Silhouette', 'Roland', 'Other']
+  '3d-printer-bambu': {
+    defaultName: 'Bambu Lab Printer',
+    connectionTypes: ['network-bambu'],
+    defaultConnection: 'network-bambu',
+    manufacturers: ['Bambu Lab']
   },
-  'soldering': {
-    defaultName: 'Soldering Station',
-    connectionTypes: ['usb'],
-    defaultConnection: 'usb',
-    manufacturers: ['Hakko', 'Weller', 'Metcal', 'Other']
+  '3d-printer-prusa-mk4': {
+    defaultName: 'Prusa MK4/XL/MINI+',
+    connectionTypes: ['network-prusalink', 'network-prusaconnect', 'usb'],
+    defaultConnection: 'network-prusalink',
+    manufacturers: ['Prusa Research']
   },
-  'custom': {
-    defaultName: 'Custom Equipment',
-    connectionTypes: ['usb', 'network-prusalink', 'network-octoprint', 'serial', 'bluetooth'],
-    defaultConnection: 'network-octoprint',
-    manufacturers: ['Custom', 'Other']
-  },
-  // Microcontrollers
-  'arduino-uno': {
-    defaultName: 'Arduino Uno',
-    connectionTypes: ['usb', 'serial'],
-    defaultConnection: 'usb',
-    manufacturers: ['Arduino']
-  },
-  'arduino-mega': {
-    defaultName: 'Arduino Mega',
-    connectionTypes: ['usb', 'serial'],
-    defaultConnection: 'usb',
-    manufacturers: ['Arduino']
-  },
-  'arduino-nano': {
-    defaultName: 'Arduino Nano',
-    connectionTypes: ['usb', 'serial'],
-    defaultConnection: 'usb',
-    manufacturers: ['Arduino']
-  },
-  'esp32': {
-    defaultName: 'ESP32',
-    connectionTypes: ['usb', 'network', 'bluetooth'],
-    defaultConnection: 'usb',
-    manufacturers: ['Espressif', 'NodeMCU', 'Wemos', 'Other']
-  },
-  'esp8266': {
-    defaultName: 'ESP8266',
-    connectionTypes: ['usb', 'network'],
-    defaultConnection: 'usb',
-    manufacturers: ['Espressif', 'NodeMCU', 'Wemos', 'Other']
-  },
-  'raspberry-pi': {
-    defaultName: 'Raspberry Pi',
-    connectionTypes: ['network', 'usb'],
-    defaultConnection: 'network',
-    manufacturers: ['Raspberry Pi Foundation']
-  },
-  'raspberry-pi-pico': {
-    defaultName: 'Raspberry Pi Pico',
-    connectionTypes: ['usb', 'serial'],
-    defaultConnection: 'usb',
-    manufacturers: ['Raspberry Pi Foundation']
+  '3d-printer-elegoo': {
+    defaultName: 'Elegoo Printer',
+    connectionTypes: ['network-elegoo'],
+    defaultConnection: 'network-elegoo',
+    manufacturers: ['Elegoo']
   }
 };
 
@@ -141,33 +98,49 @@ const CONNECTION_CONFIGS: Record<string, any> = {
     placeholder: '/dev/ttyUSB0 or COM3',
     helperText: 'Connect printer directly via USB cable'
   },
+  'serial': {
+    label: 'Serial',
+    placeholder: '/dev/ttyS0 or COM1',
+    helperText: 'Direct serial connection'
+  },
+  'network-octoprint': {
+    label: 'OctoPrint',
+    placeholder: 'http://octopi.local or http://192.168.1.100:5000',
+    helperText: 'OctoPrint server URL (supports any printer running OctoPrint)',
+    requiresApiKey: true
+  },
+  'network-moonraker': {
+    label: 'Moonraker (Klipper)',
+    placeholder: 'http://192.168.1.100:7125',
+    helperText: 'Moonraker API for Klipper-based printers',
+    requiresApiKey: false
+  },
+  'network-bambu': {
+    label: 'Bambu Lab',
+    placeholder: '192.168.1.100',
+    helperText: 'Bambu Lab printer IP (X1C, X1E, P1P, P1S, A1)',
+    requiresAuth: true,
+    authType: 'bambu'
+  },
   'network-prusalink': {
-    label: 'Network (PrusaLink)',
+    label: 'PrusaLink',
     placeholder: '192.168.1.100',
     helperText: 'Built-in network interface on Prusa XL/MK4/MINI+',
     requiresAuth: true,
     authType: 'basic'
   },
-  'network-octoprint': {
-    label: 'Network (OctoPrint)',
-    placeholder: 'http://octopi.local:5000',
-    helperText: 'OctoPrint server URL',
-    requiresApiKey: true
+  'network-elegoo': {
+    label: 'Elegoo',
+    placeholder: '192.168.1.100',
+    helperText: 'Elegoo printer network connection',
+    requiresAuth: false
   },
-  'serial': {
-    label: 'Serial',
-    placeholder: '/dev/ttyS0',
-    helperText: 'Direct serial connection'
-  },
-  'bluetooth': {
-    label: 'Bluetooth',
-    placeholder: 'Device name',
-    helperText: 'Bluetooth connection (experimental)'
-  },
-  'network': {
-    label: 'Network',
-    placeholder: '192.168.1.100:8080',
-    helperText: 'IP address and port for network connection'
+  'network-prusaconnect': {
+    label: 'PrusaConnect (Cloud)',
+    placeholder: 'Leave empty - uses cloud API',
+    helperText: 'Cloud-based access to your Prusa printer (requires internet)',
+    requiresAuth: true,
+    authType: 'token'
   }
 };
 
@@ -289,7 +262,17 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
           return {
             ...machine,
             status: statusColor,
-            metrics: metrics
+            metrics: metrics,
+            state: status.state?.text || status.state || 'Unknown',
+            bridge_connected: status.bridge_connected || false,
+            control_mode: status.control_mode || 'limited',
+            capabilities: status.capabilities || {
+              temperature_control: false,
+              movement_control: false,
+              gcode_control: false,
+              print_control: false,
+              monitoring: true
+            }
           };
         }
         return machine;
@@ -461,13 +444,11 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
   const [gridRows, setGridRows] = useState(3);
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionTestResult, setConnectionTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [availableSerialPorts, setAvailableSerialPorts] = useState<Array<{ port: string; description: string }>>([]);
-  const [scanningPorts, setScanningPorts] = useState(false);
   
   const [newMachine, setNewMachine] = useState({
-    type: '3d-printer',
+    type: '3d-printer-generic',
     name: '',
-    connectionType: 'usb' as 'usb' | 'network-prusalink' | 'network-octoprint' | 'serial' | 'bluetooth',
+    connectionType: 'usb' as 'usb' | 'serial' | 'network-octoprint' | 'network-moonraker' | 'network-bambu' | 'network-prusalink' | 'network-elegoo' | 'network-prusaconnect',
     connectionDetails: '',
     username: 'maker',
     password: '',
@@ -881,6 +862,33 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
           setTestingConnection(false);
           return;
         }
+      } else if (newMachine.connectionType === 'network-bambu') {
+        requestBody.url = newMachine.connectionDetails;
+        requestBody.access_code = newMachine.password;
+        
+        if (!requestBody.access_code) {
+          setConnectionTestResult({ 
+            success: false, 
+            message: 'Access code is required for Bambu Lab printers' 
+          });
+          setTestingConnection(false);
+          return;
+        }
+      } else if (newMachine.connectionType === 'network-moonraker') {
+        requestBody.url = newMachine.connectionDetails;
+      } else if (newMachine.connectionType === 'network-elegoo') {
+        requestBody.url = newMachine.connectionDetails;
+      } else if (newMachine.connectionType === 'network-prusaconnect') {
+        requestBody.api_token = newMachine.apiKey;
+        
+        if (!requestBody.api_token) {
+          setConnectionTestResult({ 
+            success: false, 
+            message: 'API token is required for PrusaConnect' 
+          });
+          setTestingConnection(false);
+          return;
+        }
       } else {
         requestBody.port = newMachine.connectionDetails;
       }
@@ -918,24 +926,6 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
     }
   };
 
-  const scanSerialPorts = async () => {
-    setScanningPorts(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/microcontrollers/ports`, {
-        headers: {
-          'Authorization': `Bearer ${tokens?.access_token}`
-        }
-      });
-      if (response.ok) {
-        const ports = await response.json();
-        setAvailableSerialPorts(ports);
-      }
-    } catch (error) {
-      console.error('Failed to scan serial ports:', error);
-    } finally {
-      setScanningPorts(false);
-    }
-  };
 
   const handleAddMachine = async () => {
     if (!isAuthenticated) {
@@ -1015,6 +1005,15 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
         } else if (newMachine.connectionType === 'network-octoprint') {
           apiRequest.url = newMachine.connectionDetails;
           apiRequest.api_key = newMachine.apiKey;
+        } else if (newMachine.connectionType === 'network-bambu') {
+          apiRequest.url = newMachine.connectionDetails;
+          apiRequest.access_code = newMachine.password;
+        } else if (newMachine.connectionType === 'network-moonraker') {
+          apiRequest.url = newMachine.connectionDetails;
+        } else if (newMachine.connectionType === 'network-elegoo') {
+          apiRequest.url = newMachine.connectionDetails;
+        } else if (newMachine.connectionType === 'network-prusaconnect') {
+          apiRequest.api_token = newMachine.apiKey;
         }
 
         console.log('[MachinesPage] Adding printer to backend:', apiRequest);
@@ -1064,7 +1063,7 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
           console.error('[MachinesPage] Failed to add printer to backend:', response.status, errorText);
           if (response.status === 401) {
             alert('Authentication expired. Please login again.');
-            AuthTokens.removeToken();
+            // Force re-authentication
             window.location.reload();
           }
         }
@@ -1129,7 +1128,8 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
       <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-gray-700">
-          <h1 className="text-2xl font-bold text-white mb-4">Machines</h1>
+          <h1 className="text-2xl font-bold text-white mb-2">3D Printers</h1>
+          <p className="text-sm text-gray-400 mb-4">Universal control powered by OctoEverywhere integration</p>
           <button
             onClick={() => setShowAddModal(true)}
             disabled={!isAuthenticated}
@@ -1139,7 +1139,7 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
               text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors`}
           >
             <FaPlus />
-            {isAuthenticated ? 'Add Machine' : 'Login to Add Machine'}
+            {isAuthenticated ? 'Add 3D Printer' : 'Login to Add Printer'}
           </button>
         </div>
 
@@ -1369,7 +1369,7 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">Add New Machine</h2>
+              <h2 className="text-2xl font-bold text-white">Add New 3D Printer</h2>
               <button
                 onClick={() => {
                   setShowAddModal(false);
@@ -1381,10 +1381,18 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
               </button>
             </div>
 
+            {/* Info Banner */}
+            <div className="bg-blue-900/20 border border-blue-500/30 rounded p-3 mb-4">
+              <p className="text-sm text-blue-300">
+                W.I.T. supports universal 3D printer control through OctoEverywhere-inspired integration. 
+                Compatible with OctoPrint, Klipper/Moonraker, PrusaLink, Bambu Lab, and Elegoo printers.
+              </p>
+            </div>
+
             <div className="space-y-4">
               {/* Machine Type */}
               <div>
-                <label className="block text-gray-300 mb-1">Machine Type</label>
+                <label className="block text-gray-300 mb-1">Printer Type</label>
                 <select
                   value={newMachine.type}
                   onChange={(e) => {
@@ -1404,29 +1412,22 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
                   }}
                   className="w-full bg-gray-700 text-white rounded px-3 py-2"
                 >
-                  <optgroup label="Workshop Equipment">
-                    <option value="3d-printer">3D Printer</option>
-                    <option value="laser-cutter">Laser Cutter</option>
-                    <option value="cnc-mill">CNC Mill</option>
-                    <option value="vinyl-cutter">Vinyl Cutter</option>
-                    <option value="soldering">Soldering Station</option>
-                    <option value="custom">Custom Equipment</option>
+                  <optgroup label="Generic/Direct Connection">
+                    <option value="3d-printer-generic">Generic 3D Printer (USB/Serial)</option>
                   </optgroup>
-                  <optgroup label="Microcontrollers">
-                    <option value="arduino-uno">Arduino Uno</option>
-                    <option value="arduino-mega">Arduino Mega</option>
-                    <option value="arduino-nano">Arduino Nano</option>
-                    <option value="esp32">ESP32</option>
-                    <option value="esp8266">ESP8266</option>
-                    <option value="raspberry-pi">Raspberry Pi</option>
-                    <option value="raspberry-pi-pico">Raspberry Pi Pico</option>
+                  <optgroup label="Network-Enabled Printers">
+                    <option value="3d-printer-octoprint">OctoPrint-Enabled Printer</option>
+                    <option value="3d-printer-klipper">Klipper/Moonraker Printer</option>
+                    <option value="3d-printer-prusa-mk4">Prusa MK4/XL/MINI+ (PrusaLink)</option>
+                    <option value="3d-printer-bambu">Bambu Lab (X1C/P1P/A1)</option>
+                    <option value="3d-printer-elegoo">Elegoo Printer</option>
                   </optgroup>
                 </select>
               </div>
 
               {/* Machine Name */}
               <div>
-                <label className="block text-gray-300 mb-1">Machine Name</label>
+                <label className="block text-gray-300 mb-1">Printer Name</label>
                 <input
                   type="text"
                   value={newMachine.name}
@@ -1468,74 +1469,26 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
               </div>
 
               {/* Connection Details */}
-              <div>
-                <label className="block text-gray-300 mb-1">
-                  {newMachine.connectionType.includes('network') ? 'IP Address/URL' : 'Port/Address'}
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newMachine.connectionDetails}
-                    onChange={(e) => {
-                      setNewMachine({ ...newMachine, connectionDetails: e.target.value });
-                      setConnectionTestResult(null);
-                    }}
-                    placeholder={getConnectionPlaceholder()}
-                    className="flex-1 bg-gray-700 text-white rounded px-3 py-2"
-                  />
-                  {/* Show scan button for USB/Serial connections on microcontrollers */}
-                  {(newMachine.connectionType === 'usb' || newMachine.connectionType === 'serial') && 
-                   (newMachine.type.includes('arduino') || newMachine.type.includes('esp') || newMachine.type.includes('raspberry-pi')) && (
-                    <button
-                      onClick={scanSerialPorts}
-                      disabled={scanningPorts}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors disabled:opacity-50"
-                    >
-                      {scanningPorts ? 'Scanning...' : 'Scan Ports'}
-                    </button>
-                  )}
-                </div>
-                {/* Show available ports dropdown */}
-                {availableSerialPorts.length > 0 && (
-                  <select
-                    className="w-full mt-2 bg-gray-700 text-white rounded px-3 py-2"
-                    onChange={(e) => {
-                      setNewMachine({ ...newMachine, connectionDetails: e.target.value });
-                      setConnectionTestResult(null);
-                    }}
-                    value={newMachine.connectionDetails}
-                  >
-                    <option value="">Select a port...</option>
-                    {availableSerialPorts.map(port => (
-                      <option key={port.port} value={port.port}>
-                        {port.port} - {port.description}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              {/* Baud Rate for Serial/USB microcontrollers */}
-              {(newMachine.connectionType === 'usb' || newMachine.connectionType === 'serial') && 
-               (newMachine.type.includes('arduino') || newMachine.type.includes('esp') || newMachine.type.includes('raspberry-pi')) && (
+              {newMachine.connectionType !== 'network-prusaconnect' && (
                 <div>
-                  <label className="block text-gray-300 mb-1">Baud Rate</label>
-                  <select
-                    value={newMachine.baudRate}
-                    onChange={(e) => setNewMachine({ ...newMachine, baudRate: e.target.value })}
-                    className="w-full bg-gray-700 text-white rounded px-3 py-2"
-                  >
-                    <option value="9600">9600</option>
-                    <option value="14400">14400</option>
-                    <option value="19200">19200</option>
-                    <option value="38400">38400</option>
-                    <option value="57600">57600</option>
-                    <option value="115200">115200</option>
-                    <option value="128000">128000</option>
-                    <option value="256000">256000</option>
-                  </select>
+                  <label className="block text-gray-300 mb-1">
+                    {newMachine.connectionType.includes('network') ? 'IP Address/URL' : 'Port/Address'}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newMachine.connectionDetails}
+                      onChange={(e) => {
+                        setNewMachine({ ...newMachine, connectionDetails: e.target.value });
+                        setConnectionTestResult(null);
+                      }}
+                      placeholder={getConnectionPlaceholder()}
+                      className="flex-1 bg-gray-700 text-white rounded px-3 py-2"
+                    />
+                  </div>
                 </div>
               )}
+
 
               {/* PrusaLink Authentication */}
               {newMachine.connectionType === 'network-prusalink' && (
@@ -1595,14 +1548,66 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
                 </div>
               )}
 
+              {/* Bambu Lab Authentication */}
+              {newMachine.connectionType === 'network-bambu' && (
+                <>
+                  <div>
+                    <label className="block text-gray-300 mb-1">Access Code</label>
+                    <input
+                      type="password"
+                      value={newMachine.password}
+                      onChange={(e) => {
+                        setNewMachine({ ...newMachine, password: e.target.value });
+                        setConnectionTestResult(null);
+                      }}
+                      placeholder="Enter printer access code"
+                      className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Find in printer: Settings → Network → Access Code
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* PrusaConnect Authentication */}
+              {newMachine.connectionType === 'network-prusaconnect' && (
+                <>
+                  <div>
+                    <label className="block text-gray-300 mb-1">PrusaConnect Token</label>
+                    <input
+                      type="password"
+                      value={newMachine.apiKey}
+                      onChange={(e) => {
+                        setNewMachine({ ...newMachine, apiKey: e.target.value });
+                        setConnectionTestResult(null);
+                      }}
+                      placeholder="Enter PrusaConnect API token"
+                      className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Get from connect.prusa3d.com → Printer Settings → API Token
+                    </p>
+                  </div>
+                  <div className="bg-blue-900/20 border border-blue-500/30 rounded p-3">
+                    <p className="text-xs text-blue-300">
+                      ℹ️ Note: PrusaConnect provides cloud-based temperature control and monitoring.
+                      For full local control including movement and G-code, use the W.I.T. Bridge or OctoPrint.
+                    </p>
+                  </div>
+                </>
+              )}
+
               {/* Test Connection Button */}
-              {newMachine.connectionDetails && (
+              {(newMachine.connectionDetails || newMachine.connectionType === 'network-prusaconnect') && (
                 <div>
                   <button
                     onClick={testConnection}
                     disabled={testingConnection || 
                       (newMachine.connectionType === 'network-prusalink' && !newMachine.password) ||
-                      (newMachine.connectionType === 'network-octoprint' && !newMachine.apiKey)
+                      (newMachine.connectionType === 'network-octoprint' && !newMachine.apiKey) ||
+                      (newMachine.connectionType === 'network-bambu' && !newMachine.password) ||
+                      (newMachine.connectionType === 'network-prusaconnect' && !newMachine.apiKey)
                     }
                     className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded text-sm flex items-center gap-2"
                   >
@@ -1672,13 +1677,15 @@ const MachinesPage: React.FC<MachinesPageProps> = ({ onNavigateToDetail }) => {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={handleAddMachine}
-                disabled={!newMachine.connectionDetails || 
+                disabled={(newMachine.connectionType !== 'network-prusaconnect' && !newMachine.connectionDetails) || 
                   (newMachine.connectionType === 'network-prusalink' && !newMachine.password) ||
-                  (newMachine.connectionType === 'network-octoprint' && !newMachine.apiKey)
+                  (newMachine.connectionType === 'network-octoprint' && !newMachine.apiKey) ||
+                  (newMachine.connectionType === 'network-bambu' && !newMachine.password) ||
+                  (newMachine.connectionType === 'network-prusaconnect' && !newMachine.apiKey)
                 }
                 className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded transition-colors"
               >
-                Add Machine
+                Add Printer
               </button>
               <button
                 onClick={() => {

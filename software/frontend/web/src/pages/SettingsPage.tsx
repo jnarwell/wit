@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiSettings, FiUser, FiShield, FiLink, FiCheck, FiX, FiRefreshCw, FiChevronDown, FiChevronUp, FiCpu, FiServer } from 'react-icons/fi';
+import { FiSettings, FiUser, FiShield, FiLink, FiCheck, FiX, FiRefreshCw, FiChevronDown, FiChevronUp, FiCpu, FiServer, FiCopy, FiEye, FiEyeOff, FiKey } from 'react-icons/fi';
 import { FaGoogle, FaGithub, FaAws, FaMicrosoft, FaApple, FaJira, FaRobot, FaBrain } from 'react-icons/fa';
 import { SiNotion, SiLinear, SiOpenai, SiGooglegemini } from 'react-icons/si';
 import { useAuth } from '../contexts/AuthContext';
@@ -163,6 +163,9 @@ const SettingsPage: React.FC = () => {
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['project_management', 'file_management', 'development', 'cloud']));
   const [showMCPSettings, setShowMCPSettings] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [showToken, setShowToken] = useState(false);
+  const [tokenCopied, setTokenCopied] = useState(false);
 
   useEffect(() => {
     // Check for OAuth callback parameters
@@ -185,7 +188,23 @@ const SettingsPage: React.FC = () => {
     }
 
     fetchLinkedAccounts();
-  }, []);
+    
+    // Get auth token from localStorage when security tab is active
+    if (activeTab === 'security') {
+      const storedTokens = localStorage.getItem('wit-auth-tokens') || sessionStorage.getItem('wit-auth-tokens');
+      if (storedTokens) {
+        try {
+          const tokens = JSON.parse(storedTokens);
+          setAuthToken(tokens.access_token);
+        } catch (error) {
+          console.error('Failed to parse stored tokens:', error);
+          setAuthToken(null);
+        }
+      } else {
+        setAuthToken(null);
+      }
+    }
+  }, [activeTab]);
 
   const fetchLinkedAccounts = async () => {
     setIsLoading(true);
@@ -255,6 +274,27 @@ const SettingsPage: React.FC = () => {
       }
       return newSet;
     });
+  };
+
+  const copyAuthToken = async () => {
+    if (!authToken) return;
+    
+    try {
+      await navigator.clipboard.writeText(authToken);
+      setTokenCopied(true);
+      setTimeout(() => setTokenCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy token:', err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = authToken;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setTokenCopied(true);
+      setTimeout(() => setTokenCopied(false), 2000);
+    }
   };
 
   const getCategoryName = (category: string): string => {
@@ -489,6 +529,66 @@ const SettingsPage: React.FC = () => {
         return (
           <div className="settings-section">
             <h2 className="section-title">Security Settings</h2>
+            
+            {/* Auth Token Section */}
+            <div className="auth-token-section">
+              <div className="auth-token-header">
+                <h3 className="auth-token-title">
+                  <FiKey className="w-5 h-5" />
+                  API Authentication Token
+                </h3>
+                <p className="auth-token-description">
+                  Use this token to authenticate with W.I.T. desktop applications and integrations
+                </p>
+              </div>
+              
+              <div className="auth-token-container">
+                <div className="auth-token-input-wrapper">
+                  <input
+                    type={showToken ? 'text' : 'password'}
+                    value={authToken || 'No token found'}
+                    readOnly
+                    className="auth-token-input"
+                    disabled={!authToken}
+                  />
+                  <button
+                    onClick={() => setShowToken(!showToken)}
+                    className="auth-token-toggle"
+                    disabled={!authToken}
+                    title={showToken ? 'Hide token' : 'Show token'}
+                  >
+                    {showToken ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={copyAuthToken}
+                    className={`auth-token-copy ${tokenCopied ? 'copied' : ''}`}
+                    disabled={!authToken}
+                    title={tokenCopied ? 'Copied!' : 'Copy token'}
+                  >
+                    {tokenCopied ? <FiCheck className="w-4 h-4" /> : <FiCopy className="w-4 h-4" />}
+                  </button>
+                </div>
+                
+                {!authToken && (
+                  <p className="auth-token-error">
+                    No authentication token found. Please log in again to generate a token.
+                  </p>
+                )}
+                
+                <div className="auth-token-info">
+                  <p className="text-sm text-gray-600">
+                    <strong>Important:</strong> Keep this token secure. Anyone with access to this token can make API requests on your behalf.
+                  </p>
+                  <ul className="auth-token-usage">
+                    <li>Use this token in the W.I.T. Universal Desktop Controller</li>
+                    <li>Include it in API requests as a Bearer token</li>
+                    <li>Store it securely in desktop applications</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            {/* Other Security Options */}
             <div className="security-options">
               <button className="security-btn">
                 Change Password

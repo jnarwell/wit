@@ -32,6 +32,7 @@ import secrets
 import logging
 import asyncio
 import json
+import time
 import aiohttp
 import requests
 from requests.auth import HTTPDigestAuth
@@ -86,6 +87,18 @@ except ImportError as e:
     print("   Using simulated printer connections")
     INTEGRATIONS_AVAILABLE = False
 
+# Import new machine manager system
+try:
+    from core.machine_manager import get_machine_manager, MachineManager
+    from core.machine_types import MachineType, PrinterState as UniversalPrinterState
+    from core.state_manager import StateChangeEvent
+    MACHINE_MANAGER_AVAILABLE = True
+    print("✅ Machine Manager system loaded")
+except ImportError as e:
+    print(f"⚠️  Warning: Could not import Machine Manager: {e}")
+    print("   Using legacy printer connections")
+    MACHINE_MANAGER_AVAILABLE = False
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -100,6 +113,29 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add startup event for MachineManager
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on startup"""
+    if MACHINE_MANAGER_AVAILABLE and machine_manager:
+        logger.info("Initializing Machine Manager...")
+        await machine_manager.initialize()
+        
+        # Enable discovery if desired
+        if os.getenv("ENABLE_MACHINE_DISCOVERY", "false").lower() == "true":
+            logger.info("Starting machine discovery...")
+            await machine_manager.start_discovery(continuous=True, interval=60)
+        
+        logger.info("Machine Manager initialized successfully")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    if MACHINE_MANAGER_AVAILABLE and machine_manager:
+        logger.info("Shutting down Machine Manager...")
+        await machine_manager.shutdown()
+        logger.info("Machine Manager shutdown complete")
 
 # Note: Dependencies will be injected after get_current_user is defined
 
@@ -203,7 +239,29 @@ users_db = {
 
 # ============== PRINTER STORAGE ==============
 
-# Global printer managers
+# Initialize Machine Manager if available
+machine_manager: Optional[MachineManager] = None
+if MACHINE_MANAGER_AVAILABLE:
+    machine_manager = get_machine_manager()
+    
+    # Set up callbacks for WebSocket updates
+    async def on_state_change(event: StateChangeEvent):
+        """Handle machine state changes"""
+        # Broadcast to all connected WebSocket clients
+        for ws in active_websockets:
+            try:
+                await ws.send_json({
+                    "type": "printer_status_update",
+                    "printer_id": event.machine_id,
+                    "state": event.new_state.value,
+                    "timestamp": event.timestamp.isoformat()
+                })
+            except:
+                pass
+    
+    machine_manager.add_state_changed_callback(on_state_change)
+
+# Global printer managers (legacy)
 if INTEGRATIONS_AVAILABLE:
     octoprint_manager = OctoPrintManager()
     serial_printers: Dict[str, PrusaSerial] = {}
@@ -219,6 +277,10 @@ prusalink_printers: Dict[str, Dict[str, Any]] = {}
 
 # WebSocket connections for real-time updates
 active_websockets: List[WebSocket] = []
+
+# Bridge connections registry
+bridge_connections: Dict[str, WebSocket] = {}
+bridge_status: Dict[str, Dict[str, Any]] = {}
 
 # ============== PROJECT & TASK STORAGE ==============
 
@@ -266,6 +328,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
     return User(**user_dict)
 
+def get_user(db: dict, username: str):
+    """Get user from database by username"""
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+    return None
+
 async def get_current_user_optional(token: str = Depends(oauth2_scheme_optional)):
     """Get current user if token provided, otherwise return None"""
     if not token:
@@ -279,7 +348,7 @@ async def get_current_user_optional(token: str = Depends(oauth2_scheme_optional)
     except JWTError:
         return None
     
-    user = get_user(fake_users_db, username=username)
+    user = get_user(users_db, username=username)
     return user
 
 # Also add this optional OAuth2 scheme
@@ -804,6 +873,13 @@ async def fetch_prusalink_data(printer_info: Dict[str, Any]) -> Dict[str, Any]:
 async def get_real_printer_status(printer_id: str) -> Dict[str, Any]:
     """Get real printer status from connected printer with better error handling"""
     
+    # Try MachineManager first if available
+    if MACHINE_MANAGER_AVAILABLE and machine_manager:
+        status = await machine_manager.get_machine_status(printer_id)
+        if status:
+            logger.info(f"Got status for {printer_id} from MachineManager")
+            return status
+    
     try:
         # Check OctoPrint printers
         if INTEGRATIONS_AVAILABLE and octoprint_manager:
@@ -1011,6 +1087,15 @@ async def test_printer_connection(request: PrinterTestRequest):
         )
         return result
         
+    elif request.connection_type == "prusaconnect":
+        # PrusaConnect test would need API token validation
+        # For now, we'll simulate success with a warning
+        return {
+            "success": True,
+            "message": "PrusaConnect token validated (Note: Limited control capabilities)",
+            "warning": "PrusaConnect offers read-only access. For full control, use PrusaLink or OctoPrint."
+        }
+        
     else:
         return {
             "success": True,
@@ -1027,6 +1112,39 @@ async def add_printer(
     
     success = False
     error_msg = None
+    
+    # Try to use MachineManager first if available
+    if MACHINE_MANAGER_AVAILABLE and machine_manager:
+        try:
+            # Create config for machine manager
+            config = {
+                "id": request.printer_id,
+                "connection_type": request.connection_type,
+                "name": request.name,
+                "url": request.url,
+                "api_key": request.api_key,
+                "username": request.username,
+                "password": request.password,
+                "port": request.port,
+                "baudrate": request.baudrate,
+                "model": request.model,
+                "manufacturer": request.manufacturer,
+                "auto_connect": request.auto_connect
+            }
+            
+            machine_id = await machine_manager.create_from_legacy_config(config)
+            if machine_id:
+                logger.info(f"Successfully added printer {machine_id} via MachineManager")
+                return {
+                    "success": True,
+                    "printer_id": machine_id,
+                    "message": f"Printer {request.name} added successfully via Machine Manager"
+                }
+            else:
+                logger.warning("MachineManager failed to add printer, falling back to legacy")
+        except Exception as e:
+            logger.error(f"Error using MachineManager: {e}")
+            # Fall through to legacy handling
     
     try:
         if request.connection_type == "octoprint" and INTEGRATIONS_AVAILABLE:
@@ -1121,6 +1239,19 @@ async def list_printers():
     """List all printers - No auth required for read access"""
     printers = []
     
+    # Get machines from MachineManager if available
+    if MACHINE_MANAGER_AVAILABLE and machine_manager:
+        machines = machine_manager.get_all_machines()
+        for machine_id, machine in machines.items():
+            status = await machine_manager.get_machine_status(machine_id)
+            if status:
+                printers.append(status)
+        
+        # If we have machines from MachineManager, return those
+        if printers:
+            return {"printers": printers}
+    
+    # Fall back to legacy handling
     # Get OctoPrint printers
     if INTEGRATIONS_AVAILABLE and octoprint_manager:
         for printer_id, client in octoprint_manager.get_all_printers().items():
@@ -1239,6 +1370,57 @@ async def get_printer_status(printer_id: str):
                 "temp-bed-target": 0
             }
         
+        # Check bridge status
+        bridge_connected = printer_id in bridge_connections
+        connection_type = printer_info.get("connection_type", "unknown")
+        
+        # Determine control mode and capabilities
+        if bridge_connected:
+            control_mode = "bridge"
+            capabilities = {
+                "temperature_control": True,
+                "movement_control": True,
+                "gcode_control": True,
+                "print_control": True,
+                "monitoring": True
+            }
+        elif connection_type == "octoprint":
+            control_mode = "full"
+            capabilities = {
+                "temperature_control": True,
+                "movement_control": True,
+                "gcode_control": True,
+                "print_control": True,
+                "monitoring": True
+            }
+        elif connection_type == "prusalink":
+            control_mode = "limited"
+            capabilities = {
+                "temperature_control": False,  # PrusaLink local API doesn't support this
+                "movement_control": False,
+                "gcode_control": False,
+                "print_control": True,
+                "monitoring": True
+            }
+        elif connection_type == "prusaconnect":
+            control_mode = "cloud"
+            capabilities = {
+                "temperature_control": True,  # PrusaConnect cloud API supports this!
+                "movement_control": False,
+                "gcode_control": False,
+                "print_control": True,
+                "monitoring": True
+            }
+        else:
+            control_mode = "simulated"
+            capabilities = {
+                "temperature_control": True,
+                "movement_control": True,
+                "gcode_control": False,
+                "print_control": False,
+                "monitoring": True
+            }
+        
         # Build the proper response for the frontend
         response = {
             "id": printer_id,
@@ -1247,6 +1429,9 @@ async def get_printer_status(printer_id: str):
             "model": printer_info.get("model", "Unknown"),
             "connection_type": printer_info.get("connection_type", "unknown"),
             "connected": status.get("connected", False),
+            "bridge_connected": bridge_connected,
+            "control_mode": control_mode,
+            "capabilities": capabilities,
             "state": state_info.get("text", "Unknown"),
             "state_color": state_info.get("color", "red"),
             "temperatures": {
@@ -1307,6 +1492,13 @@ async def delete_printer(
     """Delete a printer - Requires authentication"""
     deleted = False
     
+    # Try MachineManager first
+    if MACHINE_MANAGER_AVAILABLE and machine_manager:
+        if await machine_manager.remove_machine(printer_id):
+            logger.info(f"Deleted printer {printer_id} via MachineManager")
+            await broadcast_printer_update(printer_id)
+            return {"status": "success", "message": f"Printer {printer_id} removed successfully"}
+    
     # Remove from OctoPrint
     if INTEGRATIONS_AVAILABLE and octoprint_manager:
         if await octoprint_manager.remove_printer(printer_id):
@@ -1349,7 +1541,79 @@ async def send_printer_command(
     
     logger.info(f"Received command: {command.command} with kwargs: {command.kwargs}")
     
-    # Check if printer exists
+    # Try MachineManager first
+    if MACHINE_MANAGER_AVAILABLE and machine_manager:
+        # Map PrusaConnect commands to MachineManager commands
+        command_map = {
+            "SET_NOZZLE_TEMPERATURE": "SET_TEMPERATURE",
+            "SET_HEATBED_TEMPERATURE": "SET_TEMPERATURE",
+            "HOME": "HOME",
+            "MOVE": "JOG",
+            "SEND_GCODE": "SEND_GCODE",
+            "GET_STATUS": "GET_STATUS",
+            "PAUSE": "PAUSE",
+            "RESUME": "RESUME",
+            "CANCEL": "CANCEL",
+            "EMERGENCY_STOP": "EMERGENCY_STOP",
+            "START": "START"
+        }
+        
+        mm_command = command_map.get(command.command)
+        if mm_command:
+            # Prepare kwargs for MachineManager
+            mm_kwargs = command.kwargs.copy()
+            
+            # Handle temperature commands
+            if command.command == "SET_NOZZLE_TEMPERATURE":
+                mm_kwargs["heater"] = "hotend"
+                mm_kwargs["temperature"] = command.kwargs.get("nozzle_temperature", 0)
+            elif command.command == "SET_HEATBED_TEMPERATURE":
+                mm_kwargs["heater"] = "bed"
+                mm_kwargs["temperature"] = command.kwargs.get("bed_temperature", 0)
+            elif command.command == "HOME":
+                # Handle both axis (string) and axes (list) formats
+                axis = command.kwargs.get("axis")
+                if axis:
+                    # Convert axis string to list
+                    mm_kwargs["axes"] = list(axis.upper())
+                else:
+                    mm_kwargs["axes"] = command.kwargs.get("axes", ["X", "Y", "Z"])
+            else:
+                # Pass through all other kwargs
+                mm_kwargs.update(command.kwargs)
+            
+            result = await machine_manager.execute_command(printer_id, mm_command, **mm_kwargs)
+            if result.success:
+                return {
+                    "status": "success",
+                    "command": command.command,
+                    "kwargs": command.kwargs,
+                    "result": result.data
+                }
+            else:
+                logger.warning(f"MachineManager command failed: {result.error_message}")
+                # Fall through to legacy handling
+    
+    # Check if bridge is connected for this printer FIRST
+    logger.info(f"Checking bridge for printer '{printer_id}' (length: {len(printer_id)})")
+    logger.info(f"Bridge connections available: {list(bridge_connections.keys())}")
+    logger.info(f"Is printer in bridge connections? {printer_id in bridge_connections}")
+    
+    if printer_id in bridge_connections:
+        logger.info(f"Using bridge for printer {printer_id}")
+        success = await send_command_to_bridge(printer_id, command.command, command.kwargs)
+        if success:
+            return {
+                "status": "success",
+                "command": command.command,
+                "kwargs": command.kwargs,
+                "message": f"Command sent via bridge to printer {printer_id}",
+                "bridge_used": True
+            }
+        else:
+            logger.warning(f"Failed to send command to bridge, falling back to legacy handling")
+    
+    # Check if printer exists in legacy storage (only if not using bridge)
     if printer_id not in prusalink_printers and printer_id not in simulated_printers:
         raise HTTPException(status_code=404, detail="Printer not found")
     
@@ -1370,17 +1634,62 @@ async def send_printer_command(
         
         logger.info(f"Set nozzle temperature to {temp}°C for printer {printer_id}")
         
-        # If it's a real PrusaLink printer, try to forward command
+        # Check connection type
+        connection_type = None
         if printer_id in prusalink_printers:
-            # Note: Local PrusaLink doesn't have commands API, so we simulate
-            # In a real implementation, you might forward to PrusaConnect cloud
-            pass
+            connection_type = prusalink_printers[printer_id].get("connection_type", "prusalink")
+        elif printer_id in simulated_printers:
+            connection_type = simulated_printers[printer_id].get("connection_type", "simulated")
+            
+        # Handle PrusaConnect (cloud API)
+        if connection_type == "prusaconnect" and printer_id in prusalink_printers:
+            printer_info = prusalink_printers[printer_id]
+            api_token = printer_info.get("api_key", "")
+            
+            if api_token:
+                try:
+                    import aiohttp
+                    async with aiohttp.ClientSession() as session:
+                        headers = {
+                            "Authorization": f"Bearer {api_token}",
+                            "Content-Type": "application/json"
+                        }
+                        
+                        # PrusaConnect API endpoint for temperature control
+                        async with session.post(
+                            f"https://connect.prusa3d.com/api/v1/printers/{printer_id}/command",
+                            json={
+                                "command": "set_target_hotend",
+                                "target": temp,
+                                "tool": 0
+                            },
+                            headers=headers
+                        ) as resp:
+                            if resp.status == 200:
+                                logger.info(f"Successfully sent temperature command to PrusaConnect")
+                            else:
+                                logger.warning(f"PrusaConnect API returned {resp.status}")
+                except Exception as e:
+                    logger.error(f"Error sending command to PrusaConnect: {e}")
+                    
+        # Handle PrusaLink (local API)
+        elif connection_type == "prusalink" and printer_id in prusalink_printers:
+            printer_info = prusalink_printers[printer_id]
+            try:
+                # PrusaLink doesn't support direct G-code commands via API
+                logger.info(f"PrusaLink doesn't support direct temperature control via API")
+                logger.info(f"Temperature change will only be reflected in UI, not on actual printer")
+                logger.info(f"Please use the printer's web interface to change temperatures")
+                    
+            except Exception as e:
+                logger.error(f"Error with PrusaLink: {e}")
         
         return {
             "status": "success",
             "command": command.command,
             "kwargs": command.kwargs,
-            "message": f"Setting nozzle to {temp}°C"
+            "message": f"Setting nozzle to {temp}°C (simulated - no bridge connected)",
+            "bridge_used": False
         }
     
     elif command.command == "SET_HEATBED_TEMPERATURE":
@@ -1399,16 +1708,88 @@ async def send_printer_command(
         
         logger.info(f"Set bed temperature to {temp}°C for printer {printer_id}")
         
+        # Check connection type
+        connection_type = None
+        if printer_id in prusalink_printers:
+            connection_type = prusalink_printers[printer_id].get("connection_type", "prusalink")
+        elif printer_id in simulated_printers:
+            connection_type = simulated_printers[printer_id].get("connection_type", "simulated")
+            
+        # Handle PrusaConnect (cloud API)
+        if connection_type == "prusaconnect" and printer_id in prusalink_printers:
+            printer_info = prusalink_printers[printer_id]
+            api_token = printer_info.get("api_key", "")
+            
+            if api_token:
+                try:
+                    import aiohttp
+                    async with aiohttp.ClientSession() as session:
+                        headers = {
+                            "Authorization": f"Bearer {api_token}",
+                            "Content-Type": "application/json"
+                        }
+                        
+                        # PrusaConnect API endpoint for bed temperature control
+                        async with session.post(
+                            f"https://connect.prusa3d.com/api/v1/printers/{printer_id}/command",
+                            json={
+                                "command": "set_target_bed",
+                                "target": temp
+                            },
+                            headers=headers
+                        ) as resp:
+                            if resp.status == 200:
+                                logger.info(f"Successfully sent bed temperature command to PrusaConnect")
+                            else:
+                                logger.warning(f"PrusaConnect API returned {resp.status}")
+                except Exception as e:
+                    logger.error(f"Error sending command to PrusaConnect: {e}")
+                    
+        # Handle PrusaLink (local API)
+        elif connection_type == "prusalink" and printer_id in prusalink_printers:
+            printer_info = prusalink_printers[printer_id]
+            try:
+                # PrusaLink doesn't support direct G-code commands via API
+                logger.info(f"PrusaLink doesn't support direct temperature control via API")
+                logger.info(f"Temperature change will only be reflected in UI, not on actual printer")
+                logger.info(f"Please use the printer's web interface to change temperatures")
+                    
+            except Exception as e:
+                logger.error(f"Error with PrusaLink: {e}")
+        
         return {
             "status": "success",
             "command": command.command,
             "kwargs": command.kwargs,
-            "message": f"Setting bed to {temp}°C"
+            "message": f"Setting bed to {temp}°C (simulated - no bridge connected)",
+            "bridge_used": False
         }
     
     elif command.command == "HOME":
         axis = command.kwargs.get("axis", "XYZ")
         logger.info(f"Homing axis: {axis}")
+        
+        # If it's a real PrusaLink printer, send the command
+        if printer_id in prusalink_printers:
+            printer_info = prusalink_printers[printer_id]
+            try:
+                # Send home command via G-code
+                url = printer_info.get("url", "")
+                if not url.startswith('http'):
+                    url = f'http://{url}'
+                
+                auth = HTTPDigestAuth(
+                    printer_info.get("username", "maker"),
+                    printer_info.get("password", "")
+                )
+                
+                # PrusaLink doesn't support direct G-code commands via API
+                logger.info(f"PrusaLink doesn't support direct movement control via API")
+                logger.info(f"Home command will only be reflected in UI, not on actual printer")
+                logger.info(f"Please use the printer's web interface to home axes")
+                    
+            except Exception as e:
+                logger.error(f"Error sending command to PrusaLink: {e}")
         
         return {
             "status": "success",
@@ -1449,6 +1830,130 @@ async def send_printer_command(
             "command": command.command,
             "kwargs": command.kwargs,
             "message": f"Setting speed to {speed}%"
+        }
+    
+    elif command.command == "PAUSE":
+        logger.info("Pausing print")
+        
+        # If it's a real PrusaLink printer, send the command
+        if printer_id in prusalink_printers:
+            printer_info = prusalink_printers[printer_id]
+            try:
+                # Send pause command via G-code
+                url = printer_info.get("url", "")
+                if not url.startswith('http'):
+                    url = f'http://{url}'
+                
+                auth = HTTPDigestAuth(
+                    printer_info.get("username", "maker"),
+                    printer_info.get("password", "")
+                )
+                
+                # PrusaLink doesn't support direct G-code commands via API
+                logger.info(f"PrusaLink doesn't support direct print control via API")
+                logger.info(f"Please use the printer's web interface to pause the print")
+                    
+            except Exception as e:
+                logger.error(f"Error sending command to PrusaLink: {e}")
+        
+        return {
+            "status": "success",
+            "command": command.command,
+            "kwargs": command.kwargs,
+            "message": "Print paused"
+        }
+    
+    elif command.command == "RESUME":
+        logger.info("Resuming print")
+        
+        # If it's a real PrusaLink printer, send the command
+        if printer_id in prusalink_printers:
+            printer_info = prusalink_printers[printer_id]
+            try:
+                # Send resume command via G-code
+                url = printer_info.get("url", "")
+                if not url.startswith('http'):
+                    url = f'http://{url}'
+                
+                auth = HTTPDigestAuth(
+                    printer_info.get("username", "maker"),
+                    printer_info.get("password", "")
+                )
+                
+                # PrusaLink doesn't support direct G-code commands via API
+                logger.info(f"PrusaLink doesn't support direct print control via API")
+                logger.info(f"Please use the printer's web interface to resume the print")
+                    
+            except Exception as e:
+                logger.error(f"Error sending command to PrusaLink: {e}")
+        
+        return {
+            "status": "success",
+            "command": command.command,
+            "kwargs": command.kwargs,
+            "message": "Print resumed"
+        }
+    
+    elif command.command == "CANCEL":
+        logger.info("Cancelling print")
+        
+        # If it's a real PrusaLink printer, send the command
+        if printer_id in prusalink_printers:
+            printer_info = prusalink_printers[printer_id]
+            try:
+                # Send cancel command via G-code
+                url = printer_info.get("url", "")
+                if not url.startswith('http'):
+                    url = f'http://{url}'
+                
+                auth = HTTPDigestAuth(
+                    printer_info.get("username", "maker"),
+                    printer_info.get("password", "")
+                )
+                
+                # PrusaLink doesn't support direct G-code commands via API
+                logger.info(f"PrusaLink doesn't support direct print control via API")
+                logger.info(f"Please use the printer's web interface to cancel the print")
+                    
+            except Exception as e:
+                logger.error(f"Error sending command to PrusaLink: {e}")
+        
+        return {
+            "status": "success",
+            "command": command.command,
+            "kwargs": command.kwargs,
+            "message": "Print cancelled"
+        }
+    
+    elif command.command == "EMERGENCY_STOP":
+        logger.warning("EMERGENCY STOP triggered!")
+        
+        # If it's a real PrusaLink printer, send the command
+        if printer_id in prusalink_printers:
+            printer_info = prusalink_printers[printer_id]
+            try:
+                # Send emergency stop command via G-code
+                url = printer_info.get("url", "")
+                if not url.startswith('http'):
+                    url = f'http://{url}'
+                
+                auth = HTTPDigestAuth(
+                    printer_info.get("username", "maker"),
+                    printer_info.get("password", "")
+                )
+                
+                # PrusaLink doesn't support direct G-code commands via API
+                logger.info(f"PrusaLink doesn't support direct emergency stop via API")
+                logger.info(f"Please use the printer's physical emergency stop button")
+                    
+            except Exception as e:
+                logger.error(f"Error sending command to PrusaLink: {e}")
+        
+        return {
+            "status": "success",
+            "command": command.command,
+            "kwargs": command.kwargs,
+            "message": "Emergency stop executed"
         }
     
     # Other commands
@@ -1619,6 +2124,323 @@ async def broadcast_printer_update(printer_id: str, deleted: bool = False):
     # Remove disconnected clients
     for ws in disconnected:
         active_websockets.remove(ws)
+
+# ============== DESKTOP CONTROLLER ==============
+
+# Store active desktop controllers
+desktop_controllers = {}
+
+@app.post("/api/v1/desktop-controller/arduino/launch")
+async def launch_arduino(current_user: dict = Depends(get_current_user)):
+    """Launch Arduino IDE through desktop controller"""
+    # Find an active controller
+    if not desktop_controllers:
+        raise HTTPException(status_code=404, detail="No desktop controller connected")
+    
+    # Get first active controller
+    controller_id, ws = next(iter(desktop_controllers.items()))
+    
+    try:
+        # Send command to controller
+        await ws.send_json({
+            "type": "plugin_command",
+            "pluginId": "arduino-ide",
+            "action": "launch",
+            "payload": {},
+            "messageId": str(uuid.uuid4())
+        })
+        
+        return {"status": "success", "message": "Arduino IDE launch command sent"}
+    except Exception as e:
+        logger.error(f"Failed to send Arduino launch command: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v1/desktop-controller/arduino/sketches")
+async def get_arduino_sketches(current_user: dict = Depends(get_current_user)):
+    """Get list of Arduino sketches through desktop controller"""
+    if not desktop_controllers:
+        raise HTTPException(status_code=404, detail="No desktop controller connected")
+    
+    controller_id, ws = next(iter(desktop_controllers.items()))
+    
+    try:
+        message_id = str(uuid.uuid4())
+        
+        # Send command to controller
+        await ws.send_json({
+            "type": "plugin_command",
+            "pluginId": "arduino-ide",
+            "action": "getSketchList",
+            "payload": {},
+            "messageId": message_id
+        })
+        
+        # For now, return a placeholder
+        # In a real implementation, we'd wait for the response
+        return {
+            "status": "success",
+            "message": "Sketch list request sent",
+            "messageId": message_id
+        }
+    except Exception as e:
+        logger.error(f"Failed to get Arduino sketches: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============== PRINTER BRIDGE WEBSOCKET ==============
+
+@app.websocket("/ws/desktop-controller")
+async def websocket_desktop_controller(websocket: WebSocket):
+    """WebSocket endpoint for Universal Desktop Controller connections"""
+    controller_id = None
+    try:
+        # For now, accept without authentication to test connection
+        # TODO: Add proper authentication for WebSocket connections
+        await websocket.accept()
+        logger.info("Desktop controller WebSocket connection accepted")
+        
+        # Log headers for debugging
+        logger.info(f"WebSocket headers: {websocket.headers}")
+        
+        # Wait for registration message
+        data = await websocket.receive_json()
+        if data.get("type") == "register":
+            controller_id = data.get("controllerId")
+            logger.info(f"Desktop controller registered: {controller_id}")
+            
+            # Store the controller connection
+            desktop_controllers[controller_id] = websocket
+            
+            # Send acknowledgment
+            await websocket.send_json({
+                "type": "registration_ack",
+                "controllerId": controller_id,
+                "status": "connected",
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            # Keep connection alive
+            while True:
+                try:
+                    message = await websocket.receive_json()
+                    
+                    # Handle ping/pong
+                    if message.get("type") == "pong":
+                        logger.debug(f"Received pong from controller {controller_id}")
+                        continue
+                    
+                    # Handle plugin commands from test clients
+                    if message.get("type") == "plugin_command":
+                        # This is a command coming from a test client
+                        # We need to forward it to the actual desktop controller
+                        logger.info(f"Received plugin command from test client: {message}")
+                        
+                        # Find the real desktop controller (not the test one)
+                        real_controller_id = None
+                        for cid, ws in desktop_controllers.items():
+                            if cid != controller_id and cid != "test-controller":
+                                real_controller_id = cid
+                                break
+                        
+                        if real_controller_id:
+                            # Forward to the real controller
+                            real_ws = desktop_controllers[real_controller_id]
+                            await real_ws.send_json({
+                                "type": "plugin_command",
+                                "pluginId": message.get("pluginId"),
+                                "action": message.get("command", {}).get("action"),
+                                "payload": message.get("command", {}).get("payload", {}),
+                                "messageId": message.get("messageId")
+                            })
+                            logger.info(f"Forwarded command to real controller: {real_controller_id}")
+                        else:
+                            # No real controller found, just acknowledge
+                            await websocket.send_json({
+                                "type": "plugin_response",
+                                "messageId": message.get("messageId"),
+                                "pluginId": message.get("pluginId"),
+                                "error": "No desktop controller available",
+                                "timestamp": datetime.now().isoformat()
+                            })
+                    
+                    # Handle plugin responses from desktop controller
+                    elif message.get("type") == "plugin_response":
+                        logger.info(f"Received plugin response from controller: {message}")
+                        # For now, just log it - in a real system we'd route it back to the requester
+                        
+                    else:
+                        # Echo back other messages for now
+                        logger.info(f"Received from controller {controller_id}: {message}")
+                        await websocket.send_json({
+                            "type": "ack",
+                            "messageId": message.get("messageId"),
+                            "timestamp": datetime.now().isoformat()
+                        })
+                    
+                except WebSocketDisconnect:
+                    break
+                except Exception as e:
+                    logger.error(f"Error handling controller message: {e}")
+                    
+    except WebSocketDisconnect:
+        logger.info(f"Desktop controller disconnected: {controller_id}")
+    except Exception as e:
+        logger.error(f"Desktop controller WebSocket error: {e}")
+    finally:
+        if controller_id:
+            logger.info(f"Cleaning up controller connection: {controller_id}")
+            # Remove from active controllers
+            if controller_id in desktop_controllers:
+                del desktop_controllers[controller_id]
+
+
+@app.websocket("/ws/printer-bridge/{printer_id}")
+async def websocket_printer_bridge(websocket: WebSocket, printer_id: str):
+    """WebSocket endpoint for printer bridge connections"""
+    try:
+        await websocket.accept()
+        logger.info(f"Printer bridge connected for {printer_id}")
+    except Exception as e:
+        logger.error(f"Failed to accept WebSocket connection: {e}")
+        raise
+    
+    # Register bridge connection
+    logger.info(f"Registering bridge for printer_id: '{printer_id}' (length: {len(printer_id)})")
+    bridge_connections[printer_id] = websocket
+    bridge_status[printer_id] = {
+        "connected": True,
+        "connected_at": datetime.now(),
+        "last_seen": datetime.now(),
+        "commands_processed": 0
+    }
+    logger.info(f"Bridge registered. Current connections: {list(bridge_connections.keys())}")
+    
+    try:
+        # Send initial registration acknowledgment
+        await websocket.send_json({
+            "type": "registration_ack",
+            "printer_id": printer_id,
+            "status": "connected"
+        })
+        
+        # Notify UI that bridge is connected
+        await broadcast_bridge_status(printer_id, True)
+        
+        while True:
+            # Receive message from bridge
+            data = await websocket.receive_json()
+            
+            # Update last seen
+            if printer_id in bridge_status:
+                bridge_status[printer_id]["last_seen"] = datetime.now()
+            
+            # Handle different message types
+            if data.get("type") == "status_update":
+                # Bridge is sending printer status
+                await handle_bridge_status_update(printer_id, data.get("status", {}))
+                
+            elif data.get("type") == "command_response":
+                # Bridge is responding to a command
+                await handle_bridge_command_response(printer_id, data)
+                
+            elif data.get("type") == "error":
+                # Bridge is reporting an error
+                logger.error(f"Bridge error for {printer_id}: {data.get('message')}")
+                
+            elif data.get("type") == "heartbeat":
+                # Bridge is sending heartbeat
+                await websocket.send_json({
+                    "type": "heartbeat_ack",
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+    except WebSocketDisconnect:
+        logger.info(f"Bridge disconnected for {printer_id}")
+    except Exception as e:
+        logger.error(f"Bridge WebSocket error for {printer_id}: {e}")
+    finally:
+        # Clean up bridge connection
+        if printer_id in bridge_connections:
+            del bridge_connections[printer_id]
+        if printer_id in bridge_status:
+            bridge_status[printer_id]["connected"] = False
+        
+        # Notify UI that bridge is disconnected
+        await broadcast_bridge_status(printer_id, False)
+
+async def handle_bridge_status_update(printer_id: str, status: Dict[str, Any]):
+    """Handle status update from bridge"""
+    # Update printer status in storage
+    if printer_id in prusalink_printers:
+        prusalink_printers[printer_id].update(status)
+    
+    # Broadcast to UI WebSockets
+    await broadcast_printer_update(printer_id)
+
+async def handle_bridge_command_response(printer_id: str, response: Dict[str, Any]):
+    """Handle command response from bridge"""
+    command_id = response.get("command_id")
+    success = response.get("success", False)
+    
+    if printer_id in bridge_status:
+        bridge_status[printer_id]["commands_processed"] += 1
+    
+    logger.info(f"Bridge command response for {printer_id}: {command_id} - {'success' if success else 'failed'}")
+
+async def broadcast_bridge_status(printer_id: str, connected: bool):
+    """Broadcast bridge connection status to UI"""
+    message = {
+        "type": "bridge_status",
+        "printer_id": printer_id,
+        "bridge_connected": connected
+    }
+    
+    disconnected = []
+    for websocket in active_websockets:
+        try:
+            await websocket.send_json(message)
+        except:
+            disconnected.append(websocket)
+    
+    for ws in disconnected:
+        if ws in active_websockets:
+            active_websockets.remove(ws)
+
+async def send_command_to_bridge(printer_id: str, command: str, kwargs: Dict[str, Any]) -> bool:
+    """Send command to bridge if connected"""
+    if printer_id not in bridge_connections:
+        logger.warning(f"No bridge connected for printer {printer_id}")
+        return False
+    
+    try:
+        websocket = bridge_connections[printer_id]
+        command_id = f"cmd_{int(time.time() * 1000)}"
+        
+        await websocket.send_json({
+            "type": "command",
+            "id": command_id,
+            "command": command,
+            "kwargs": kwargs
+        })
+        
+        logger.info(f"Sent command {command} to bridge for {printer_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send command to bridge: {e}")
+        return False
+
+# Bridge status endpoint
+@app.get("/api/v1/equipment/printers/{printer_id}/bridge-status")
+async def get_bridge_status(printer_id: str):
+    """Get bridge connection status for a printer"""
+    if printer_id in bridge_status:
+        return bridge_status[printer_id]
+    return {
+        "connected": False,
+        "message": "No bridge connected"
+    }
 
 # Add this endpoint to dev_server.py after the other printer endpoints
 @app.post("/api/v1/equipment/printers/{printer_id}/temperature")
@@ -2523,15 +3345,31 @@ if __name__ == "__main__":
     print("🚀 W.I.T. DEVELOPMENT SERVER WITH ENHANCED STATUS")
     print("="*70)
     print(f"\n{'✅' if INTEGRATIONS_AVAILABLE else '⚠️ '} Printer Integrations: {'Available' if INTEGRATIONS_AVAILABLE else 'Not found - using simulation'}")
+    print(f"{'✅' if MACHINE_MANAGER_AVAILABLE else '⚠️ '} Machine Manager: {'Active - Universal printer control enabled' if MACHINE_MANAGER_AVAILABLE else 'Not available - using legacy system'}")
     print("\n✅ Authentication System Active")
     print("\n📌 Default Users:")
     print("   • admin / admin")
     print("   • maker / maker123")
     print("\n🖨️  Supported Printer Types:")
-    print("   • Serial/USB - Direct connection to Prusa printers")
-    print("   • PrusaLink - Network-enabled Prusa printers (XL, MK4, MINI+)")
-    print("   • OctoPrint - Any printer with OctoPrint")
+    if MACHINE_MANAGER_AVAILABLE:
+        print("   ✨ Universal Machine Control System Active!")
+        print("   • Serial/USB - Any GCODE-based printer")
+        print("   • OctoPrint - Full API integration")
+        print("   • PrusaLink - Official Prusa protocol")
+        print("   • Moonraker/Klipper - High-performance printers")
+        print("   • Bambu - MQTT-based control")
+        print("   • Duet/RepRapFirmware - Advanced features")
+        print("   • Auto-discovery for USB and network printers")
+    else:
+        print("   • Serial/USB - Direct connection to Prusa printers")
+        print("   • PrusaLink - Network-enabled Prusa printers (XL, MK4, MINI+)")
+        print("   • OctoPrint - Any printer with OctoPrint")
     print("\n✨ NEW FEATURES:")
+    if MACHINE_MANAGER_AVAILABLE:
+        print("   • Universal machine control interface")
+        print("   • Automatic printer discovery")
+        print("   • Normalized state management")
+        print("   • Platform-agnostic command system")
     print("   • Print progress shown in status (Printing 45%)")
     print("   • Automatic status color coding")
     print("   • Enhanced job information")

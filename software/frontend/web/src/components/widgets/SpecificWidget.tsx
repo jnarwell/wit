@@ -1,6 +1,6 @@
 // src/components/widgets/SpecificWidget.tsx
 import React, { useState, useRef, useEffect } from 'react';
-import { FaTimes, FaCog, FaProjectDiagram, FaMicrochip, FaThermometerHalf, FaHome, FaPrint, FaPowerOff, FaCheck, FaPause, FaExclamationTriangle, FaCube } from 'react-icons/fa';
+import { FaTimes, FaCog, FaProjectDiagram, FaMicrochip, FaThermometerHalf, FaHome, FaPrint, FaPowerOff, FaCheck, FaPause, FaExclamationTriangle, FaCube, FaPlay } from 'react-icons/fa';
 
 interface SpecificWidgetProps {
   type: 'project' | 'machine' | 'sensor';
@@ -15,8 +15,8 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
   const [editingTemp, setEditingTemp] = useState<'nozzle' | 'bed' | null>(null);
   const [tempValue, setTempValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  const [tempControlSupported, setTempControlSupported] = useState(true);
   const [showTempMessage, setShowTempMessage] = useState(false);
+  const [showBridgeInstructions, setShowBridgeInstructions] = useState(false);
 
   // Default data if none provided
   const widgetData = data || {
@@ -134,7 +134,6 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
       .split('-')
       .map(word => {
         if (word === '3d') return '3D';
-        if (word === 'cnc') return 'CNC';
         return word.charAt(0).toUpperCase() + word.slice(1);
       })
       .join(' ');
@@ -183,6 +182,23 @@ const SpecificWidget: React.FC<SpecificWidgetProps> = ({ type, data, onRemove, o
   // Handle temperature click
   const handleTempClick = (e: React.MouseEvent, tempType: 'nozzle' | 'bed', currentValue: string) => {
     e.stopPropagation();
+    
+    // Check if temperature control is supported
+    const hasCapabilities = widgetData.capabilities?.temperature_control;
+    const hasBridge = widgetData.bridge_connected;
+    const isLimited = widgetData.control_mode === 'limited';
+    
+    // If no temperature control capability and no bridge, show instructions
+    if (!hasCapabilities && !hasBridge) {
+      // Only show bridge instructions for limited connections (not cloud/full)
+      if (isLimited) {
+        setShowBridgeInstructions(true);
+      } else {
+        setShowTempMessage(true);
+      }
+      return;
+    }
+    
     setEditingTemp(tempType);
     // Extract numeric value from string like "25.0°C" or "200°C → 210°C"
     let numericValue = 0;
@@ -255,6 +271,11 @@ const handleTempSubmit = async () => {
         if (response.ok) {
           const result = await response.json();
           console.log('Temperature command sent successfully:', result);
+          
+          // Show whether bridge was used
+          if (result.bridge_used !== undefined) {
+            console.log(`Command sent via ${result.bridge_used ? 'BRIDGE' : 'SIMULATION'}`);
+          }
           
           // Show success feedback
           setEditingTemp(null);
@@ -332,16 +353,82 @@ const handleHomeClick = async (e: React.MouseEvent) => {
   }
 };
 
-  const handlePrintClick = (e: React.MouseEvent) => {
+  const handlePrintClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     console.log('Print clicked for', widgetData.name);
-    // TODO: Implement print functionality
+    
+    // Check if printer is printing/paused to show appropriate control
+    const isPrinting = widgetData.state?.toLowerCase().includes('printing');
+    const isPaused = widgetData.state?.toLowerCase().includes('paused');
+    
+    try {
+      const tokens = localStorage.getItem('wit-auth-tokens');
+      if (!tokens) return;
+      
+      const parsedTokens = JSON.parse(tokens);
+      const headers = {
+        'Authorization': `Bearer ${parsedTokens.access_token}`,
+        'Content-Type': 'application/json',
+      };
+      
+      let command = 'PAUSE';
+      if (isPaused) {
+        command = 'RESUME';
+      } else if (!isPrinting && !isPaused) {
+        // Not printing - could open file selector
+        alert('No active print. Use your slicer to start a print.');
+        return;
+      }
+      
+      const response = await fetch(`http://localhost:8000/api/v1/equipment/printers/${widgetData.id}/commands`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          command: command,
+          kwargs: {}
+        })
+      });
+      
+      if (response.ok) {
+        console.log(`${command} command sent successfully`);
+      }
+    } catch (error) {
+      console.error('Error sending print command:', error);
+    }
   };
 
-  const handlePowerClick = (e: React.MouseEvent) => {
+  const handlePowerClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     console.log('Power clicked for', widgetData.name);
-    // TODO: Implement power on/off functionality
+    
+    // For now, power button will be for emergency stop
+    if (window.confirm('Are you sure you want to emergency stop the printer?')) {
+      try {
+        const tokens = localStorage.getItem('wit-auth-tokens');
+        if (!tokens) return;
+        
+        const parsedTokens = JSON.parse(tokens);
+        const headers = {
+          'Authorization': `Bearer ${parsedTokens.access_token}`,
+          'Content-Type': 'application/json',
+        };
+        
+        const response = await fetch(`http://localhost:8000/api/v1/equipment/printers/${widgetData.id}/commands`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            command: 'EMERGENCY_STOP',
+            kwargs: {}
+          })
+        });
+        
+        if (response.ok) {
+          console.log('Emergency stop sent successfully');
+        }
+      } catch (error) {
+        console.error('Error sending emergency stop:', error);
+      }
+    }
   };
 
   return (
@@ -378,14 +465,51 @@ const handleHomeClick = async (e: React.MouseEvent) => {
       </div>
 
       {/* Status Bar */}
-      <div className="px-4 py-2 bg-gray-700/50 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className={`w-3 h-3 rounded-full ${getStatusColor()} ${getStatusGlow()} shadow-lg animate-pulse`} />
-          <span className="text-sm text-gray-300">{getStatusDisplayText()}</span>
+      <div className="px-4 py-2 bg-gray-700/50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${getStatusColor()} ${getStatusGlow()} shadow-lg animate-pulse`} />
+            <span className="text-sm text-gray-300">{getStatusDisplayText()}</span>
+          </div>
+          {type === 'machine' && widgetData.metrics?.find((m: any) => m.label.toLowerCase() === 'progress') && (
+            <div className="text-xs text-gray-400">
+              {widgetData.metrics.find((m: any) => m.label.toLowerCase() === 'progress').value}
+            </div>
+          )}
         </div>
-        {type === 'machine' && widgetData.metrics?.find((m: any) => m.label.toLowerCase() === 'progress') && (
-          <div className="text-xs text-gray-400">
-            {widgetData.metrics.find((m: any) => m.label.toLowerCase() === 'progress').value}
+        {/* Control Mode Indicator */}
+        {type === 'machine' && (
+          <div className="flex items-center gap-2 mt-1">
+            {widgetData.bridge_connected ? (
+              <div className="flex items-center gap-1 text-xs">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-green-400">Bridge Active</span>
+              </div>
+            ) : widgetData.control_mode === 'limited' ? (
+              <div className="flex items-center gap-1 text-xs">
+                <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+                <span className="text-yellow-400">Limited Control (PrusaLink)</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowBridgeInstructions(true);
+                  }}
+                  className="text-blue-400 hover:text-blue-300 underline ml-1"
+                >
+                  Enable Bridge
+                </button>
+              </div>
+            ) : widgetData.control_mode === 'cloud' ? (
+              <div className="flex items-center gap-1 text-xs">
+                <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                <span className="text-blue-400">Cloud Control (PrusaConnect)</span>
+              </div>
+            ) : widgetData.control_mode === 'full' ? (
+              <div className="flex items-center gap-1 text-xs">
+                <div className="w-2 h-2 bg-green-500 rounded-full" />
+                <span className="text-green-400">Full Control</span>
+              </div>
+            ) : null}
           </div>
         )}
       </div>
@@ -419,11 +543,14 @@ const handleHomeClick = async (e: React.MouseEvent) => {
                   </div>
                 ) : (
                   <button
-  onClick={(e) => tempControlSupported ? handleTempClick(e, tempType, metric.value) : null}
-  className={`temp-control text-lg font-medium ${getMetricValueColor(metric)} ${tempControlSupported ? 'hover:text-blue-400 cursor-pointer' : 'cursor-default opacity-75'} transition-colors flex items-center gap-1 group/temp`}
-  title={tempControlSupported 
-    ? `Click to set ${metric.label.toLowerCase()} temperature (max ${tempType === 'nozzle' ? '250' : '80'}°C)`
-    : 'Temperature control not available - use printer interface'
+  onClick={(e) => handleTempClick(e, tempType, metric.value)}
+  className={`temp-control text-lg font-medium ${getMetricValueColor(metric)} ${(widgetData.capabilities?.temperature_control || widgetData.bridge_connected) ? 'hover:text-blue-400 cursor-pointer' : 'cursor-default opacity-75'} transition-colors flex items-center gap-1 group/temp`}
+  title={
+    widgetData.capabilities?.temperature_control || widgetData.bridge_connected
+      ? `Click to set ${metric.label.toLowerCase()} temperature (max ${tempType === 'nozzle' ? '250' : '80'}°C)`
+      : widgetData.control_mode === 'limited' 
+        ? 'Temperature control not available - enable bridge for full control'
+        : 'Temperature control not available - use printer interface'
   }
 >
   {metric.value}
@@ -432,13 +559,13 @@ const handleHomeClick = async (e: React.MouseEvent) => {
     <span className="text-xs text-orange-400 animate-pulse">●</span>
   )}
   {/* Show edit hint on hover only if supported */}
-  {tempControlSupported && (
+  {(widgetData.capabilities?.temperature_control || widgetData.bridge_connected) && (
     <span className="text-xs text-gray-500 opacity-0 group-hover/temp:opacity-100 transition-opacity ml-1">
       ✏️
     </span>
   )}
   {/* Show lock icon if not supported */}
-  {!tempControlSupported && (
+  {!(widgetData.capabilities?.temperature_control || widgetData.bridge_connected) && (
     <span className="text-xs text-gray-500 ml-1">
       🔒
     </span>
@@ -482,6 +609,56 @@ const handleHomeClick = async (e: React.MouseEvent) => {
   </div>
 )}
 
+{showBridgeInstructions && (
+  <div className="absolute inset-0 bg-gray-800/95 flex items-center justify-center p-4 z-10">
+    <div className="bg-gray-700 rounded-lg p-4 text-center max-w-md">
+      <p className="text-yellow-400 text-sm mb-2">🌉 Enable Full Control with Bridge</p>
+      <p className="text-gray-300 text-xs mb-3">
+        Your printer (PrusaLink) has limited control via API. 
+        The W.I.T. Bridge enables full control including temperature and movement.
+      </p>
+      
+      <div className="bg-gray-800 rounded p-3 text-left mb-3">
+        <p className="text-gray-400 text-xs font-mono mb-2">Quick Start:</p>
+        <code className="text-xs text-green-400 block">
+          cd scripts/application<br/>
+          ./start_bridge.sh {widgetData.id} [password]
+        </code>
+      </div>
+      
+      <div className="text-left space-y-2 mb-3">
+        <p className="text-xs text-gray-400">Bridge provides:</p>
+        <ul className="text-xs text-gray-300 space-y-1 ml-4">
+          <li>• Temperature control</li>
+          <li>• Movement & homing</li>
+          <li>• Direct G-code execution</li>
+          <li>• Real-time status updates</li>
+        </ul>
+      </div>
+      
+      <div className="flex gap-2">
+        <a 
+          href="https://github.com/your-repo/wiki/bridge-setup"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 rounded text-xs text-white"
+        >
+          Setup Guide
+        </a>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowBridgeInstructions(false);
+          }}
+          className="flex-1 py-2 bg-gray-600 hover:bg-gray-500 rounded text-xs text-gray-300"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
       {/* Other widget types - show default metrics */}
       {type !== 'machine' && (
         <div className="flex-1 p-4 space-y-2">
@@ -500,8 +677,13 @@ const handleHomeClick = async (e: React.MouseEvent) => {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={handleHomeClick}
-              className="control-button flex items-center justify-center gap-1 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300 transition-colors"
-              title="Home All Axes"
+              disabled={!widgetData.capabilities?.movement_control && !widgetData.bridge_connected}
+              className={`control-button flex items-center justify-center gap-1 py-2 rounded text-sm transition-colors ${
+                widgetData.capabilities?.movement_control || widgetData.bridge_connected
+                  ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                  : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+              }`}
+              title={widgetData.capabilities?.movement_control || widgetData.bridge_connected ? "Home All Axes" : "Movement control not available"}
             >
               <FaHome className="w-4 h-4" />
               <span>Home</span>
@@ -516,19 +698,45 @@ const handleHomeClick = async (e: React.MouseEvent) => {
             </button>
             <button
               onClick={handlePrintClick}
-              className="control-button flex items-center justify-center gap-1 py-2 bg-green-600 hover:bg-green-700 rounded text-sm text-white transition-colors"
-              title="Print Controls"
+              className={`control-button flex items-center justify-center gap-1 py-2 rounded text-sm text-white transition-colors ${
+                widgetData.state?.toLowerCase().includes('paused') 
+                  ? 'bg-green-600 hover:bg-green-700' 
+                  : widgetData.state?.toLowerCase().includes('printing')
+                  ? 'bg-yellow-600 hover:bg-yellow-700'
+                  : 'bg-gray-600 hover:bg-gray-700'
+              }`}
+              title={
+                widgetData.state?.toLowerCase().includes('paused') 
+                  ? 'Resume Print' 
+                  : widgetData.state?.toLowerCase().includes('printing')
+                  ? 'Pause Print'
+                  : 'No Active Print'
+              }
             >
-              <FaPrint className="w-4 h-4" />
-              <span>Print</span>
+              {widgetData.state?.toLowerCase().includes('paused') ? (
+                <>
+                  <FaPlay className="w-4 h-4" />
+                  <span>Resume</span>
+                </>
+              ) : widgetData.state?.toLowerCase().includes('printing') ? (
+                <>
+                  <FaPause className="w-4 h-4" />
+                  <span>Pause</span>
+                </>
+              ) : (
+                <>
+                  <FaPrint className="w-4 h-4" />
+                  <span>Print</span>
+                </>
+              )}
             </button>
             <button
               onClick={handlePowerClick}
-              className="control-button flex items-center justify-center gap-1 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300 transition-colors"
-              title="Power On/Off"
+              className="control-button flex items-center justify-center gap-1 py-2 bg-red-600 hover:bg-red-700 rounded text-sm text-white transition-colors"
+              title="Emergency Stop"
             >
               <FaPowerOff className="w-4 h-4" />
-              <span>Power</span>
+              <span>E-Stop</span>
             </button>
           </div>
         </div>

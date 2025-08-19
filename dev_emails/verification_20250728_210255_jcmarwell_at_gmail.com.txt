@@ -1,0 +1,16 @@
+Subject: Verify your W.I.T. account
+To: jcmarwell@gmail.com
+Date: 2025-07-28T21:02:55.990673
+
+Welcome to W.I.T.!
+
+Please click the link below to verify your email address:
+
+http://localhost:8000/api/v1/auth/verify-email?token=TFcpN6Pj8hIIBP44supMaYQxG6C-ePie697RQh18MSw
+
+This link will expire in 24 hours.
+
+If you didn't create an account, you can safely ignore this email.
+
+Best regards,
+The W.I.T. Team

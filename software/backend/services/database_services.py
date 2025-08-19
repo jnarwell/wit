@@ -118,7 +118,7 @@ class Equipment(Base):
     id = Column(UUID_TYPE, primary_key=True, default=uuid.uuid4)
     equipment_id = Column(String(50), unique=True, nullable=False, index=True)
     name = Column(String(200), nullable=False)
-    type = Column(String(50), nullable=False) # e.g., "3d_printer", "laser_cutter"
+    type = Column(String(50), nullable=False) # Cleared for new configuration
     status = Column(String(50), default="offline")
     owner_id = Column(UUID_TYPE, ForeignKey("users.id"))
     extra_data = Column(JSON, default={})

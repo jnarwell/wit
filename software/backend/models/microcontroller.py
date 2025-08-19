@@ -10,15 +10,7 @@ from services.database_services import Base
 
 
 class MicrocontrollerType(str, enum.Enum):
-    ARDUINO_UNO = "arduino_uno"
-    ARDUINO_MEGA = "arduino_mega"
-    ARDUINO_NANO = "arduino_nano"
-    ESP32 = "esp32"
-    ESP8266 = "esp8266"
-    RASPBERRY_PI_3 = "raspberry_pi_3"
-    RASPBERRY_PI_4 = "raspberry_pi_4"
-    RASPBERRY_PI_ZERO = "raspberry_pi_zero"
-    RASPBERRY_PI_PICO = "raspberry_pi_pico"
+    # Cleared for new configuration
     CUSTOM = "custom"
 
 
@@ -85,7 +77,7 @@ class SensorReading(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     microcontroller_id = Column(String, ForeignKey('microcontrollers.id'), nullable=False)
     
-    sensor_type = Column(String, nullable=False)  # temperature, humidity, motion, etc.
+    sensor_type = Column(String, nullable=False)  # Cleared for new configuration
     sensor_id = Column(String)  # Identifier for multiple sensors of same type
     value = Column(JSON, nullable=False)  # Flexible for different data types
     unit = Column(String)  # celsius, fahrenheit, percent, etc.

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>W.I.T. Desktop Controller Settings</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .header {
+            background: #2196F3;
+            color: white;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 300;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 8px 8px 0 0;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            background: white;
+            border: none;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .tab:hover {
+            background: #f0f0f0;
+        }
+        
+        .tab.active {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        input[type="text"],
+        input[type="password"],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #1976D2;
+        }
+        
+        button.secondary {
+            background: #757575;
+        }
+        
+        button.secondary:hover {
+            background: #616161;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .status.connected {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+        
+        .status.disconnected {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+        
+        .plugin-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .plugin-item {
+            background: #f5f5f5;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .plugin-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 16px;
+        }
+        
+        .plugin-info p {
+            margin: 0;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .plugin-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>W.I.T. Desktop Controller Settings</h1>
+    </div>
+    
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('general')">General</button>
+            <button class="tab" onclick="showTab('plugins')">Plugins</button>
+            <button class="tab" onclick="showTab('security')">Security</button>
+            <button class="tab" onclick="showTab('advanced')">Advanced</button>
+        </div>
+        
+        <!-- General Tab -->
+        <div id="general-tab" class="content">
+            <div id="connection-status" class="status disconnected">
+                Disconnected from W.I.T. server
+            </div>
+            
+            <div class="form-group">
+                <label for="server-url">W.I.T. Server URL</label>
+                <input type="text" id="server-url" placeholder="http://localhost:8000">
+            </div>
+            
+            <div class="form-group">
+                <label for="auth-token">Authentication Token</label>
+                <input type="password" id="auth-token" placeholder="Enter your W.I.T. auth token">
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="auto-start">
+                    Start automatically when computer starts
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="show-notifications">
+                    Show notifications
+                </label>
+            </div>
+            
+            <button onclick="testConnection()">Test Connection</button>
+            <button onclick="saveGeneralSettings()">Save</button>
+        </div>
+        
+        <!-- Plugins Tab -->
+        <div id="plugins-tab" class="content hidden">
+            <h2>Installed Plugins</h2>
+            <ul id="plugin-list" class="plugin-list">
+                <!-- Plugins will be populated here -->
+            </ul>
+            
+            <button onclick="loadPlugin()">Load Plugin...</button>
+        </div>
+        
+        <!-- Security Tab -->
+        <div id="security-tab" class="content hidden">
+            <h2>Security Settings</h2>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="require-permissions">
+                    Always ask for plugin permissions
+                </label>
+            </div>
+            
+            <h3>Trusted Plugins</h3>
+            <ul id="trusted-plugins" class="plugin-list">
+                <!-- Trusted plugins will be listed here -->
+            </ul>
+            
+            <h3>Blocked Plugins</h3>
+            <ul id="blocked-plugins" class="plugin-list">
+                <!-- Blocked plugins will be listed here -->
+            </ul>
+        </div>
+        
+        <!-- Advanced Tab -->
+        <div id="advanced-tab" class="content hidden">
+            <h2>Advanced Settings</h2>
+            
+            <div class="form-group">
+                <label for="log-level">Log Level</label>
+                <select id="log-level">
+                    <option value="error">Error</option>
+                    <option value="warn">Warning</option>
+                    <option value="info">Info</option>
+                    <option value="debug">Debug</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="debug-mode">
+                    Enable debug mode
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="performance-monitoring">
+                    Enable performance monitoring
+                </label>
+            </div>
+            
+            <button onclick="viewLogs()">View Logs</button>
+            <button onclick="exportConfig()">Export Configuration</button>
+            <button onclick="importConfig()">Import Configuration</button>
+            <button class="secondary" onclick="resetConfig()">Reset to Defaults</button>
+        </div>
+    </div>
+    
+    <script>
+        const { ipcRenderer } = require('electron');
+        
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+            
+            // Add active class to selected tab button
+            event.target.classList.add('active');
+        }
+        
+        // Load settings on startup
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+            loadPlugins();
+            updateConnectionStatus();
+        });
+        
+        function loadSettings() {
+            // Request settings from main process
+            ipcRenderer.send('get-settings');
+        }
+        
+        function loadPlugins() {
+            // Request plugin list from main process
+            ipcRenderer.send('get-plugins');
+        }
+        
+        function updateConnectionStatus() {
+            // Request connection status
+            ipcRenderer.send('get-connection-status');
+        }
+        
+        function testConnection() {
+            const serverUrl = document.getElementById('server-url').value;
+            const authToken = document.getElementById('auth-token').value;
+            
+            ipcRenderer.send('test-connection', { serverUrl, authToken });
+        }
+        
+        function saveGeneralSettings() {
+            const settings = {
+                witServer: document.getElementById('server-url').value,
+                authToken: document.getElementById('auth-token').value,
+                autoStart: document.getElementById('auto-start').checked,
+                'ui.notifications': document.getElementById('show-notifications').checked
+            };
+            
+            ipcRenderer.send('save-settings', settings);
+        }
+        
+        // IPC event handlers
+        ipcRenderer.on('settings', (event, settings) => {
+            document.getElementById('server-url').value = settings.witServer || '';
+            document.getElementById('auth-token').value = settings.authToken || '';
+            document.getElementById('auto-start').checked = settings.autoStart || false;
+            document.getElementById('show-notifications').checked = settings.ui?.notifications || false;
+            document.getElementById('log-level').value = settings.advanced?.logLevel || 'info';
+            document.getElementById('debug-mode').checked = settings.advanced?.debugMode || false;
+            document.getElementById('performance-monitoring').checked = settings.advanced?.performanceMonitoring || false;
+            document.getElementById('require-permissions').checked = settings.security?.requirePermissions || true;
+        });
+        
+        ipcRenderer.on('connection-test-result', (event, result) => {
+            const statusDiv = document.getElementById('connection-status');
+            if (result.success) {
+                statusDiv.className = 'status connected';
+                statusDiv.textContent = result.message;
+                setTimeout(() => updateConnectionStatus(), 3000);
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.textContent = result.message;
+            }
+        });
+        
+        ipcRenderer.on('settings-saved', (event, result) => {
+            const statusDiv = document.getElementById('connection-status');
+            if (result.success) {
+                statusDiv.className = 'status connected';
+                statusDiv.textContent = 'Settings saved successfully!';
+                setTimeout(() => updateConnectionStatus(), 2000);
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.textContent = 'Failed to save: ' + result.error;
+            }
+        });
+        
+        ipcRenderer.on('plugins', (event, plugins) => {
+            const pluginList = document.getElementById('plugin-list');
+            pluginList.innerHTML = '';
+            
+            for (const [pluginId, plugin] of Object.entries(plugins)) {
+                const item = document.createElement('li');
+                item.className = 'plugin-item';
+                item.innerHTML = `
+                    <div class="plugin-info">
+                        <h3>${plugin.name}</h3>
+                        <p>${plugin.version} - ${plugin.state || 'unknown'}</p>
+                    </div>
+                    <div class="plugin-actions">
+                        ${plugin.state === 'started' 
+                            ? `<button onclick="stopPlugin('${pluginId}')">Stop</button>`
+                            : `<button onclick="startPlugin('${pluginId}')">Start</button>`
+                        }
+                        <button onclick="configurePlugin('${pluginId}')">Configure</button>
+                        ${pluginId === 'arduino-ide' && (plugin.state === 'started' || plugin.state === 'loaded')
+                            ? `<button onclick="launchArduino()">Launch Arduino</button>`
+                            : ''
+                        }
+                    </div>
+                `;
+                pluginList.appendChild(item);
+            }
+        });
+        
+        ipcRenderer.on('connection-status', (event, status) => {
+            const statusDiv = document.getElementById('connection-status');
+            if (status.connected) {
+                statusDiv.className = 'status connected';
+                statusDiv.textContent = 'Connected to W.I.T. server';
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.textContent = 'Disconnected from W.I.T. server';
+            }
+        });
+        
+        // Plugin management
+        function startPlugin(pluginId) {
+            ipcRenderer.send('start-plugin', pluginId);
+        }
+        
+        function stopPlugin(pluginId) {
+            ipcRenderer.send('stop-plugin', pluginId);
+        }
+        
+        function configurePlugin(pluginId) {
+            ipcRenderer.send('configure-plugin', pluginId);
+        }
+        
+        function loadPlugin() {
+            ipcRenderer.send('load-plugin');
+        }
+        
+        function launchArduino() {
+            ipcRenderer.send('plugin-command', {
+                pluginId: 'arduino-ide',
+                action: 'launch',
+                payload: {}
+            });
+        }
+        
+        // Advanced functions
+        function viewLogs() {
+            ipcRenderer.send('view-logs');
+        }
+        
+        function exportConfig() {
+            ipcRenderer.send('export-config');
+        }
+        
+        function importConfig() {
+            ipcRenderer.send('import-config');
+        }
+        
+        function resetConfig() {
+            if (confirm('Are you sure you want to reset all settings to defaults?')) {
+                ipcRenderer.send('reset-config');
+            }
+        }
+    </script>
+</body>
+</html>
