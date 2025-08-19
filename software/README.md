@@ -1,30 +1,122 @@
-# W.I.T. Software Stack
+# W.I.T. Software Components
 
-High-level software components for the W.I.T. Terminal ecosystem.
+This directory contains all software components of the W.I.T. platform.
 
-## Components
-- **Backend**: RESTful API, WebSocket services, MQTT broker
-- **Frontend**: Web dashboard, system configuration UI
-- **Mobile**: iOS/Android companion apps
-- **AI**: Voice and vision processing pipelines
-- **Integrations**: Equipment-specific adapters
+## Directory Structure
 
-## Tech Stack
-- **Backend**: Python (FastAPI), Node.js services
-- **Frontend**: React, TypeScript, Tailwind CSS
-- **Mobile**: React Native
-- **AI**: PyTorch, ONNX Runtime
-- **Database**: PostgreSQL, TimescaleDB, Redis
-
-## Quick Start
-```bash
-# Start all services
-docker-compose up -d
-
-# Run development servers
-cd backend && python -m uvicorn main:app --reload
-cd frontend && npm run dev
+```
+software/
+├── backend/                    # FastAPI backend server
+├── frontend/                   # Web interfaces
+│   └── web/                   # React web application
+├── universal-desktop-controller/  # Electron desktop app
+├── ai/                        # AI/ML components (planned)
+└── mobile/                    # Mobile applications (planned)
 ```
 
-## API Documentation
-API docs available at `http://localhost:8000/docs` when running locally.
+## Components
+
+### Backend (`backend/`)
+The core API server built with FastAPI that handles:
+- Authentication and user management
+- Equipment control and monitoring
+- Project and task management
+- AI service integration
+- WebSocket real-time updates
+- File storage and management
+
+**Tech Stack**: Python, FastAPI, PostgreSQL, SQLAlchemy, WebSocket
+
+### Frontend Web (`frontend/web/`)
+The main web interface for W.I.T. featuring:
+- Industrial design system
+- Real-time equipment monitoring
+- Project management interface
+- AI-powered terminal
+- Settings and configuration
+
+**Tech Stack**: React, TypeScript, Tailwind CSS, Vite
+
+### Universal Desktop Controller (`universal-desktop-controller/`)
+Desktop companion application that provides:
+- Plugin architecture for desktop integrations
+- Arduino IDE integration
+- System tray interface
+- Local file system access
+- Application launching capabilities
+
+**Tech Stack**: Electron, Node.js, JavaScript
+
+## Quick Start
+
+Each component has its own setup instructions:
+
+1. **Backend**: See [backend/README.md](backend/README.md)
+2. **Frontend**: See [frontend/web/README.md](frontend/web/README.md)
+3. **UDC**: See [universal-desktop-controller/README.md](universal-desktop-controller/README.md)
+
+## Development
+
+For detailed development instructions, see the main [Development Guide](../docs/DEVELOPMENT.md).
+
+### Running All Components
+
+```bash
+# Terminal 1: Backend
+cd backend
+source venv/bin/activate
+python dev_server.py
+
+# Terminal 2: Frontend
+cd frontend/web
+npm run dev
+
+# Terminal 3: UDC (optional)
+cd universal-desktop-controller
+npm run dev
+```
+
+## Architecture
+
+The software follows a microservices-inspired architecture:
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Web UI    │     │     UDC     │     │   Mobile    │
+└──────┬──────┘     └──────┬──────┘     └──────┬──────┘
+       │                   │                    │
+       └───────────────────┴────────────────────┘
+                           │
+                    ┌──────▼──────┐
+                    │   Backend   │
+                    │     API      │
+                    └──────┬──────┘
+                           │
+       ┌───────────────────┴────────────────────┐
+       │                                        │
+┌──────▼──────┐                         ┌──────▼──────┐
+│  Database   │                         │   Hardware  │
+└─────────────┘                         └─────────────┘
+```
+
+## Testing
+
+Each component includes its own test suite:
+
+```bash
+# Backend tests
+cd backend
+pytest
+
+# Frontend tests
+cd frontend/web
+npm test
+
+# UDC tests
+cd universal-desktop-controller
+npm test
+```
+
+## Deployment
+
+See the main [Deployment Guide](../docs/DEPLOYMENT.md) for production deployment instructions.

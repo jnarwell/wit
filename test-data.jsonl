@@ -1,5 +1,0 @@
-{"id": 1, "name": "Alice", "age": 30, "city": "New York", "active": true}
-{"id": 2, "name": "Bob", "age": 25, "city": "London", "active": false}
-{"id": 3, "name": "Charlie", "age": 35, "city": "Tokyo", "active": true}
-{"id": 4, "name": "Diana", "age": 28, "city": "Paris", "active": true}
-{"id": 5, "name": "Eve", "age": 32, "city": "Berlin", "active": false}

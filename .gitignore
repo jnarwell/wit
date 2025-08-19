@@ -62,3 +62,7 @@ dist-ssr
 
 # Development emails
 dev_emails/research/OctoPrint-OctoEverywhere/
+
+# Archive directory (not tracked)
+/archive/
+dev_emails/
