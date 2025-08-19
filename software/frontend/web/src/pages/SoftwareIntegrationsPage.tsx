@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCode, FaCloud, FaDatabase, FaRobot, FaCubes, FaChartLine, FaMicrochip, FaCube, FaPrint } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCode, FaCloud, FaDatabase, FaRobot, FaCubes, FaChartLine, FaMicrochip, FaCube, FaPrint, FaCheck, FaExclamationTriangle, FaClock, FaDesktop, FaCog } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
+import { useUDCWebSocket } from '../hooks/useUDCWebSocket';
 import './SoftwareIntegrationsPage.css';
 
 const API_BASE_URL = 'http://localhost:8000';
@@ -20,6 +21,8 @@ interface SoftwareIntegration {
   position?: { x: number; y: number };
   size?: { width: number; height: number };
   comingSoon?: boolean;
+  isUDCPlugin?: boolean;
+  pluginId?: string;
 }
 
 interface SoftwareIntegrationsPageProps {
@@ -51,6 +54,7 @@ const SOFTWARE_STATUS = {
 
 const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onNavigateToDetail }) => {
   const { isAuthenticated, tokens } = useAuth();
+  const { status: udcStatus, wsStatus, sendCommand, refreshStatus } = useUDCWebSocket();
   const [integrations, setIntegrations] = useState<SoftwareIntegration[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +67,7 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
   const [sortBy, setSortBy] = useState('name');
   const [gridCols, setGridCols] = useState(4);
   const [gridRows, setGridRows] = useState(3);
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState('active');
   
   const [newIntegration, setNewIntegration] = useState({
     name: '',
@@ -73,9 +77,31 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
     apiKey: '',
     username: '',
   });
+  
+  const [showConfigureModal, setShowConfigureModal] = useState(false);
+  const [configureIntegration, setConfigureIntegration] = useState<SoftwareIntegration | null>(null);
+  const [pluginConfig, setPluginConfig] = useState({
+    port: '',
+    board: 'arduino:avr:uno',
+    baudRate: 9600,
+    sketchesPath: '~/Documents/Arduino'
+  });
 
-  // Predefined software integrations
-  const PREDEFINED_SOFTWARE: SoftwareIntegration[] = [
+  // UDC-aware integrations
+  const UDC_INTEGRATIONS: SoftwareIntegration[] = [
+    {
+      id: 'arduino-ide',
+      name: 'Arduino IDE',
+      type: 'embedded',
+      status: 'disconnected',
+      description: 'Programming environment for Arduino microcontrollers',
+      isUDCPlugin: true,
+      pluginId: 'arduino-ide'
+    }
+  ];
+
+  // Predefined software integrations (coming soon)
+  const COMING_SOON_SOFTWARE: SoftwareIntegration[] = [
     // CAD & Design Software
     {
       id: 'solidworks-001',
@@ -209,14 +235,6 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
     },
     
     // Programming & Embedded Systems
-    {
-      id: 'arduino-001',
-      name: 'Arduino IDE',
-      type: 'embedded',
-      status: 'pending',
-      description: 'Programming environment for Arduino microcontrollers',
-      comingSoon: true
-    },
     {
       id: 'platformio-001',
       name: 'PlatformIO',
@@ -397,25 +415,25 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       id: 'prusaslicer-001',
       name: 'PrusaSlicer',
       type: 'slicer',
-      status: 'connected',
+      status: 'pending',
       description: 'Advanced open-source slicer with excellent Prusa printer support',
-      comingSoon: false
+      comingSoon: true
     },
     {
       id: 'cura-001',
       name: 'Ultimaker Cura',
       type: 'slicer',
-      status: 'connected',
+      status: 'pending',
       description: 'Popular open-source slicer with wide printer compatibility',
-      comingSoon: false
+      comingSoon: true
     },
     {
       id: 'bambustudio-001',
       name: 'Bambu Studio',
       type: 'slicer',
-      status: 'connected',
+      status: 'pending',
       description: 'Optimized slicer for Bambu Lab printers with cloud features',
-      comingSoon: false
+      comingSoon: true
     },
     {
       id: 'superslicer-001',
@@ -471,9 +489,9 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       id: 'octoprint-001',
       name: 'OctoPrint',
       type: 'printer_control',
-      status: 'connected',
+      status: 'pending',
       description: 'Web-based 3D printer control with extensive plugin ecosystem',
-      comingSoon: false
+      comingSoon: true
     },
     {
       id: 'mainsail-001',
@@ -519,9 +537,9 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       id: 'prusalink-001',
       name: 'PrusaLink',
       type: 'printer_control',
-      status: 'connected',
+      status: 'pending',
       description: 'Local web interface for Prusa printers',
-      comingSoon: false
+      comingSoon: true
     },
     {
       id: 'klipper-001',
@@ -534,19 +552,28 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
   ];
 
   const gridRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [draggedIntegration, setDraggedIntegration] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  // Fetch integrations from API
+  // Update integrations based on UDC status
   useEffect(() => {
     if (!isAuthenticated) return;
     
-    // For now, we'll show predefined software and any user-added integrations
+    // Start with UDC integrations
+    const udcIntegrations = UDC_INTEGRATIONS.map(integration => {
+      // Check if this plugin is active in UDC
+      const plugin = udcStatus.plugins.find(p => p.id === integration.pluginId);
+      if (plugin) {
+        return {
+          ...integration,
+          status: plugin.status === 'active' ? 'connected' : 'disconnected'
+        };
+      }
+      return integration;
+    });
+    
+    // Combine all integrations
+    setIntegrations([...udcIntegrations, ...COMING_SOON_SOFTWARE]);
     setIsLoading(false);
-    // Combine predefined software with user integrations (empty for now)
-    setIntegrations([...PREDEFINED_SOFTWARE]);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, udcStatus]);
 
   // Calculate grid size
   useEffect(() => {
@@ -565,23 +592,47 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
     return () => window.removeEventListener('resize', updateGridSize);
   }, [gridCols, gridRows]);
 
-  // Filter and sort integrations
-  const filteredIntegrations = integrations.filter(integration => {
-    if (filterStatus !== 'all' && integration.status !== filterStatus) return false;
-    if (activeTab !== 'all' && integration.type !== activeTab) return false;
-    return true;
-  }).sort((a, b) => {
-    switch (sortBy) {
-      case 'name':
-        return a.name.localeCompare(b.name);
-      case 'type':
-        return a.type.localeCompare(b.type);
-      case 'status':
-        return a.status.localeCompare(b.status);
-      default:
-        return 0;
+  // Filter integrations based on active tab
+  const getFilteredIntegrations = () => {
+    let filtered = integrations;
+    
+    // Filter by tab
+    switch (activeTab) {
+      case 'active':
+        filtered = integrations.filter(i => i.isUDCPlugin && i.status === 'connected');
+        break;
+      case 'configured':
+        filtered = integrations.filter(i => i.isUDCPlugin && i.status === 'disconnected');
+        break;
+      case 'coming-soon':
+        filtered = integrations.filter(i => i.comingSoon);
+        break;
     }
-  });
+    
+    // Apply additional filters
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(i => i.status === filterStatus);
+    }
+    if (filterType !== 'all') {
+      filtered = filtered.filter(i => i.type === filterType);
+    }
+    
+    // Sort
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'type':
+          return a.type.localeCompare(b.type);
+        case 'status':
+          return a.status.localeCompare(b.status);
+        default:
+          return 0;
+      }
+    });
+  };
+
+  const filteredIntegrations = getFilteredIntegrations();
 
   // Pagination
   const integrationsPerPage = gridCols * gridRows;
@@ -618,6 +669,25 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
     }
   };
 
+  const handleLaunchSoftware = (integration: SoftwareIntegration) => {
+    if (integration.isUDCPlugin && integration.pluginId) {
+      sendCommand(integration.pluginId, 'launch');
+    }
+  };
+
+  const getTabCount = (tab: string) => {
+    switch (tab) {
+      case 'active':
+        return integrations.filter(i => i.isUDCPlugin && i.status === 'connected').length;
+      case 'configured':
+        return integrations.filter(i => i.isUDCPlugin && i.status === 'disconnected').length;
+      case 'coming-soon':
+        return integrations.filter(i => i.comingSoon).length;
+      default:
+        return 0;
+    }
+  };
+
   if (!isAuthenticated) {
     return <div className="software-integrations-page">Please log in to view software integrations.</div>;
   }
@@ -627,17 +697,23 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       <div className="page-header">
         <h1>Software Integrations</h1>
         <div className="header-actions">
+          <div className="udc-status">
+            <FaDesktop />
+            <span className={`status-text ${udcStatus.connected ? 'connected' : 'disconnected'}`}>
+              UDC {udcStatus.connected ? 'Connected' : 'Disconnected'}
+            </span>
+          </div>
           <button onClick={() => setShowAddModal(true)} className="add-button">
             <FaPlus /> Add Integration
           </button>
           <div className="view-controls">
             <select 
-              value={filterStatus} 
-              onChange={(e) => setFilterStatus(e.target.value)}
+              value={filterType} 
+              onChange={(e) => setFilterType(e.target.value)}
               className="filter-select"
             >
-              <option value="all">All Status</option>
-              {Object.entries(SOFTWARE_STATUS).map(([key, value]) => (
+              <option value="all">All Types</option>
+              {Object.entries(SOFTWARE_TYPES).map(([key, value]) => (
                 <option key={key} value={key}>{value.label}</option>
               ))}
             </select>
@@ -657,25 +733,23 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       {/* Tabs for categories */}
       <div className="category-tabs">
         <button
-          className={`tab-button ${activeTab === 'all' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('all'); setCurrentPage(1); }}
+          className={`tab-button ${activeTab === 'active' ? 'active' : ''}`}
+          onClick={() => { setActiveTab('active'); setCurrentPage(1); }}
         >
-          All ({integrations.length})
+          <FaCheck /> Active ({getTabCount('active')})
         </button>
-        {Object.entries(SOFTWARE_TYPES).filter(([key]) => 
-          ['cad', 'simulation', 'embedded', 'pcb', 'data_acquisition', 'manufacturing'].includes(key)
-        ).map(([key, value]) => {
-          const count = integrations.filter(i => i.type === key).length;
-          return (
-            <button
-              key={key}
-              className={`tab-button ${activeTab === key ? 'active' : ''}`}
-              onClick={() => { setActiveTab(key); setCurrentPage(1); }}
-            >
-              {value.label} ({count})
-            </button>
-          );
-        })}
+        <button
+          className={`tab-button ${activeTab === 'configured' ? 'active' : ''}`}
+          onClick={() => { setActiveTab('configured'); setCurrentPage(1); }}
+        >
+          <FaExclamationTriangle /> Configured ({getTabCount('configured')})
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'coming-soon' ? 'active' : ''}`}
+          onClick={() => { setActiveTab('coming-soon'); setCurrentPage(1); }}
+        >
+          <FaClock /> Coming Soon ({getTabCount('coming-soon')})
+        </button>
       </div>
 
       <div className="integrations-grid" ref={gridRef}>
@@ -686,18 +760,27 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
         ) : filteredIntegrations.length === 0 ? (
           <div className="empty-state">
             <FaCode className="empty-icon" />
-            <h3>No Software Integrations Match Your Filters</h3>
-            <p>Try adjusting your filters or add a new integration</p>
+            <h3>
+              {activeTab === 'active' ? 'No Active Software' : 
+               activeTab === 'configured' ? 'No Configured Software' :
+               'No Software Matches Your Filters'}
+            </h3>
+            <p>
+              {activeTab === 'active' ? 'Launch the Universal Desktop Controller to activate software' :
+               activeTab === 'configured' ? 'Configure software in the UDC to see it here' :
+               'Try adjusting your filters or check another tab'}
+            </p>
           </div>
         ) : (
           paginatedIntegrations.map((integration, index) => {
             const Icon = SOFTWARE_TYPES[integration.type]?.icon || FaCode;
+            const isClickable = integration.isUDCPlugin && integration.status === 'connected';
+            
             return (
               <div
                 key={integration.id}
                 className={`integration-card ${integration.status} ${integration.comingSoon ? 'coming-soon' : ''}`}
-                onClick={() => !integration.comingSoon && onNavigateToDetail?.(integration.id)}
-                style={{ cursor: integration.comingSoon ? 'not-allowed' : 'pointer' }}
+                style={{ cursor: 'default' }}
               >
                 {getStatusIcon(integration.status)}
                 <div className="integration-icon">
@@ -708,6 +791,55 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
                 <p className="integration-description">{integration.description}</p>
                 {integration.comingSoon ? (
                   <p className="coming-soon-label">Coming Soon</p>
+                ) : integration.isUDCPlugin && integration.status === 'connected' ? (
+                  <>
+                    <div className="quick-actions">
+                      <button 
+                        className="quick-action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLaunchSoftware(integration);
+                        }}
+                        title="Open IDE"
+                      >
+                        <FaDesktop /> IDE
+                      </button>
+                      <button 
+                        className="quick-action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          sendCommand(integration.pluginId, 'startSerial', { baudRate: 9600 });
+                        }}
+                        title="Serial Monitor"
+                      >
+                        <FaCode /> Serial
+                      </button>
+                      <button 
+                        className="quick-action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfigureIntegration(integration);
+                          setShowConfigureModal(true);
+                        }}
+                        title="Configure"
+                      >
+                        <FaCog /> Config
+                      </button>
+                    </div>
+                    <button 
+                      className="full-control-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onNavigateToDetail) {
+                          onNavigateToDetail(integration.id);
+                        }
+                      }}
+                    >
+                      Full Control →
+                    </button>
+                  </>
+                ) : integration.isUDCPlugin ? (
+                  <p className="udc-label">UDC Plugin (Offline)</p>
                 ) : (
                   integration.lastSync && (
                     <p className="last-sync">Last sync: {new Date(integration.lastSync).toLocaleString()}</p>
@@ -734,6 +866,87 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
           >
             <FaChevronRight />
           </button>
+        </div>
+      )}
+
+      {showConfigureModal && configureIntegration && (
+        <div className="modal-overlay" onClick={() => setShowConfigureModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Configure {configureIntegration.name}</h2>
+              <button onClick={() => setShowConfigureModal(false)} className="close-button">
+                <FaTimes />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Board Type</label>
+                <select
+                  value={pluginConfig.board}
+                  onChange={(e) => setPluginConfig({ ...pluginConfig, board: e.target.value })}
+                >
+                  <option value="arduino:avr:uno">Arduino Uno</option>
+                  <option value="arduino:avr:mega">Arduino Mega</option>
+                  <option value="arduino:avr:nano">Arduino Nano</option>
+                  <option value="arduino:avr:leonardo">Arduino Leonardo</option>
+                  <option value="arduino:samd:mkr1000">Arduino MKR1000</option>
+                  <option value="arduino:samd:mkrzero">Arduino MKR Zero</option>
+                  <option value="esp8266:esp8266:nodemcuv2">NodeMCU v2</option>
+                  <option value="esp32:esp32:esp32">ESP32</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Serial Port</label>
+                <select
+                  value={pluginConfig.port}
+                  onChange={(e) => setPluginConfig({ ...pluginConfig, port: e.target.value })}
+                >
+                  <option value="">Auto-detect</option>
+                  <option value="/dev/tty.usbmodem14101">USB Serial Port</option>
+                  <option value="/dev/tty.usbserial-0001">USB-Serial Adapter</option>
+                  <option value="COM3">COM3</option>
+                  <option value="COM4">COM4</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Baud Rate</label>
+                <select
+                  value={pluginConfig.baudRate}
+                  onChange={(e) => setPluginConfig({ ...pluginConfig, baudRate: parseInt(e.target.value) })}
+                >
+                  <option value="9600">9600</option>
+                  <option value="19200">19200</option>
+                  <option value="38400">38400</option>
+                  <option value="57600">57600</option>
+                  <option value="115200">115200</option>
+                  <option value="230400">230400</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Sketches Folder</label>
+                <input
+                  type="text"
+                  value={pluginConfig.sketchesPath}
+                  onChange={(e) => setPluginConfig({ ...pluginConfig, sketchesPath: e.target.value })}
+                  placeholder="~/Documents/Arduino"
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button onClick={() => setShowConfigureModal(false)} className="cancel-button">
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  sendCommand(configureIntegration.pluginId!, 'updateConfig', pluginConfig);
+                  setShowConfigureModal(false);
+                }} 
+                className="save-button"
+              >
+                Save Configuration
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

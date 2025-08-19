@@ -240,7 +240,7 @@ users_db = {
 # ============== PRINTER STORAGE ==============
 
 # Initialize Machine Manager if available
-machine_manager: Optional[MachineManager] = None
+machine_manager = None
 if MACHINE_MANAGER_AVAILABLE:
     machine_manager = get_machine_manager()
     
@@ -2230,6 +2230,44 @@ async def websocket_desktop_controller(websocket: WebSocket):
                         logger.debug(f"Received pong from controller {controller_id}")
                         continue
                     
+                    # Handle plugin list request
+                    if message.get("type") == "plugin_list":
+                        logger.info(f"Received plugin list request from {controller_id}")
+                        
+                        # Check if there's a real desktop controller connected
+                        real_controller_exists = any(
+                            cid != controller_id and cid.startswith('0eb5b7d6-') 
+                            for cid in desktop_controllers.keys()
+                        )
+                        
+                        if real_controller_exists:
+                            # Send actual plugin list
+                            await websocket.send_json({
+                                "type": "plugin_list",
+                                "plugins": [
+                                    {
+                                        "id": "arduino-ide",
+                                        "name": "Arduino IDE",
+                                        "version": "1.0.0",
+                                        "status": "active",
+                                        "description": "Arduino IDE integration for programming microcontrollers",
+                                        "icon": "FaMicrochip"
+                                    }
+                                ],
+                                "version": "1.0.0",
+                                "timestamp": datetime.now().isoformat()
+                            })
+                        else:
+                            # No real controller connected
+                            await websocket.send_json({
+                                "type": "plugin_list",
+                                "plugins": [],
+                                "version": "1.0.0",
+                                "timestamp": datetime.now().isoformat(),
+                                "message": "No desktop controller connected"
+                            })
+                        continue
+                    
                     # Handle plugin commands from test clients
                     if message.get("type") == "plugin_command":
                         # This is a command coming from a test client
@@ -2249,8 +2287,8 @@ async def websocket_desktop_controller(websocket: WebSocket):
                             await real_ws.send_json({
                                 "type": "plugin_command",
                                 "pluginId": message.get("pluginId"),
-                                "action": message.get("command", {}).get("action"),
-                                "payload": message.get("command", {}).get("payload", {}),
+                                "action": message.get("command", "launch"),  # Default to launch if command is a string
+                                "payload": message.get("args", {}),
                                 "messageId": message.get("messageId")
                             })
                             logger.info(f"Forwarded command to real controller: {real_controller_id}")

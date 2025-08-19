@@ -146,6 +146,12 @@ class ArduinoIDEPlugin extends WITPlugin {
             case 'createSketch':
                 return await this.createSketch(payload);
                 
+            case 'updateConfig':
+                return await this.updateConfig(payload);
+                
+            case 'getStatus':
+                return this.getStatus();
+                
             default:
                 throw new Error(`Unknown action: ${action}`);
         }
@@ -202,43 +208,61 @@ class ArduinoIDEPlugin extends WITPlugin {
     async launchArduino(options = {}) {
         this.log('launchArduino called with options:', JSON.stringify(options));
         
-        if (!await this.checkArduinoInstallation()) {
-            throw new Error('Arduino IDE not found. Please configure the Arduino IDE path.');
+        // Prevent duplicate launches
+        if (this.isLaunching) {
+            this.log('Arduino IDE launch already in progress, ignoring duplicate request');
+            return { success: false, message: 'Launch already in progress' };
         }
         
-        const args = [];
+        this.isLaunching = true;
         
-        // Add sketch path if provided
-        if (options.sketchPath) {
-            args.push(options.sketchPath);
+        try {
+            if (!await this.checkArduinoInstallation()) {
+                throw new Error('Arduino IDE not found. Please configure the Arduino IDE path.');
+            }
+            
+            const args = [];
+            
+            // Add sketch path if provided
+            if (options.sketchPath) {
+                args.push(options.sketchPath);
+            }
+            
+            // Add board if specified
+            const boardValue = options.board || (typeof this.config.defaultBoard === 'string' ? this.config.defaultBoard : null);
+            if (boardValue) {
+                args.push('--board', boardValue);
+            }
+            
+            // Add port if specified
+            const portValue = options.port || (typeof this.config.defaultPort === 'string' ? this.config.defaultPort : null);
+            if (portValue) {
+                args.push('--port', portValue);
+            }
+            
+            this.log(`Launching Arduino IDE from: ${this.config.arduinoPath}`);
+            this.log(`Launch args: ${JSON.stringify(args)}`);
+            
+            this.arduinoProcess = spawn(this.config.arduinoPath, args, {
+                detached: true,
+                stdio: 'ignore'
+            });
+            
+            this.arduinoProcess.unref();
+            
+            // Reset flag after a short delay
+            setTimeout(() => {
+                this.isLaunching = false;
+            }, 1000);
+            
+            return {
+                success: true,
+                pid: this.arduinoProcess.pid
+            };
+        } catch (error) {
+            this.isLaunching = false;
+            throw error;
         }
-        
-        // Add board if specified
-        const boardValue = options.board || (typeof this.config.defaultBoard === 'string' ? this.config.defaultBoard : null);
-        if (boardValue) {
-            args.push('--board', boardValue);
-        }
-        
-        // Add port if specified
-        const portValue = options.port || (typeof this.config.defaultPort === 'string' ? this.config.defaultPort : null);
-        if (portValue) {
-            args.push('--port', portValue);
-        }
-        
-        this.log(`Launching Arduino IDE from: ${this.config.arduinoPath}`);
-        this.log(`Launch args: ${JSON.stringify(args)}`);
-        
-        this.arduinoProcess = spawn(this.config.arduinoPath, args, {
-            detached: true,
-            stdio: 'ignore'
-        });
-        
-        this.arduinoProcess.unref();
-        
-        return {
-            success: true,
-            pid: this.arduinoProcess.pid
-        };
     }
     
     async openSketch(payload) {
@@ -416,21 +440,35 @@ class ArduinoIDEPlugin extends WITPlugin {
     }
     
     async startSerialMonitor(payload) {
-        const { port, baudRate = 9600 } = payload;
+        const { port, baudRate = 9600 } = payload || {};
+        
+        this.log('startSerialMonitor called with payload:', JSON.stringify(payload));
         
         // Close existing serial port if open
         if (this.serialPort && this.serialPort.isOpen) {
             await this.stopSerialMonitor();
         }
         
-        const portPath = port || this.config.defaultPort;
-        if (!portPath) {
-            throw new Error('No serial port specified');
+        let portPath = port || this.config.defaultPort;
+        
+        // If no port specified, try to find an available Arduino board
+        if (!portPath || typeof portPath !== 'string' || portPath.trim() === '') {
+            this.log('No port specified, attempting to find Arduino boards...');
+            const boards = await this.listBoards();
+            if (boards.length > 0) {
+                portPath = boards[0].path;
+                this.log('Found Arduino board at:', portPath);
+            } else {
+                throw new Error('No Arduino boards found. Please connect an Arduino or specify a port manually.');
+            }
         }
         
+        this.log('Attempting to open serial port:', portPath, 'at baud rate:', baudRate);
+        
         return new Promise((resolve, reject) => {
-            this.serialPort = new SerialPort(portPath, {
-                baudRate: baudRate,
+            this.serialPort = new SerialPort({
+                path: portPath.trim(),
+                baudRate: parseInt(baudRate) || 9600,
                 autoOpen: false
             });
             
@@ -498,7 +536,11 @@ class ArduinoIDEPlugin extends WITPlugin {
     }
     
     async sendSerialData(payload) {
-        const { data } = payload;
+        const { data } = payload || {};
+        
+        if (!data || typeof data !== 'string') {
+            throw new Error('Invalid data to send - must be a string');
+        }
         
         if (!this.serialPort || !this.serialPort.isOpen) {
             throw new Error('Serial port not open');
@@ -702,6 +744,27 @@ void loop() {
         }
     }
     
+    async updateConfig(newConfig) {
+        // Update configuration
+        this.config = { ...this.config, ...newConfig };
+        
+        // Save to persistent storage
+        await this.saveData('config.json', this.config);
+        
+        this.log('Configuration updated:', this.config);
+        
+        // Emit config update event
+        this.sendMessage({
+            type: 'config_updated',
+            config: this.config
+        });
+        
+        return {
+            success: true,
+            config: this.config
+        };
+    }
+    
     getStatus() {
         return {
             ...super.getStatus(),
@@ -710,7 +773,8 @@ void loop() {
             serialPortOpen: !!this.serialPort && this.serialPort.isOpen,
             connectedBoards: this.boardList.length,
             currentPort: this.config.defaultPort,
-            currentBoard: this.config.defaultBoard
+            currentBoard: this.config.defaultBoard,
+            config: this.config
         };
     }
 }
