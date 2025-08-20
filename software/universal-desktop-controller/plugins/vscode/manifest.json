@@ -1,0 +1,76 @@
+{
+  "id": "vscode",
+  "name": "Visual Studio Code",
+  "version": "1.0.0",
+  "description": "Visual Studio Code integration for editing code, managing projects, and development workflows",
+  "author": "W.I.T.",
+  "main": "index.js",
+  "permissions": [
+    "fileSystem",
+    "processManagement",
+    "shell"
+  ],
+  "supportedPlatforms": ["win32", "darwin", "linux"],
+  "requirements": {
+    "vscode": {
+      "minVersion": "1.50.0",
+      "paths": {
+        "win32": [
+          "C:\\Program Files\\Microsoft VS Code\\Code.exe",
+          "C:\\Program Files (x86)\\Microsoft VS Code\\Code.exe",
+          "C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
+          "%LOCALAPPDATA%\\Programs\\Microsoft VS Code\\Code.exe"
+        ],
+        "darwin": [
+          "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code",
+          "/usr/local/bin/code",
+          "/opt/homebrew/bin/code",
+          "$HOME/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
+        ],
+        "linux": [
+          "/usr/bin/code",
+          "/usr/local/bin/code",
+          "/snap/bin/code",
+          "/opt/visual-studio-code/code",
+          "$HOME/.local/bin/code"
+        ]
+      }
+    }
+  },
+  "defaultConfig": {
+    "defaultWorkspace": "~/Documents",
+    "enableTerminalIntegration": true,
+    "enableGitIntegration": true,
+    "defaultExtensions": [
+      "ms-python.python",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode"
+    ],
+    "settings": {
+      "telemetry.telemetryLevel": "off",
+      "update.mode": "manual"
+    }
+  },
+  "commands": {
+    "launch": "Launch VS Code",
+    "openFile": "Open file in VS Code",
+    "openFolder": "Open folder in VS Code",
+    "openWorkspace": "Open workspace",
+    "newWindow": "Open new window",
+    "addFolderToWorkspace": "Add folder to workspace",
+    "installExtension": "Install extension",
+    "uninstallExtension": "Uninstall extension",
+    "listExtensions": "List installed extensions",
+    "runCommand": "Run VS Code command",
+    "openTerminal": "Open integrated terminal",
+    "openSettings": "Open settings",
+    "openKeybindings": "Open keyboard shortcuts",
+    "openSnippets": "Open user snippets",
+    "diff": "Compare two files",
+    "search": "Search in files",
+    "replaceInFiles": "Replace in files",
+    "gitClone": "Clone repository",
+    "gitStatus": "Get git status",
+    "createProject": "Create new project from template"
+  }
+}

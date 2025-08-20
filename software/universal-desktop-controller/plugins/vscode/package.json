@@ -1,0 +1,16 @@
+{
+  "name": "wit-vscode-plugin",
+  "version": "1.0.0",
+  "description": "Visual Studio Code integration plugin for W.I.T. Universal Desktop Controller",
+  "main": "index.js",
+  "keywords": [
+    "wit",
+    "plugin",
+    "vscode",
+    "visual-studio-code",
+    "editor"
+  ],
+  "author": "W.I.T.",
+  "license": "MIT",
+  "dependencies": {}
+}

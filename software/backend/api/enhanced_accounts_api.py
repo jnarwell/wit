@@ -2,7 +2,7 @@
 Enhanced Account Management API
 Supports all connected account providers with data fetching capabilities
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +12,6 @@ import httpx
 import logging
 
 from services.database_services import get_session, LinkedAccount, User
-from services.auth_services import get_current_user
 from services.oauth_service import get_oauth_provider, TokenEncryption
 
 router = APIRouter(tags=["enhanced_accounts"])
@@ -151,7 +150,6 @@ async def get_available_providers():
 async def fetch_account_data(
     account_id: str,
     request: DataFetchRequest,
-    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_session)
 ):
     """Fetch data from any connected account"""
@@ -159,7 +157,7 @@ async def fetch_account_data(
     result = await db.execute(
         select(LinkedAccount).where(
             LinkedAccount.id == account_id,
-            LinkedAccount.user_id == current_user["id"]
+            LinkedAccount.user_id == "dev-user-1"
         )
     )
     account = result.scalar_one_or_none()
@@ -189,7 +187,7 @@ async def fetch_account_data(
         data_type=request.data_type,
         items=data,
         total_count=len(data),
-        fetched_at=datetime.utcnow()
+        fetched_at=datetime.now(timezone.utc)
     )
 
 # GitHub data fetching
@@ -329,7 +327,6 @@ async def fetch_notion_data(client: httpx.AsyncClient, token: str, data_type: st
 async def connect_procurement_account(
     provider: str,
     credentials: Dict[str, str],
-    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_session)
 ):
     """Connect a procurement account (API key or credentials based)"""
@@ -350,15 +347,16 @@ async def connect_procurement_account(
     encrypted_creds = token_encryption.encrypt(str(credentials))
     
     # Create linked account
+    # For dev server, use a default user_id
     account = LinkedAccount(
-        user_id=current_user["id"],
+        user_id="dev-user-1",
         provider=provider,
         provider_user_id=credentials.get("username", credentials.get("api_key", ""))[:255],
         access_token=encrypted_creds,
         email=credentials.get("email"),
         name=provider_config["name"],
         scopes=provider_config["features"],
-        connected_at=datetime.utcnow(),
+        connected_at=datetime.now(timezone.utc),
         status="active"
     )
     
@@ -377,7 +375,6 @@ async def search_mcmaster_parts(
     account_id: str,
     query: str,
     category: Optional[str] = None,
-    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_session)
 ):
     """Search McMaster-Carr catalog"""
@@ -404,7 +401,6 @@ async def search_digikey_parts(
     account_id: str,
     keyword: str,
     filters: Optional[Dict[str, Any]] = None,
-    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_session)
 ):
     """Search DigiKey parts catalog"""
@@ -428,7 +424,6 @@ async def search_digikey_parts(
 async def get_jlcpcb_quote(
     account_id: str,
     pcb_specs: Dict[str, Any],
-    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_session)
 ):
     """Get PCB manufacturing quote from JLCPCB"""
@@ -453,7 +448,6 @@ async def get_jlcpcb_quote(
 async def connect_ai_provider(
     provider: str,
     api_key: str,
-    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_session)
 ):
     """Connect an AI provider account"""
@@ -467,14 +461,15 @@ async def connect_ai_provider(
     encrypted_key = token_encryption.encrypt(api_key)
     
     # Create linked account
+    # For dev server, use a default user_id
     account = LinkedAccount(
-        user_id=current_user["id"],
+        user_id="dev-user-1",
         provider=provider,
         provider_user_id=f"{provider}_user",
         access_token=encrypted_key,
         name=provider_config["name"],
         scopes=provider_config["features"],
-        connected_at=datetime.utcnow(),
+        connected_at=datetime.now(timezone.utc),
         status="active"
     )
     

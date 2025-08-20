@@ -223,7 +223,12 @@ const FileBrowserPage: React.FC<FileBrowserPageProps> = ({ onNavigateBack }) => 
     if (!renameTarget || !newName.trim()) return;
     
     try {
-      const newPath = `${currentPath}/${newName}`;
+      // Get the parent directory of the item being renamed
+      const parentDir = renameTarget.path.substring(0, renameTarget.path.lastIndexOf('/'));
+      const newPath = `${parentDir}/${newName}`;
+      
+      console.log('[FileBrowser] Renaming:', renameTarget.path, 'to', newPath);
+      
       await sendCommand('file-browser', 'rename', {
         oldPath: renameTarget.path,
         newPath

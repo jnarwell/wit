@@ -1,0 +1,416 @@
+.openscad-control-page {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #333;
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header-info .page-icon {
+  font-size: 48px;
+  color: #4CAF50;
+}
+
+.header-info h1 {
+  font-size: 32px;
+  margin: 0;
+  color: #e0e0e0;
+}
+
+.header-info p {
+  margin: 5px 0 0 0;
+  color: #999;
+  font-size: 14px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.launch-button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.3s;
+}
+
+.launch-button:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.launch-button:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background-color: rgba(244, 67, 54, 0.1);
+  border: 1px solid #f44336;
+  color: #f44336;
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+}
+
+.status-bar {
+  background-color: #1e1e1e;
+  padding: 15px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-label {
+  color: #999;
+  font-size: 14px;
+}
+
+.status-value {
+  color: #e0e0e0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.status-value.active {
+  color: #4CAF50;
+}
+
+.status-value.inactive {
+  color: #f44336;
+}
+
+.control-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 20px;
+  background-color: #1e1e1e;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.tab {
+  background-color: transparent;
+  color: #999;
+  border: none;
+  padding: 10px 20px;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+}
+
+.tab:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tab.active {
+  background-color: #333;
+  color: #e0e0e0;
+}
+
+.tab-content {
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  padding: 20px;
+  min-height: 400px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-header h2 {
+  font-size: 24px;
+  margin: 0;
+  color: #e0e0e0;
+}
+
+.project-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.action-button {
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s;
+}
+
+.action-button:hover {
+  background-color: #444;
+  border-color: #666;
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.project-card {
+  background-color: #2a2a2a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  gap: 15px;
+}
+
+.project-card:hover {
+  background-color: #333;
+  border-color: #444;
+  transform: translateY(-2px);
+}
+
+.project-card.selected {
+  border-color: #4CAF50;
+  background-color: rgba(76, 175, 80, 0.1);
+}
+
+.project-icon {
+  font-size: 36px;
+  color: #4CAF50;
+}
+
+.project-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.project-info h3 {
+  margin: 0 0 5px 0;
+  font-size: 18px;
+  color: #e0e0e0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-path {
+  color: #999;
+  font-size: 12px;
+  margin: 5px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-meta {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #777;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.3;
+}
+
+.empty-state p {
+  margin: 10px 0;
+  font-size: 16px;
+}
+
+.empty-state .hint {
+  font-size: 14px;
+  color: #555;
+}
+
+.project-controls {
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.project-controls h3 {
+  margin: 0 0 15px 0;
+  font-size: 18px;
+  color: #e0e0e0;
+}
+
+.control-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.control-button {
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  padding: 10px 20px;
+  font-size: 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+}
+
+.control-button:hover {
+  background-color: #444;
+  border-color: #666;
+}
+
+.editor-section {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.code-editor {
+  flex: 1;
+  background-color: #2a2a2a;
+  color: #e0e0e0;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  padding: 20px;
+  border: 1px solid #333;
+  border-radius: 5px;
+  resize: none;
+  min-height: 400px;
+  line-height: 1.6;
+}
+
+.code-editor::placeholder {
+  color: #666;
+}
+
+.variables-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.variable-control {
+  background-color: #2a2a2a;
+  padding: 15px;
+  border-radius: 5px;
+  border: 1px solid #333;
+}
+
+.variable-control label {
+  display: block;
+  color: #e0e0e0;
+  font-weight: 500;
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+.variable-control input[type="range"] {
+  width: 100%;
+  margin: 10px 0;
+}
+
+.variable-control input[type="text"],
+.variable-control select {
+  width: 100%;
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.variable-control input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.variable-description {
+  margin: 10px 0 0 0;
+  font-size: 12px;
+  color: #999;
+  font-style: italic;
+}
+
+/* Loading state */
+.openscad-control-page.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  
+  .header-info {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .projects-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .control-buttons {
+    flex-direction: column;
+  }
+  
+  .control-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

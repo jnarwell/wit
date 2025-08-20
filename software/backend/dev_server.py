@@ -12,7 +12,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 
 # Import routers from main.py
@@ -305,7 +305,7 @@ def authenticate_user(username: str, password: str):
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     logger.info(f"Creating token with data: {data}")
     logger.info(f"Using SECRET_KEY: {SECRET_KEY[:20]}...")
