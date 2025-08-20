@@ -28,6 +28,10 @@ class WITPlugin {
      */
     async start() {
         this.log('info', `Starting plugin ${this.id}...`);
+        if (this.state === 'started') {
+            this.log('warn', `Plugin ${this.id} is already started`);
+            return;
+        }
         this.state = 'started';
         // Override in subclasses
     }
@@ -37,6 +41,10 @@ class WITPlugin {
      */
     async stop() {
         this.log('info', `Stopping plugin ${this.id}...`);
+        if (this.state === 'stopped') {
+            this.log('warn', `Plugin ${this.id} is already stopped`);
+            return;
+        }
         this.state = 'stopped';
         // Override in subclasses
     }

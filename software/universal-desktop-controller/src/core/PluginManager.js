@@ -67,12 +67,16 @@ class PluginManager {
             // Validate plugin interface
             this.validatePluginInterface(plugin);
             
+            // Initialize plugin once when loaded
+            await plugin.initialize();
+            
             // Store plugin
             this.plugins.set(manifest.id, {
                 manifest,
                 instance: plugin,
                 path: pluginPath,
-                state: 'loaded'
+                state: 'loaded',
+                initialized: true
             });
             
             this.pluginStates.set(manifest.id, 'loaded');
@@ -97,9 +101,14 @@ class PluginManager {
             throw new Error(`Plugin ${pluginId} not found`);
         }
         
-        if (this.pluginStates.get(pluginId) === 'started') {
+        const currentState = this.pluginStates.get(pluginId);
+        if (currentState === 'started') {
             logger.warn(`Plugin ${pluginId} is already started`);
             return;
+        }
+        
+        if (!['loaded', 'stopped'].includes(currentState)) {
+            throw new Error(`Plugin ${pluginId} is in invalid state for starting: ${currentState}`);
         }
         
         try {
@@ -112,10 +121,7 @@ class PluginManager {
                 }
             }
             
-            // Initialize plugin
-            await plugin.instance.initialize();
-            
-            // Start plugin
+            // Start plugin (initialize was already called when plugin was loaded)
             await plugin.instance.start();
             
             this.pluginStates.set(pluginId, 'started');
@@ -141,8 +147,9 @@ class PluginManager {
             throw new Error(`Plugin ${pluginId} not found`);
         }
         
-        if (this.pluginStates.get(pluginId) !== 'started') {
-            logger.warn(`Plugin ${pluginId} is not started`);
+        const currentState = this.pluginStates.get(pluginId);
+        if (currentState !== 'started') {
+            logger.warn(`Plugin ${pluginId} is not started (current state: ${currentState})`);
             return;
         }
         
