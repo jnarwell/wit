@@ -46,11 +46,15 @@ W.I.T. is a comprehensive industrial workshop terminal system that unifies equip
 - **Application Launcher**: Launch and control desktop applications
 - **File System Monitoring**: Real-time file change detection and notifications
 
-### Procurement Integration
+### Connected Accounts & Integrations
+- **AI Providers**: Anthropic Claude, OpenAI GPT, Google Gemini, DeepSeek
 - **Component Suppliers**: DigiKey, Mouser for electronic parts
 - **Hardware Suppliers**: McMaster-Carr for mechanical components  
 - **PCB Manufacturing**: JLCPCB, PCBWay, OSHCut for board fabrication
 - **Custom Manufacturing**: Xometry, Protolabs for CNC and 3D printing
+- **Project Management**: GitHub, Linear, Notion, Jira for task tracking
+- **File Storage**: Google Drive, Microsoft OneDrive, iCloud for cloud files
+- **Development Tools**: OAuth and API key authentication support
 
 ### Industrial Interface
 - **No-Scroll Design**: All critical information visible without scrolling
@@ -107,6 +111,58 @@ W.I.T. is a comprehensive industrial workshop terminal system that unifies equip
    ```
 
 Visit `http://localhost:5173` to access the web interface.
+
+## 🔗 Connected Accounts System
+
+W.I.T. features a comprehensive connected accounts system that integrates with external services for automation, procurement, and data management.
+
+### Supported Integrations
+
+#### AI Providers
+- **Anthropic Claude**: Advanced AI assistance and analysis
+- **OpenAI GPT**: Chat completion and text generation
+- **Google Gemini**: Google's multimodal AI capabilities  
+- **DeepSeek**: Cost-effective AI models
+
+#### Procurement & Manufacturing
+- **McMaster-Carr**: Mechanical components and hardware
+- **DigiKey**: Electronic components and semiconductors
+- **Mouser Electronics**: Electronic parts and supplies
+- **JLCPCB**: PCB manufacturing and assembly
+- **PCBWay**: Circuit board fabrication services
+- **OSHCut**: Custom PCB manufacturing
+- **Xometry**: On-demand CNC machining and 3D printing
+- **Protolabs**: Digital manufacturing services
+
+#### Project Management & Development
+- **GitHub**: Repository management and issue tracking
+- **Linear**: Modern project management and issue tracking
+- **Notion**: Collaborative workspace and documentation
+- **Jira**: Agile project management
+- **Google Drive**: Cloud file storage and sharing
+- **Microsoft OneDrive**: Cloud file synchronization
+- **Apple iCloud**: File storage and sync
+
+### Authentication Methods
+
+- **OAuth 2.0**: Secure authentication for Google, GitHub, Microsoft, etc.
+- **API Keys**: Direct integration with service APIs
+- **Credential-based**: Username/password authentication for specific services
+
+### Getting Started with Connected Accounts
+
+1. **Access Settings**: Navigate to Settings → Connected Accounts
+2. **Choose Provider**: Select from AI, procurement, or development providers
+3. **Authenticate**: Follow provider-specific authentication flow
+4. **Start Using**: Access provider features throughout W.I.T.
+
+### Features
+
+- **Real-time Connection Status**: See connection health at a glance
+- **Unified Interface**: Access all connected services through W.I.T.
+- **Secure Credential Storage**: Encrypted storage of authentication tokens
+- **Automatic Reconnection**: Handles token refresh and connection recovery
+- **Data Import**: Pull data from connected accounts into W.I.T. projects
 
 ## 📚 Documentation
 

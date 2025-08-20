@@ -21,6 +21,7 @@ The core API server built with FastAPI that handles:
 - Authentication and user management
 - Equipment control and monitoring
 - Project and task management
+- Connected accounts system (AI providers, procurement, project management)
 - AI service integration
 - WebSocket real-time updates
 - File storage and management
