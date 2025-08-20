@@ -30,6 +30,7 @@ import KiCadControlPage from './pages/KiCadControlPage';
 import LabVIEWControlPage from './pages/LabVIEWControlPage';
 import NodeREDControlPage from './pages/NodeREDControlPage';
 import OpenSCADControlPage from './pages/OpenSCADControlPage';
+import VSCodeControlPage from './pages/VSCodeControlPage';
 import FileBrowserPage from './pages/FileBrowserPage';
 import FunctionPage from './components/FunctionPage';
 
@@ -206,6 +207,8 @@ function AppContent() {
             <NodeREDControlPage onClose={handleDetailClose} />
           ) : detailPageState.id === 'openscad' ? (
             <OpenSCADControlPage onClose={handleDetailClose} />
+          ) : detailPageState.id === 'vscode' ? (
+            <VSCodeControlPage onClose={handleDetailClose} />
           ) : detailPageState.id === 'file-browser' ? (
             <FileBrowserPage onNavigateBack={handleDetailClose} />
           ) : (

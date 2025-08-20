@@ -442,6 +442,24 @@ class UniversalDesktopController {
             }
         });
         
+        ipcMain.on('configure-plugin', async (event, pluginId) => {
+            try {
+                const config = await this.pluginManager.getPluginConfiguration(pluginId);
+                event.reply('plugin-configuration', { pluginId, success: true, config });
+            } catch (error) {
+                event.reply('plugin-configuration', { pluginId, success: false, error: error.message });
+            }
+        });
+        
+        ipcMain.on('save-plugin-config', async (event, { pluginId, config }) => {
+            try {
+                await this.pluginManager.savePluginConfiguration(pluginId, config);
+                event.reply('plugin-config-saved', { pluginId, success: true });
+            } catch (error) {
+                event.reply('plugin-config-saved', { pluginId, success: false, error: error.message });
+            }
+        });
+        
         // Handle plugin commands from UI
         ipcMain.on('plugin-command', async (event, data) => {
             try {

@@ -834,11 +834,14 @@ See `plugins/openscad/` for a complete example of integrating OpenSCAD with:
 
 ### VS Code Plugin Example
 See `plugins/vscode/` for a complete example of integrating Visual Studio Code with:
-- Project opening
-- File navigation
-- Extension management
-- Terminal integration
-- Git operations
+- Cross-platform application detection (Windows, macOS, Linux)
+- Project creation with templates (Node.js, Python, Web, Empty)
+- Extension management (install/list/uninstall)
+- Git integration (clone repositories, status)
+- Terminal integration and settings access
+- Comprehensive frontend control page with tabbed interface
+- WebSocket connection state handling
+- Real-time status monitoring and updates
 
 ### Database Client Plugin Example
 See `plugins/db-client/` for an example of:

@@ -43,6 +43,7 @@ W.I.T. is a comprehensive industrial workshop terminal system that unifies equip
 - **LabVIEW Integration**: Visual programming and data acquisition systems
 - **Node-RED Integration**: Visual IoT automation and sensor workflows
 - **OpenSCAD Integration**: Programmers' solid 3D CAD modeller with parametric design
+- **VS Code Integration**: Complete development environment with project templates, extension management, and Git operations
 - **File Browser**: Complete file system access and management with web UI
 - **Application Launcher**: Launch and control desktop applications
 - **File System Monitoring**: Real-time file change detection and notifications

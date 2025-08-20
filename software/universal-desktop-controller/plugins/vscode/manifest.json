@@ -23,9 +23,10 @@
         ],
         "darwin": [
           "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code",
+          "$HOME/Downloads/Visual Studio Code.app/Contents/Resources/app/bin/code",
+          "$HOME/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code",
           "/usr/local/bin/code",
-          "/opt/homebrew/bin/code",
-          "$HOME/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
+          "/opt/homebrew/bin/code"
         ],
         "linux": [
           "/usr/bin/code",

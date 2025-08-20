@@ -49,6 +49,7 @@ Desktop companion application that provides:
 - LabVIEW graphical programming integration
 - Node-RED visual IoT automation
 - OpenSCAD programmatic 3D CAD modeling
+- VS Code integration with project templates and extension management
 - File Browser with complete file system access and management
 - System tray interface
 - Cross-platform support (Windows, macOS, Linux)
@@ -64,6 +65,7 @@ Desktop companion application that provides:
 - LabVIEW - Visual programming and data acquisition
 - Node-RED - IoT flow-based programming
 - OpenSCAD - Programmers' solid 3D CAD modeller
+- VS Code - Complete development environment with project creation, extension management, and Git operations
 
 ## Quick Start
 

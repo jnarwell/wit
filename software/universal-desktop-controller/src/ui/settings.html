@@ -167,6 +167,118 @@
         .hidden {
             display: none;
         }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .config-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .config-field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .config-field label {
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .config-field input[type="text"],
+        .config-field input[type="number"],
+        .config-field select,
+        .config-field textarea {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .config-field textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .config-field input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .create-plugin-btn {
+            background: #4CAF50;
+            margin-bottom: 20px;
+        }
+
+        .create-plugin-btn:hover {
+            background: #45a049;
+        }
     </style>
 </head>
 <body>
@@ -219,6 +331,7 @@
         <!-- Plugins Tab -->
         <div id="plugins-tab" class="content hidden">
             <h2>Installed Plugins</h2>
+            <button class="create-plugin-btn" onclick="showCreatePluginModal()">Create Custom Plugin</button>
             <ul id="plugin-list" class="plugin-list">
                 <!-- Plugins will be populated here -->
             </ul>
