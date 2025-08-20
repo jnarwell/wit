@@ -123,6 +123,8 @@ class UniversalDesktopController {
             'node-red',           // Node-RED IoT automation integration
             'openscad',           // OpenSCAD programmatic 3D CAD modeller
             'vscode',             // Visual Studio Code integration
+            'docker',             // Docker Desktop integration
+            'blender',            // Blender 3D modeling and animation
             'file-browser',       // File system access and management
         ];
         

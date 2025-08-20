@@ -2142,6 +2142,8 @@ plugin_status = {
     "labview": "inactive",
     "node-red": "inactive",
     "vscode": "inactive",
+    "docker": "inactive",
+    "blender": "inactive",
     "file-browser": "inactive",
     "openscad": "inactive"
 }
@@ -2324,6 +2326,22 @@ async def websocket_desktop_controller(websocket: WebSocket):
                                         "status": plugin_status.get("vscode", "inactive"),
                                         "description": "Professional code editor with IntelliSense, debugging, and Git integration for all development workflows",
                                         "icon": "FaCode"
+                                    },
+                                    {
+                                        "id": "docker",
+                                        "name": "Docker Desktop",
+                                        "version": "1.0.0",
+                                        "status": plugin_status.get("docker", "inactive"),
+                                        "description": "Container management, image building, and Docker Compose orchestration for development workflows",
+                                        "icon": "FaDocker"
+                                    },
+                                    {
+                                        "id": "blender",
+                                        "name": "Blender",
+                                        "version": "1.0.0",
+                                        "status": plugin_status.get("blender", "inactive"),
+                                        "description": "AI-powered 3D modeling, animation, and rendering with Blender's comprehensive Python API",
+                                        "icon": "FaCubes"
                                     },
                                     {
                                         "id": "file-browser",

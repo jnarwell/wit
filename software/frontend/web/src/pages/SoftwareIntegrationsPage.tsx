@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCode, FaCloud, FaDatabase, FaRobot, FaCubes, FaChartLine, FaMicrochip, FaCube, FaPrint, FaCheck, FaExclamationTriangle, FaClock, FaDesktop, FaCog, FaCalculator, FaProjectDiagram, FaFolder } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCode, FaCloud, FaDatabase, FaRobot, FaCubes, FaChartLine, FaMicrochip, FaCube, FaPrint, FaCheck, FaExclamationTriangle, FaClock, FaDesktop, FaCog, FaCalculator, FaProjectDiagram, FaFolder, FaDocker } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { useUDCWebSocket } from '../hooks/useUDCWebSocket';
 import './SoftwareIntegrationsPage.css';
@@ -39,6 +39,7 @@ const SOFTWARE_TYPES = {
   'slicer': { label: '3D Slicers', icon: FaCube },
   'printer_control': { label: 'Printer Control', icon: FaPrint },
   'editor': { label: 'Code Editors & IDEs', icon: FaCode },
+  'devops': { label: 'DevOps & Containers', icon: FaDocker },
   'api': { label: 'API', icon: FaCode },
   'database': { label: 'Database', icon: FaDatabase },
   'cloud': { label: 'Cloud Service', icon: FaCloud },
@@ -154,6 +155,15 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       pluginId: 'vscode'
     },
     {
+      id: 'docker',
+      name: 'Docker Desktop',
+      type: 'devops',
+      status: 'disconnected',
+      description: 'Container management, image building, and Docker Compose orchestration for development workflows',
+      isUDCPlugin: true,
+      pluginId: 'docker'
+    },
+    {
       id: 'openscad',
       name: 'OpenSCAD',
       type: 'cad',
@@ -161,6 +171,15 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       description: 'The Programmers Solid 3D CAD Modeller - Create 3D models using code',
       isUDCPlugin: true,
       pluginId: 'openscad'
+    },
+    {
+      id: 'blender',
+      name: 'Blender',
+      type: 'cad',
+      status: 'disconnected',
+      description: 'AI-powered 3D modeling, animation, and rendering with comprehensive Python API',
+      isUDCPlugin: true,
+      pluginId: 'blender'
     },
     {
       id: 'file-browser',

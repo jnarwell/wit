@@ -1,0 +1,150 @@
+{
+  "id": "blender",
+  "name": "Blender",
+  "version": "1.0.0",
+  "description": "AI-powered 3D modeling, animation, and rendering with Blender's Python API",
+  "author": "W.I.T. Team",
+  "main": "index.js",
+  "icon": "FaCubes",
+  "category": "3d",
+  "permissions": [
+    "fileSystem",
+    "processManagement",
+    "network"
+  ],
+  "requirements": {
+    "blender": {
+      "version": ">=3.0",
+      "paths": {
+        "darwin": [
+          "/Applications/Blender.app/Contents/MacOS/Blender",
+          "/Applications/Blender 4.2.app/Contents/MacOS/Blender",
+          "/Applications/Blender 4.1.app/Contents/MacOS/Blender",
+          "/Applications/Blender 4.0.app/Contents/MacOS/Blender",
+          "/Applications/Blender 3.6.app/Contents/MacOS/Blender",
+          "/Applications/Blender 3.5.app/Contents/MacOS/Blender",
+          "/Applications/Blender 3.4.app/Contents/MacOS/Blender",
+          "/Applications/Blender 3.3.app/Contents/MacOS/Blender",
+          "/Applications/Blender 3.2.app/Contents/MacOS/Blender",
+          "/Applications/Blender 3.1.app/Contents/MacOS/Blender",
+          "/Applications/Blender 3.0.app/Contents/MacOS/Blender",
+          "/usr/local/bin/blender",
+          "/opt/homebrew/bin/blender"
+        ],
+        "win32": [
+          "C:\\Program Files\\Blender Foundation\\Blender 4.2\\blender.exe",
+          "C:\\Program Files\\Blender Foundation\\Blender 4.1\\blender.exe",
+          "C:\\Program Files\\Blender Foundation\\Blender 4.0\\blender.exe",
+          "C:\\Program Files\\Blender Foundation\\Blender 3.6\\blender.exe",
+          "C:\\Program Files\\Blender Foundation\\Blender 3.5\\blender.exe",
+          "C:\\Program Files\\Blender Foundation\\Blender 3.4\\blender.exe",
+          "C:\\Program Files\\Blender Foundation\\Blender 3.3\\blender.exe",
+          "C:\\Program Files\\Blender Foundation\\Blender 3.2\\blender.exe",
+          "C:\\Program Files\\Blender Foundation\\Blender 3.1\\blender.exe",
+          "C:\\Program Files\\Blender Foundation\\Blender 3.0\\blender.exe",
+          "%LOCALAPPDATA%\\Programs\\Blender Foundation\\Blender\\blender.exe"
+        ],
+        "linux": [
+          "/usr/bin/blender",
+          "/usr/local/bin/blender",
+          "/snap/bin/blender",
+          "/opt/blender/blender",
+          "/opt/blender-3.6/blender",
+          "/opt/blender-3.5/blender",
+          "/opt/blender-3.4/blender",
+          "/opt/blender-3.3/blender",
+          "/opt/blender-3.2/blender",
+          "/opt/blender-3.1/blender",
+          "/opt/blender-3.0/blender"
+        ]
+      }
+    }
+  },
+  "config": {
+    "projectsPath": {
+      "default": "~/Documents/Blender",
+      "description": "Default directory for Blender projects"
+    },
+    "autoSave": {
+      "default": true,
+      "description": "Automatically save projects before operations"
+    },
+    "renderEngine": {
+      "default": "CYCLES",
+      "options": ["CYCLES", "EEVEE", "WORKBENCH"],
+      "description": "Default render engine"
+    },
+    "renderSamples": {
+      "default": 128,
+      "description": "Default render samples for Cycles"
+    },
+    "exportFormats": {
+      "default": ["obj", "fbx", "gltf", "dae", "ply", "stl", "x3d"],
+      "description": "Supported export formats"
+    },
+    "pythonScriptsPath": {
+      "default": "~/Documents/Blender/Scripts",
+      "description": "Directory for custom Python scripts"
+    },
+    "addonsPath": {
+      "default": "~/Documents/Blender/Addons",
+      "description": "Directory for custom addons"
+    },
+    "aiIntegration": {
+      "enabled": true,
+      "description": "Enable AI-driven modeling and automation"
+    },
+    "renderPresets": {
+      "default": {
+        "preview": { "samples": 32, "resolution": [640, 480] },
+        "medium": { "samples": 128, "resolution": [1920, 1080] },
+        "high": { "samples": 256, "resolution": [3840, 2160] }
+      },
+      "description": "Predefined render quality presets"
+    }
+  },
+  "commands": {
+    "launch": "Launch Blender application",
+    "openFile": "Open a .blend file in Blender",
+    "newFile": "Create a new Blender project",
+    "executeScript": "Execute Python script in Blender",
+    "render": "Render the current scene",
+    "export": "Export scene to various formats",
+    "import": "Import model into Blender",
+    "getStatus": "Get Blender plugin status",
+    "listProjects": "List Blender projects",
+    "listObjects": "List objects in current scene",
+    "createObject": "Create new 3D object",
+    "modifyObject": "Modify existing object",
+    "deletObject": "Delete object from scene",
+    "setMaterial": "Apply material to object",
+    "setAnimation": "Create animation for object",
+    "renderAnimation": "Render animation sequence",
+    "getSceneInfo": "Get current scene information",
+    "saveProject": "Save current project",
+    "generateMesh": "AI-generate procedural mesh",
+    "optimizeMesh": "Optimize mesh for 3D printing/performance",
+    "createMaterial": "Create procedural material",
+    "setupLighting": "AI-setup scene lighting",
+    "cameraComposition": "AI-optimize camera angles",
+    "batchRender": "Render multiple scenes/angles"
+  },
+  "features": [
+    "AI-powered 3D modeling",
+    "Python API integration",
+    "Procedural geometry generation",
+    "Advanced rendering (Cycles/Eevee)",
+    "Animation and rigging",
+    "Multi-format import/export",
+    "Material and shader creation",
+    "Lighting setup automation",
+    "Batch processing",
+    "Add-on management",
+    "Script execution",
+    "Real-time preview",
+    "3D printing optimization",
+    "Parametric modeling",
+    "Scene composition",
+    "Texture generation"
+  ]
+}
