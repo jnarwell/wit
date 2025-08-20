@@ -22,6 +22,7 @@ interface UseUDCWebSocketReturn {
   wsStatus: 'connected' | 'disconnected' | 'connecting' | 'failed';
   sendCommand: (plugin: string, command: string, args?: any) => void;
   refreshStatus: () => void;
+  resetConnection: () => void;
   lastPluginResponse: any | null;
 }
 
@@ -59,9 +60,10 @@ export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
 
   const refreshStatus = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
+      // Request plugin list to get fresh status
       wsRef.current.send(JSON.stringify({
-        type: 'udc.status',
-        requestId: `${Date.now()}-${Math.random()}`
+        type: 'plugin_list',
+        requestId: `refresh-${Date.now()}`
       }));
     }
   }, []);
@@ -121,10 +123,10 @@ export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
               
             case 'plugin_list':
               console.log('[UDC WebSocket] Received plugin list:', data);
-              // Check if we have actual plugins
+              // Check if we have actual plugins - only connected if real plugins exist
               const hasPlugins = data.plugins && data.plugins.length > 0;
               setUdcStatus({
-                connected: hasPlugins,
+                connected: hasPlugins, // Only connected if there are actual plugins
                 plugins: data.plugins || [],
                 version: data.version
               });
@@ -145,12 +147,22 @@ export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
               break;
               
             case 'plugin_status':
+              console.log('[UDC WebSocket] Received plugin status update:', data);
               setUdcStatus(prev => ({
                 ...prev,
                 plugins: prev.plugins.map(p => 
                   p.id === data.pluginId ? { ...p, status: data.status } : p
                 )
               }));
+              // Also refresh the full plugin list to get latest states
+              setTimeout(() => {
+                if (wsRef.current?.readyState === WebSocket.OPEN) {
+                  wsRef.current.send(JSON.stringify({
+                    type: 'plugin_list',
+                    requestId: `status-refresh-${Date.now()}`
+                  }));
+                }
+              }, 100);
               break;
               
             case 'plugin_started':
@@ -160,6 +172,15 @@ export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
                   p.id === data.pluginId ? { ...p, status: 'active' } : p
                 )
               }));
+              // Refresh plugin list to get full updated status
+              setTimeout(() => {
+                if (wsRef.current?.readyState === WebSocket.OPEN) {
+                  wsRef.current.send(JSON.stringify({
+                    type: 'plugin_list',
+                    requestId: `started-refresh-${Date.now()}`
+                  }));
+                }
+              }, 100);
               break;
               
             case 'plugin_stopped':
@@ -169,6 +190,15 @@ export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
                   p.id === data.pluginId ? { ...p, status: 'inactive' } : p
                 )
               }));
+              // Refresh plugin list to get full updated status
+              setTimeout(() => {
+                if (wsRef.current?.readyState === WebSocket.OPEN) {
+                  wsRef.current.send(JSON.stringify({
+                    type: 'plugin_list',
+                    requestId: `stopped-refresh-${Date.now()}`
+                  }));
+                }
+              }, 100);
               break;
               
             case 'error':
@@ -188,8 +218,8 @@ export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
         reconnectAttemptsRef.current++;
       };
 
-      ws.onclose = () => {
-        console.log('[UDC WebSocket] Disconnected');
+      ws.onclose = (event) => {
+        console.log('[UDC WebSocket] Disconnected', event.code, event.reason);
         wsRef.current = null;
         setWsStatus('disconnected');
         setUdcStatus({
@@ -197,15 +227,27 @@ export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
           plugins: []
         });
 
+        // Don't reconnect if the close was intentional or if the connection was never established
+        if (event.code === 1000 || event.code === 1001) {
+          console.log('[UDC WebSocket] Clean disconnect, not reconnecting');
+          return;
+        }
+
+        // Only reconnect if we haven't reached the max attempts and there was a real connection before
         if (reconnectAttemptsRef.current < WS_MAX_RECONNECT_ATTEMPTS) {
           if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
           }
           
+          // Exponential backoff: 5s, 10s, 20s
+          const delay = WS_RECONNECT_DELAY * Math.pow(2, reconnectAttemptsRef.current);
+          console.log(`[UDC WebSocket] Will retry in ${delay/1000}s`);
+          
           reconnectTimeoutRef.current = setTimeout(() => {
             connectWebSocket();
-          }, WS_RECONNECT_DELAY);
+          }, delay);
         } else {
+          console.log('[UDC WebSocket] Max reconnection attempts reached, giving up');
           setWsStatus('failed');
         }
       };
@@ -217,6 +259,15 @@ export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
       reconnectAttemptsRef.current++;
     }
   }, [tokens, wsStatus]);
+
+  const resetConnection = useCallback(() => {
+    reconnectAttemptsRef.current = 0;
+    setWsStatus('disconnected');
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+    connectWebSocket();
+  }, [connectWebSocket]);
 
   useEffect(() => {
     // Avoid connecting twice in strict mode
@@ -246,11 +297,28 @@ export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
     };
   }, []);
 
+  // Periodic refresh to keep plugin status in sync
+  useEffect(() => {
+    if (wsStatus !== 'connected') return;
+
+    const intervalId = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({
+          type: 'plugin_list',
+          requestId: `periodic-refresh-${Date.now()}`
+        }));
+      }
+    }, 10000); // Refresh every 10 seconds
+
+    return () => clearInterval(intervalId);
+  }, [wsStatus]);
+
   return {
     status: udcStatus,
     wsStatus,
     sendCommand,
     refreshStatus,
+    resetConnection,
     lastPluginResponse
   };
 };

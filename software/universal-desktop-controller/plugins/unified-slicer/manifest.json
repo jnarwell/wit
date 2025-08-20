@@ -1,0 +1,135 @@
+{
+  "id": "unified-slicer",
+  "name": "Unified 3D Slicer Integration",
+  "version": "1.0.0",
+  "description": "Comprehensive integration for all major 3D slicing software including PrusaSlicer, OrcaSlicer, Bambu Studio, SuperSlicer, and Cura",
+  "author": "W.I.T. Development Team",
+  "main": "index.js",
+  "category": "3d-printing",
+  "tags": ["3d-printing", "slicing", "manufacturing", "gcode"],
+  "permissions": [
+    "file-system",
+    "process-spawn",
+    "network-local"
+  ],
+  "dependencies": {
+    "fs": "builtin",
+    "path": "builtin",
+    "child_process": "builtin",
+    "os": "builtin"
+  },
+  "config": {
+    "enabledSlicers": {
+      "type": "object",
+      "description": "Which slicers are enabled",
+      "default": {
+        "prusaslicer": true,
+        "orcaslicer": true,
+        "bambustudio": true,
+        "superslicer": true,
+        "cura": true
+      }
+    },
+    "slicerPaths": {
+      "type": "object",
+      "description": "Paths to slicer executables",
+      "platform": {
+        "darwin": {
+          "prusaslicer": "/Applications/PrusaSlicer.app/Contents/MacOS/PrusaSlicer",
+          "orcaslicer": "/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer",
+          "bambustudio": "/Applications/BambuStudio.app/Contents/MacOS/BambuStudio",
+          "superslicer": "/Applications/SuperSlicer.app/Contents/MacOS/SuperSlicer",
+          "cura": "/Applications/UltiMaker Cura.app/Contents/MacOS/UltiMaker Cura"
+        },
+        "win32": {
+          "prusaslicer": "C:\\Program Files\\Prusa3D\\PrusaSlicer\\prusa-slicer.exe",
+          "orcaslicer": "C:\\Program Files\\OrcaSlicer\\OrcaSlicer.exe",
+          "bambustudio": "C:\\Program Files\\Bambu Studio\\BambuStudio.exe",
+          "superslicer": "C:\\Program Files\\SuperSlicer\\superslicer.exe",
+          "cura": "C:\\Program Files\\Ultimaker Cura\\Ultimaker Cura.exe"
+        },
+        "linux": {
+          "prusaslicer": "/usr/bin/prusa-slicer",
+          "orcaslicer": "/usr/bin/orcaslicer",
+          "bambustudio": "/usr/bin/bambustudio",
+          "superslicer": "/usr/bin/superslicer",
+          "cura": "/usr/bin/cura"
+        }
+      },
+      "default": ""
+    },
+    "defaultOutputDir": {
+      "type": "string",
+      "description": "Default output directory for sliced files",
+      "default": "~/Documents/3D Printing/Sliced"
+    },
+    "defaultSlicer": {
+      "type": "string",
+      "description": "Default slicer to use",
+      "enum": ["prusaslicer", "orcaslicer", "bambustudio", "superslicer", "cura"],
+      "default": "prusaslicer"
+    },
+    "autoDetectPrinters": {
+      "type": "boolean",
+      "description": "Automatically detect connected 3D printers",
+      "default": true
+    },
+    "defaultProfile": {
+      "type": "object",
+      "description": "Default slicing profile settings",
+      "default": {
+        "layerHeight": "0.2",
+        "infillDensity": "20%",
+        "printSpeed": "50",
+        "supportMaterial": false,
+        "filamentType": "PLA"
+      }
+    }
+  },
+  "features": [
+    "Multi-slicer support",
+    "Unified CLI interface",
+    "Batch slicing operations",
+    "Profile management",
+    "Real-time slicing progress",
+    "Direct printer integration",
+    "STL/3MF file management",
+    "G-code analysis and preview"
+  ],
+  "supportedFormats": {
+    "input": [".stl", ".3mf", ".obj", ".amf", ".ply"],
+    "output": [".gcode", ".bgcode", ".3mf"]
+  },
+  "supportedSlicers": {
+    "prusaslicer": {
+      "name": "PrusaSlicer",
+      "version": "2.7+",
+      "cliSupport": "excellent",
+      "features": ["profiles", "batch", "scripting"]
+    },
+    "orcaslicer": {
+      "name": "OrcaSlicer", 
+      "version": "1.8+",
+      "cliSupport": "excellent",
+      "features": ["profiles", "batch", "scripting", "multi-printer"]
+    },
+    "bambustudio": {
+      "name": "Bambu Studio",
+      "version": "1.7+", 
+      "cliSupport": "good",
+      "features": ["cloud-sync", "auto-arrange", "ai-features"]
+    },
+    "superslicer": {
+      "name": "SuperSlicer",
+      "version": "2.5+",
+      "cliSupport": "excellent", 
+      "features": ["advanced-settings", "calibration", "profiles"]
+    },
+    "cura": {
+      "name": "Ultimaker Cura",
+      "version": "5.0+",
+      "cliSupport": "good",
+      "features": ["marketplace", "plugins", "cloud-library"]
+    }
+  }
+}

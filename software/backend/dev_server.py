@@ -2130,6 +2130,13 @@ async def broadcast_printer_update(printer_id: str, deleted: bool = False):
 # Store active desktop controllers
 desktop_controllers = {}
 
+# Track plugin status
+plugin_status = {
+    "arduino-ide": "inactive",
+    "unified-slicer": "inactive",
+    "matlab": "inactive"
+}
+
 @app.post("/api/v1/desktop-controller/arduino/launch")
 async def launch_arduino(current_user: dict = Depends(get_current_user)):
     """Launch Arduino IDE through desktop controller"""
@@ -2241,7 +2248,7 @@ async def websocket_desktop_controller(websocket: WebSocket):
                         )
                         
                         if real_controller_exists:
-                            # Send actual plugin list
+                            # Send plugin list with actual current status
                             await websocket.send_json({
                                 "type": "plugin_list",
                                 "plugins": [
@@ -2249,9 +2256,25 @@ async def websocket_desktop_controller(websocket: WebSocket):
                                         "id": "arduino-ide",
                                         "name": "Arduino IDE",
                                         "version": "1.0.0",
-                                        "status": "active",
+                                        "status": plugin_status.get("arduino-ide", "inactive"),
                                         "description": "Arduino IDE integration for programming microcontrollers",
                                         "icon": "FaMicrochip"
+                                    },
+                                    {
+                                        "id": "unified-slicer",
+                                        "name": "Unified 3D Slicers",
+                                        "version": "1.0.0",
+                                        "status": plugin_status.get("unified-slicer", "inactive"),
+                                        "description": "Complete integration for all major 3D slicing software",
+                                        "icon": "FaCube"
+                                    },
+                                    {
+                                        "id": "matlab",
+                                        "name": "MATLAB",
+                                        "version": "1.0.0",
+                                        "status": plugin_status.get("matlab", "inactive"),
+                                        "description": "Advanced computational analysis and modeling with MATLAB",
+                                        "icon": "FaCalculator"
                                     }
                                 ],
                                 "version": "1.0.0",
@@ -2274,10 +2297,12 @@ async def websocket_desktop_controller(websocket: WebSocket):
                         # We need to forward it to the actual desktop controller
                         logger.info(f"Received plugin command from test client: {message}")
                         
-                        # Find the real desktop controller (not the test one)
+                        # Find the real desktop controller (not web-ui or test)
                         real_controller_id = None
                         for cid, ws in desktop_controllers.items():
-                            if cid != controller_id and cid != "test-controller":
+                            if (cid != controller_id and 
+                                not cid.startswith('web-ui-') and 
+                                cid != "test-controller"):
                                 real_controller_id = cid
                                 break
                         
@@ -2305,7 +2330,36 @@ async def websocket_desktop_controller(websocket: WebSocket):
                     # Handle plugin responses from desktop controller
                     elif message.get("type") == "plugin_response":
                         logger.info(f"Received plugin response from controller: {message}")
-                        # For now, just log it - in a real system we'd route it back to the requester
+                        # Forward the response to all web clients
+                        for web_controller_id, web_ws in desktop_controllers.items():
+                            if web_controller_id.startswith('web-ui-'):  # Only send to web clients
+                                try:
+                                    await web_ws.send_json(message)
+                                except Exception as e:
+                                    logger.error(f"Failed to forward response to web client: {e}")
+                        
+                    # Handle plugin status updates from desktop controller
+                    elif message.get("type") == "plugin_status_update":
+                        logger.info(f"Received plugin status update from controller: {message}")
+                        # Update the stored status
+                        plugin_id = message.get("pluginId")
+                        status = message.get("status")
+                        
+                        if plugin_id in plugin_status:
+                            plugin_status[plugin_id] = status
+                            logger.info(f"Updated plugin {plugin_id} status to: {status}")
+                        
+                        # Broadcast to all web clients
+                        for web_controller_id, web_ws in desktop_controllers.items():
+                            if web_controller_id.startswith('web-ui-'):  # Only send to web clients
+                                try:
+                                    await web_ws.send_json({
+                                        "type": "plugin_status",
+                                        "pluginId": plugin_id,
+                                        "status": status
+                                    })
+                                except Exception as e:
+                                    logger.error(f"Failed to send status update to web client: {e}")
                         
                     else:
                         # Echo back other messages for now

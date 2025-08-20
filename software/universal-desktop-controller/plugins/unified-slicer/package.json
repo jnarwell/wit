@@ -1,0 +1,23 @@
+{
+  "name": "wit-unified-slicer-plugin",
+  "version": "1.0.0",
+  "description": "Unified 3D slicer integration plugin for W.I.T. Universal Desktop Controller",
+  "main": "index.js",
+  "keywords": [
+    "3d-printing",
+    "slicing",
+    "prusaslicer",
+    "orcaslicer",
+    "bambustudio",
+    "superslicer",
+    "cura",
+    "gcode",
+    "manufacturing"
+  ],
+  "author": "W.I.T. Development Team",
+  "license": "MIT",
+  "dependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

@@ -24,6 +24,8 @@ import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
 import SoftwareIntegrationsPage from './pages/SoftwareIntegrationsPage';
 import ApplicationControlPage from './pages/ApplicationControlPage';
+import SlicerControlPage from './pages/SlicerControlPage';
+import MATLABControlPage from './pages/MATLABControlPage';
 import FunctionPage from './components/FunctionPage';
 
 type Page = 'dashboard' | 'machines' | 'projects' | 'sensors' | 'wit' | 'settings' | 'software' | 'function' |
@@ -187,10 +189,16 @@ function AppContent() {
         return <SoftwareIntegrationsPage onNavigateToDetail={(id) => handleNavigate('software', id)} />;
       case 'software-detail':
         return detailPageState ? (
-          <ApplicationControlPage 
-            pluginId={detailPageState.id}
-            onClose={handleDetailClose}
-          />
+          detailPageState.id === 'unified-slicer' ? (
+            <SlicerControlPage onClose={handleDetailClose} />
+          ) : detailPageState.id === 'matlab' ? (
+            <MATLABControlPage onClose={handleDetailClose} />
+          ) : (
+            <ApplicationControlPage 
+              pluginId={detailPageState.id}
+              onClose={handleDetailClose}
+            />
+          )
         ) : null;
       case 'function':
         return <FunctionPage />;

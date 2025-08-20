@@ -26,29 +26,6 @@
   align-items: center;
 }
 
-.udc-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background-color: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.udc-status .status-text {
-  font-weight: 500;
-}
-
-.udc-status .status-text.connected {
-  color: #4caf50;
-}
-
-.udc-status .status-text.disconnected {
-  color: #f44336;
-}
-
 .add-button {
   display: flex;
   align-items: center;
@@ -101,9 +78,6 @@
 }
 
 .tab-button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   padding: 10px 20px;
   background-color: transparent;
   color: #888;
@@ -114,10 +88,6 @@
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
-}
-
-.tab-button svg {
-  font-size: 16px;
 }
 
 .tab-button:hover {
@@ -251,30 +221,6 @@
   box-shadow: none;
   background-color: #1f1f1f;
   border-color: #333;
-}
-
-.integration-card.clickable {
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.integration-card.clickable:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  border-color: #4caf50;
-}
-
-.udc-label {
-  font-size: 12px;
-  color: #4caf50;
-  font-weight: 500;
-  margin-top: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.integration-card.disconnected .udc-label {
-  color: #f44336;
 }
 
 .coming-soon-label {
@@ -497,60 +443,6 @@
 .save-button:hover {
   background-color: #444;
   border-color: #666;
-}
-
-/* Quick Actions */
-.quick-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  margin-top: 12px;
-  margin-bottom: 8px;
-}
-
-.quick-action-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  background-color: #333;
-  color: #f0f0f0;
-  border: 1px solid #444;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.quick-action-btn:hover {
-  background-color: #444;
-  border-color: #4caf50;
-  transform: translateY(-1px);
-}
-
-.quick-action-btn svg {
-  font-size: 14px;
-}
-
-/* Full Control Button */
-.full-control-btn {
-  width: 100%;
-  padding: 10px;
-  margin-top: auto;
-  background-color: #2a2a2a;
-  color: #4caf50;
-  border: 1px solid #4caf50;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.full-control-btn:hover {
-  background-color: #4caf50;
-  color: #1a1a1a;
-  transform: translateY(-1px);
 }
 
 /* Responsive Design */

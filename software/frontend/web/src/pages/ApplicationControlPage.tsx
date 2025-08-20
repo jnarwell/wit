@@ -106,7 +106,7 @@ interface ApplicationControlPageProps {
 }
 
 const ApplicationControlPage: React.FC<ApplicationControlPageProps> = ({ pluginId, onClose }) => {
-  const { status: udcStatus, sendCommand, lastPluginResponse } = useUDCWebSocket();
+  const { status: udcStatus, wsStatus, sendCommand, lastPluginResponse } = useUDCWebSocket();
   
   const [appStatus, setAppStatus] = useState<ApplicationStatus>({
     running: false,
@@ -131,7 +131,7 @@ const ApplicationControlPage: React.FC<ApplicationControlPageProps> = ({ pluginI
   
   // Find the actual plugin from UDC status
   const plugin = udcStatus.plugins.find(p => p.id === pluginId);
-  const isConnected = plugin?.status === 'active';
+  const isConnected = wsStatus === 'connected' && udcStatus.connected && plugin?.status === 'active';
   
   // Fetch initial status and config
   useEffect(() => {
@@ -220,7 +220,15 @@ const ApplicationControlPage: React.FC<ApplicationControlPageProps> = ({ pluginI
         <div className="disconnected-message">
           <FaDesktop className="disconnected-icon" />
           <h2>Plugin Not Connected</h2>
-          <p>Please ensure the Universal Desktop Controller is running and the {pluginConfig.name} plugin is active.</p>
+          <p>
+            {wsStatus === 'failed' || wsStatus === 'disconnected' 
+              ? 'Please ensure the Universal Desktop Controller is running and connected to the backend.'
+              : wsStatus === 'connecting' 
+              ? 'Connecting to Universal Desktop Controller...'
+              : !udcStatus.connected
+              ? 'UDC is connected but no plugins are active. Please start the plugin from the Software Integrations page.'
+              : `The ${pluginConfig.name} plugin is not active. Please start it from the Software Integrations page.`}
+          </p>
           <button onClick={onClose} className="primary-button">
             Go to Software Integrations
           </button>

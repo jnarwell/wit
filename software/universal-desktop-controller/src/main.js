@@ -116,6 +116,8 @@ class UniversalDesktopController {
         const builtInPlugins = [
             // 'printer-bridge',  // Will be implemented
             'arduino-ide',        // Arduino IDE integration
+            'unified-slicer',     // Unified 3D slicer integration
+            'matlab',             // MATLAB analysis integration
             // 'file-browser',    // Will be implemented
         ];
         
@@ -124,6 +126,16 @@ class UniversalDesktopController {
                 const pluginPath = path.join(__dirname, '..', 'plugins', pluginName);
                 await this.pluginManager.loadPlugin(pluginPath);
                 logger.info(`Loaded built-in plugin: ${pluginName}`);
+                
+                // Auto-start all plugins after loading (with small delay)
+                setTimeout(async () => {
+                    try {
+                        await this.pluginManager.startPlugin(pluginName);
+                        logger.info(`Auto-started plugin: ${pluginName}`);
+                    } catch (error) {
+                        logger.error(`Failed to auto-start plugin ${pluginName}:`, error);
+                    }
+                }, 500); // 500ms delay to ensure WebSocket is connected
             } catch (error) {
                 logger.error(`Failed to load plugin ${pluginName}:`, error);
             }
@@ -243,6 +255,27 @@ class UniversalDesktopController {
             });
         });
         
+        // Plugin status events
+        this.eventBus.on('plugin:started', async (data) => {
+            logger.info(`Plugin started: ${data.pluginId}`);
+            // Notify backend that plugin is now active
+            await this.wsManager.sendMessage({
+                type: 'plugin_status_update',
+                pluginId: data.pluginId,
+                status: 'active'
+            });
+        });
+        
+        this.eventBus.on('plugin:stopped', async (data) => {
+            logger.info(`Plugin stopped: ${data.pluginId}`);
+            // Notify backend that plugin is now inactive
+            await this.wsManager.sendMessage({
+                type: 'plugin_status_update',
+                pluginId: data.pluginId,
+                status: 'inactive'
+            });
+        });
+        
         // Handle plugin commands from backend
         this.eventBus.on('plugin:command', async (data) => {
             logger.info('Received plugin command:', JSON.stringify(data, null, 2));
@@ -257,6 +290,7 @@ class UniversalDesktopController {
                     type: 'plugin_response',
                     messageId: data.messageId,
                     pluginId: data.pluginId,
+                    command: data.action,  // Include the command that was executed
                     result: result
                 });
             } catch (error) {

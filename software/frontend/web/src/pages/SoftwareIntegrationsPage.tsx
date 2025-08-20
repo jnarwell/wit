@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCode, FaCloud, FaDatabase, FaRobot, FaCubes, FaChartLine, FaMicrochip, FaCube, FaPrint, FaCheck, FaExclamationTriangle, FaClock, FaDesktop, FaCog } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCode, FaCloud, FaDatabase, FaRobot, FaCubes, FaChartLine, FaMicrochip, FaCube, FaPrint, FaCheck, FaExclamationTriangle, FaClock, FaDesktop, FaCog, FaCalculator } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { useUDCWebSocket } from '../hooks/useUDCWebSocket';
 import './SoftwareIntegrationsPage.css';
@@ -97,6 +97,24 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       description: 'Programming environment for Arduino microcontrollers',
       isUDCPlugin: true,
       pluginId: 'arduino-ide'
+    },
+    {
+      id: 'unified-slicer',
+      name: 'Unified 3D Slicers',
+      type: 'slicer',
+      status: 'disconnected',
+      description: 'Complete integration for all major 3D slicing software including PrusaSlicer, OrcaSlicer, Bambu Studio, SuperSlicer, and Cura',
+      isUDCPlugin: true,
+      pluginId: 'unified-slicer'
+    },
+    {
+      id: 'matlab',
+      name: 'MATLAB',
+      type: 'simulation',
+      status: 'disconnected',
+      description: 'Advanced computational analysis, modeling, and simulation platform with comprehensive toolboxes',
+      isUDCPlugin: true,
+      pluginId: 'matlab'
     }
   ];
 
@@ -410,63 +428,7 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       comingSoon: true
     },
     
-    // 3D Slicers
-    {
-      id: 'prusaslicer-001',
-      name: 'PrusaSlicer',
-      type: 'slicer',
-      status: 'pending',
-      description: 'Advanced open-source slicer with excellent Prusa printer support',
-      comingSoon: true
-    },
-    {
-      id: 'cura-001',
-      name: 'Ultimaker Cura',
-      type: 'slicer',
-      status: 'pending',
-      description: 'Popular open-source slicer with wide printer compatibility',
-      comingSoon: true
-    },
-    {
-      id: 'bambustudio-001',
-      name: 'Bambu Studio',
-      type: 'slicer',
-      status: 'pending',
-      description: 'Optimized slicer for Bambu Lab printers with cloud features',
-      comingSoon: true
-    },
-    {
-      id: 'superslicer-001',
-      name: 'SuperSlicer',
-      type: 'slicer',
-      status: 'pending',
-      description: 'PrusaSlicer fork with additional features and calibration tools',
-      comingSoon: true
-    },
-    {
-      id: 'orcaslicer-001',
-      name: 'OrcaSlicer',
-      type: 'slicer',
-      status: 'pending',
-      description: 'Bambu Studio fork with enhanced features and UI improvements',
-      comingSoon: true
-    },
-    {
-      id: 'simplify3d-001',
-      name: 'Simplify3D',
-      type: 'slicer',
-      status: 'pending',
-      description: 'Professional slicer with advanced support generation',
-      comingSoon: true
-    },
-    {
-      id: 'ideamaker-001',
-      name: 'ideaMaker',
-      type: 'slicer',
-      status: 'pending',
-      description: 'Feature-rich slicer by Raise3D',
-      comingSoon: true
-    },
+    // Specialized Slicers (Resin)
     {
       id: 'chitubox-001',
       name: 'CHITUBOX',
@@ -553,6 +515,13 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
 
   const gridRef = useRef<HTMLDivElement>(null);
 
+  // Request fresh plugin list when component mounts
+  useEffect(() => {
+    if (wsStatus === 'connected') {
+      refreshStatus();
+    }
+  }, [wsStatus, refreshStatus]);
+
   // Update integrations based on UDC status
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -562,9 +531,16 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       // Check if this plugin is active in UDC
       const plugin = udcStatus.plugins.find(p => p.id === integration.pluginId);
       if (plugin) {
+        // Map UDC plugin status to frontend status
+        let status = 'disconnected';
+        if (plugin.status === 'active' || plugin.status === 'running' || plugin.status === 'started') {
+          status = 'connected';
+        } else if (plugin.status === 'inactive') {
+          status = 'disconnected';
+        }
         return {
           ...integration,
-          status: plugin.status === 'active' ? 'connected' : 'disconnected'
+          status
         };
       }
       return integration;
@@ -779,8 +755,8 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
             return (
               <div
                 key={integration.id}
-                className={`integration-card ${integration.status} ${integration.comingSoon ? 'coming-soon' : ''}`}
-                style={{ cursor: 'default' }}
+                className={`integration-card ${integration.status} ${integration.comingSoon ? 'coming-soon' : ''} ${isClickable ? 'clickable' : ''}`}
+                style={{ cursor: isClickable ? 'pointer' : 'default' }}
               >
                 {getStatusIcon(integration.status)}
                 <div className="integration-icon">

@@ -274,7 +274,10 @@ class ArduinoIDEPlugin extends WITPlugin {
             sketchPath = path.join(projectPath, sketchName);
         } else {
             // Open from default sketches directory
-            sketchPath = path.join(this.config.sketchesPath, sketchName);
+            const sketchesDir = typeof this.config.sketchesPath === 'string' 
+                ? this.config.sketchesPath 
+                : path.join(os.homedir(), 'Documents', 'Arduino');
+            sketchPath = path.join(sketchesDir, sketchName);
         }
         
         // Ensure sketch exists
@@ -560,7 +563,22 @@ class ArduinoIDEPlugin extends WITPlugin {
     async getSketchList() {
         try {
             const sketches = [];
-            const sketchesDir = this.config.sketchesPath;
+            let sketchesDir = this.config.sketchesPath;
+            
+            // Ensure sketchesDir is a string
+            if (!sketchesDir || typeof sketchesDir !== 'string') {
+                this.log('Warning: sketchesPath is not configured properly, using default');
+                sketchesDir = path.join(os.homedir(), 'Documents', 'Arduino');
+            }
+            
+            // Ensure the directory exists
+            try {
+                await fs.access(sketchesDir);
+            } catch (error) {
+                this.log('Sketches directory does not exist, creating it:', sketchesDir);
+                await fs.mkdir(sketchesDir, { recursive: true });
+                return [];
+            }
             
             const items = await fs.readdir(sketchesDir);
             
@@ -598,7 +616,10 @@ class ArduinoIDEPlugin extends WITPlugin {
             throw new Error('Invalid sketch name. Use only letters, numbers, and underscores.');
         }
         
-        const sketchPath = path.join(this.config.sketchesPath, name);
+        const sketchesDir = typeof this.config.sketchesPath === 'string' 
+            ? this.config.sketchesPath 
+            : path.join(os.homedir(), 'Documents', 'Arduino');
+        const sketchPath = path.join(sketchesDir, name);
         const inoFile = path.join(sketchPath, `${name}.ino`);
         
         // Check if sketch already exists

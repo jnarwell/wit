@@ -60,7 +60,7 @@ class PluginManager {
                 id: manifest.id,
                 eventBus: this.createPluginEventBus(manifest.id),
                 securityManager: this.securityManager,
-                config: manifest.config || {},
+                config: {}, // Start with empty config, plugin will initialize defaults
                 dataPath: path.join(process.env.APPDATA || process.env.HOME, '.wit', 'plugin-data', manifest.id)
             });
             
