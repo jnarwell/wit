@@ -4,15 +4,12 @@ Supports all connected account providers with data fetching capabilities
 """
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 import httpx
 import logging
 
-from services.database_services import get_session, LinkedAccount, User
-from services.oauth_service import get_oauth_provider, TokenEncryption
+# Simplified for dev server - removed database dependencies
 
 router = APIRouter(tags=["enhanced_accounts"])
 logger = logging.getLogger(__name__)
