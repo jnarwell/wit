@@ -122,6 +122,7 @@ class UniversalDesktopController {
             'labview',            // LabVIEW data acquisition integration
             'node-red',           // Node-RED IoT automation integration
             'openscad',           // OpenSCAD programmatic 3D CAD modeller
+            'vscode',             // Visual Studio Code integration
             'file-browser',       // File system access and management
         ];
         

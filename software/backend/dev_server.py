@@ -2141,6 +2141,7 @@ plugin_status = {
     "kicad": "inactive",
     "labview": "inactive",
     "node-red": "inactive",
+    "vscode": "inactive",
     "file-browser": "inactive",
     "openscad": "inactive"
 }
@@ -2315,6 +2316,14 @@ async def websocket_desktop_controller(websocket: WebSocket):
                                         "status": plugin_status.get("openscad", "inactive"),
                                         "description": "The Programmers Solid 3D CAD Modeller - Create 3D models using code",
                                         "icon": "FaCube"
+                                    },
+                                    {
+                                        "id": "vscode",
+                                        "name": "Visual Studio Code",
+                                        "version": "1.0.0",
+                                        "status": plugin_status.get("vscode", "inactive"),
+                                        "description": "Professional code editor with IntelliSense, debugging, and Git integration for all development workflows",
+                                        "icon": "FaCode"
                                     },
                                     {
                                         "id": "file-browser",

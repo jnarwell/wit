@@ -28,7 +28,7 @@ interface OpenSCADControlPageProps {
 }
 
 const OpenSCADControlPage: React.FC<OpenSCADControlPageProps> = ({ onClose }) => {
-  const { sendCommand, lastMessage } = useUDCWebSocket();
+  const { sendCommand, lastMessage, wsStatus } = useUDCWebSocket();
   const [status, setStatus] = useState<any>(null);
   const [projects, setProjects] = useState<OpenSCADProject[]>([]);
   const [selectedProject, setSelectedProject] = useState<OpenSCADProject | null>(null);
@@ -37,12 +37,16 @@ const OpenSCADControlPage: React.FC<OpenSCADControlPageProps> = ({ onClose }) =>
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'projects' | 'editor' | 'variables'>('projects');
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    // Get initial status
-    loadStatus();
-    loadProjects();
-  }, []);
+    // Only load data when WebSocket is connected
+    if (wsStatus === 'connected' && !isInitialized) {
+      setIsInitialized(true);
+      loadStatus();
+      loadProjects();
+    }
+  }, [wsStatus, isInitialized]);
 
   useEffect(() => {
     // Handle messages from the plugin
@@ -60,18 +64,28 @@ const OpenSCADControlPage: React.FC<OpenSCADControlPageProps> = ({ onClose }) =>
   }, [lastMessage]);
 
   const loadStatus = async () => {
+    if (wsStatus !== 'connected') {
+      console.log('WebSocket not connected, skipping status load');
+      return;
+    }
     try {
       await sendCommand('openscad', 'getStatus');
     } catch (error) {
       console.error('Failed to get status:', error);
+      setError('Failed to get plugin status. Please check if OpenSCAD plugin is running.');
     }
   };
 
   const loadProjects = async () => {
+    if (wsStatus !== 'connected') {
+      console.log('WebSocket not connected, skipping projects load');
+      return;
+    }
     try {
       await sendCommand('openscad', 'listProjects');
     } catch (error) {
       console.error('Failed to load projects:', error);
+      setError('Failed to load projects. Please check if OpenSCAD plugin is running.');
     }
   };
 
@@ -188,6 +202,61 @@ const OpenSCADControlPage: React.FC<OpenSCADControlPageProps> = ({ onClose }) =>
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
+
+  // Show loading state while WebSocket is connecting
+  if (wsStatus === 'connecting' || wsStatus === 'disconnected') {
+    return (
+      <div className="openscad-control-page">
+        <div className="page-header">
+          <div className="header-info">
+            {onClose && (
+              <button onClick={onClose} className="back-button">
+                <FaArrowLeft />
+              </button>
+            )}
+            <FaCube className="page-icon" />
+            <div>
+              <h1>OpenSCAD Control</h1>
+              <p>Connecting to desktop controller...</p>
+            </div>
+          </div>
+        </div>
+        <div className="status-bar">
+          <div className="status-item">
+            <span className="status-label">Connection:</span>
+            <span className="status-value inactive">
+              {wsStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if WebSocket failed
+  if (wsStatus === 'failed') {
+    return (
+      <div className="openscad-control-page">
+        <div className="page-header">
+          <div className="header-info">
+            {onClose && (
+              <button onClick={onClose} className="back-button">
+                <FaArrowLeft />
+              </button>
+            )}
+            <FaCube className="page-icon" />
+            <div>
+              <h1>OpenSCAD Control</h1>
+              <p>Connection failed</p>
+            </div>
+          </div>
+        </div>
+        <div className="error-message">
+          <p>Failed to connect to desktop controller. Please ensure the Universal Desktop Controller is running.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="openscad-control-page">

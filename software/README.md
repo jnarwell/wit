@@ -46,9 +46,10 @@ Desktop companion application that provides:
 - MATLAB integration with real computational engine
 - Unified 3D slicer control (PrusaSlicer, OrcaSlicer, BambuStudio)
 - KiCad EDA integration for PCB design
+- LabVIEW graphical programming integration
 - Node-RED visual IoT automation
-- File Browser with complete file system access and management
 - OpenSCAD programmatic 3D CAD modeling
+- File Browser with complete file system access and management
 - System tray interface
 - Cross-platform support (Windows, macOS, Linux)
 - Application launching capabilities
@@ -59,6 +60,10 @@ Desktop companion application that provides:
 - Arduino IDE - Full development environment integration
 - MATLAB - Real-time code execution and visualization
 - 3D Slicers - Unified control for multiple slicer applications
+- KiCad - Complete PCB design workflow
+- LabVIEW - Visual programming and data acquisition
+- Node-RED - IoT flow-based programming
+- OpenSCAD - Programmers' solid 3D CAD modeller
 
 ## Quick Start
 

@@ -10,7 +10,7 @@ const API_BASE_URL = 'http://localhost:8000';
 interface SoftwareIntegration {
   id: string;
   name: string;
-  type: 'cad' | 'simulation' | 'embedded' | 'pcb' | 'data_acquisition' | 'manufacturing' | 'api' | 'database' | 'cloud' | 'ai' | 'other';
+  type: 'cad' | 'simulation' | 'embedded' | 'pcb' | 'data_acquisition' | 'manufacturing' | 'api' | 'database' | 'cloud' | 'ai' | 'editor' | 'slicer' | 'other';
   status: 'active' | 'configured' | 'inactive' | 'error' | 'pending';
   description: string;
   endpoint?: string;
@@ -38,6 +38,7 @@ const SOFTWARE_TYPES = {
   'manufacturing': { label: 'Manufacturing & CAM', icon: FaCubes },
   'slicer': { label: '3D Slicers', icon: FaCube },
   'printer_control': { label: 'Printer Control', icon: FaPrint },
+  'editor': { label: 'Code Editors & IDEs', icon: FaCode },
   'api': { label: 'API', icon: FaCode },
   'database': { label: 'Database', icon: FaDatabase },
   'cloud': { label: 'Cloud Service', icon: FaCloud },
@@ -142,6 +143,15 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       description: 'Flow-based visual programming for IoT automation and sensor integration',
       isUDCPlugin: true,
       pluginId: 'node-red'
+    },
+    {
+      id: 'vscode',
+      name: 'Visual Studio Code',
+      type: 'editor',
+      status: 'disconnected',
+      description: 'Professional code editor with IntelliSense, debugging, and Git integration',
+      isUDCPlugin: true,
+      pluginId: 'vscode'
     },
     {
       id: 'openscad',

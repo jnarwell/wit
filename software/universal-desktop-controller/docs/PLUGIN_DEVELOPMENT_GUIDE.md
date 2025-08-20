@@ -820,6 +820,18 @@ async performLongOperation(options) {
 
 ## Examples
 
+### OpenSCAD Plugin Example
+See `plugins/openscad/` for a complete example of integrating OpenSCAD with:
+- Programmatic 3D CAD modeling
+- Parametric design support
+- Real-time rendering and preview
+- Multiple export formats (STL, DXF, PNG, etc.)
+- Variable extraction and customization
+- Project management
+- Syntax checking and validation
+- Template-based file creation
+- WebSocket connection state handling
+
 ### VS Code Plugin Example
 See `plugins/vscode/` for a complete example of integrating Visual Studio Code with:
 - Project opening
@@ -970,6 +982,99 @@ const UDC_INTEGRATIONS = [
     "permissions": ["fileSystem", "processManagement"]
 }
 ```
+
+### 7. WebSocket Connection Timing Issues
+
+**Issue**: Frontend control page shows "Unknown Application Control" or fails to load plugin data due to WebSocket connection timing.
+
+**Symptoms**:
+- Console errors: "Failed to get status", "Failed to load projects"
+- Plugin control page shows generic "Unknown Application Control" instead of specific plugin interface
+- WebSocket not connected errors when page loads
+
+**Solution**: Implement proper WebSocket connection state handling in frontend control pages:
+
+```javascript
+// In your plugin control page component
+const YourPluginControlPage: React.FC<Props> = ({ onClose }) => {
+  const { sendCommand, lastMessage, wsStatus } = useUDCWebSocket();
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Wait for WebSocket connection before loading data
+  useEffect(() => {
+    if (wsStatus === 'connected' && !isInitialized) {
+      setIsInitialized(true);
+      loadStatus();
+      loadProjects();
+    }
+  }, [wsStatus, isInitialized]);
+  
+  // Check connection state before sending commands
+  const loadStatus = async () => {
+    if (wsStatus !== 'connected') {
+      console.log('WebSocket not connected, skipping status load');
+      return;
+    }
+    try {
+      await sendCommand('your-plugin', 'getStatus');
+    } catch (error) {
+      console.error('Failed to get status:', error);
+      setError('Failed to get plugin status. Please check if plugin is running.');
+    }
+  };
+  
+  // Show loading state while connecting
+  if (wsStatus === 'connecting' || wsStatus === 'disconnected') {
+    return (
+      <div className="plugin-control-page">
+        <div className="page-header">
+          <h1>Your Plugin Control</h1>
+          <p>Connecting to desktop controller...</p>
+        </div>
+        <div className="status-bar">
+          <div className="status-item">
+            <span className="status-label">Connection:</span>
+            <span className="status-value inactive">
+              {wsStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show error state if connection failed
+  if (wsStatus === 'failed') {
+    return (
+      <div className="plugin-control-page">
+        <div className="page-header">
+          <h1>Your Plugin Control</h1>
+          <p>Connection failed</p>
+        </div>
+        <div className="error-message">
+          <p>Failed to connect to desktop controller. Please ensure the Universal Desktop Controller is running.</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Normal plugin interface
+  return (
+    <div className="plugin-control-page">
+      {/* Your plugin UI */}
+    </div>
+  );
+};
+```
+
+**Key Points**:
+- Always check `wsStatus` before sending commands
+- Use `isInitialized` state to prevent multiple initialization attempts
+- Show appropriate loading/error states based on connection status
+- Only load plugin data after WebSocket is connected
+- This prevents the "Unknown Application Control" fallback page from showing
+
+**Example**: The OpenSCAD plugin implementation demonstrates this pattern - see `software/frontend/web/src/pages/OpenSCADControlPage.tsx` for a complete example.
 
 ## Complete Integration Checklist
 

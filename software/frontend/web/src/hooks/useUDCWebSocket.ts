@@ -24,6 +24,7 @@ interface UseUDCWebSocketReturn {
   refreshStatus: () => void;
   resetConnection: () => void;
   lastPluginResponse: any | null;
+  lastMessage: any | null;
 }
 
 const WS_RECONNECT_DELAY = 5000;
@@ -354,6 +355,7 @@ export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
     sendCommand,
     refreshStatus,
     resetConnection,
-    lastPluginResponse
+    lastPluginResponse,
+    lastMessage: lastPluginResponse
   };
 };
