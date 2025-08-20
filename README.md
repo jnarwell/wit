@@ -41,8 +41,10 @@ W.I.T. is a comprehensive industrial workshop terminal system that unifies equip
 - **3D Slicer Control**: Unified interface for PrusaSlicer, OrcaSlicer, and more
 - **KiCad Integration**: PCB design and schematic capture
 - **Node-RED Integration**: Visual IoT automation and sensor workflows
+- **File Browser**: Complete file system access and management with web UI
+- **OpenSCAD Integration**: Programmatic 3D CAD modeling and scripting
 - **Application Launcher**: Launch and control desktop applications
-- **File System Monitoring**: Watch for project file changes
+- **File System Monitoring**: Real-time file change detection and notifications
 
 ### Procurement Integration
 - **Component Suppliers**: DigiKey, Mouser for electronic parts

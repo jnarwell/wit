@@ -46,8 +46,10 @@ Desktop companion application that provides:
 - Unified 3D slicer control (PrusaSlicer, OrcaSlicer, BambuStudio)
 - KiCad EDA integration for PCB design
 - Node-RED visual IoT automation
+- File Browser with complete file system access and management
+- OpenSCAD programmatic 3D CAD modeling
 - System tray interface
-- Local file system access
+- Cross-platform support (Windows, macOS, Linux)
 - Application launching capabilities
 
 **Tech Stack**: Electron, Node.js, JavaScript
