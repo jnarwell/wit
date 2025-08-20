@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaDocker, FaPlay, FaStop, FaPause, FaTrash, FaDownload, FaUpload, FaBuild, FaTimes, FaTerminal, FaCog, FaSearch, FaPlus, FaEye, FaCode, FaNetworkWired, FaDatabase, FaLayerGroup, FaBoxes, FaProjectDiagram } from 'react-icons/fa';
+import { FaDocker, FaPlay, FaStop, FaPause, FaTrash, FaDownload, FaUpload, FaHammer, FaTimes, FaTerminal, FaCog, FaSearch, FaPlus, FaEye, FaCode, FaNetworkWired, FaDatabase, FaLayerGroup, FaBoxes, FaProjectDiagram } from 'react-icons/fa';
 import { useUDCWebSocket } from '../hooks/useUDCWebSocket';
 import './DockerControlPage.css';
 
@@ -441,7 +441,7 @@ const DockerControlPage: React.FC<DockerControlPageProps> = ({ onClose }) => {
           <span>Pull Image</span>
         </button>
         <button className="action-button" onClick={() => setShowBuildImage(true)}>
-          <FaBuild />
+          <FaHammer />
           <span>Build Image</span>
         </button>
       </div>
