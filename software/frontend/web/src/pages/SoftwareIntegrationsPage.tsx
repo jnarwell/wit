@@ -589,16 +589,13 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       // Check if this plugin is active in UDC
       const plugin = udcStatus.plugins.find(p => p.id === integration.pluginId);
       if (plugin) {
-        // Map UDC plugin status to frontend status  
-        let status = 'inactive';
-        if (plugin.status === 'active') {
-          status = 'active';
-        } else if (plugin.status === 'inactive') {
-          status = 'configured'; // Loaded but not active
-        }
+        // Map UDC plugin status to frontend status
+        // 'active' = plugin working and connected
+        // 'inactive' = plugin loaded but application not found/connected  
+        // 'configured' = plugin loaded and application found but not active
         return {
           ...integration,
-          status
+          status: plugin.status === 'active' ? 'active' : 'configured'
         };
       }
       return integration;

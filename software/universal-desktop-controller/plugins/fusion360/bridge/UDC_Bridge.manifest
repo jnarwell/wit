@@ -1,0 +1,13 @@
+{
+  "autodeskProduct": "Fusion360",
+  "type": "addin",
+  "id": "UDC_Bridge",
+  "author": "W.I.T. Team",
+  "description": {
+    "": "UDC Bridge provides HTTP API access to Fusion 360 for external automation and control by the W.I.T. Universal Desktop Controller."
+  },
+  "version": "1.0.0",
+  "runOnStartup": false,
+  "supportedOS": "windows|mac",
+  "editEnabled": true
+}

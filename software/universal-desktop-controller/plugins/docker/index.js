@@ -68,14 +68,14 @@ class DockerPlugin extends WITPlugin {
         
         if (this.dockerPath || this.dockerDesktopPath) {
             // Test Docker daemon connection
-            await this.testDockerConnection();
+            const daemonRunning = await this.testDockerConnection();
             
             this.log('info', 'Docker plugin started successfully');
             
-            // Emit status update to indicate plugin is active
+            // Emit status update based on Docker daemon availability
             this.emit('plugin_status_update', {
                 pluginId: this.id,
-                status: 'active'
+                status: daemonRunning ? 'active' : 'inactive'
             });
         } else {
             this.log('info', 'Docker plugin started but Docker not installed');

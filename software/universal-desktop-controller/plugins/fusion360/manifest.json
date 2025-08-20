@@ -1,0 +1,96 @@
+{
+  "id": "fusion360",
+  "name": "Fusion 360 Integration",
+  "version": "1.0.0",
+  "description": "Integrates Autodesk Fusion 360 with W.I.T. for professional CAD/CAM operations and AI-driven design automation",
+  "author": "W.I.T. Team",
+  "main": "index.js",
+  "permissions": [
+    "app:launch",
+    "file:read",
+    "file:write",
+    "network:request",
+    "network:server",
+    "system:execute",
+    "system:process"
+  ],
+  "config": {
+    "fusion360Path": {
+      "type": "string",
+      "label": "Fusion 360 Executable Path", 
+      "description": "Path to Fusion 360 executable (auto-detected if empty)",
+      "default": "",
+      "platform": {
+        "darwin": "~/Library/Application Support/Autodesk/webdeploy/production/*/Autodesk Fusion 360.app",
+        "win32": "%LOCALAPPDATA%\\Autodesk\\webdeploy\\production\\*\\FusionLauncher.exe",
+        "linux": "~/.wine/drive_c/users/*/AppData/Local/Autodesk/webdeploy/production/*/FusionLauncher.exe"
+      }
+    },
+    "workspacePath": {
+      "type": "string",
+      "label": "Fusion 360 Workspace",
+      "description": "Default workspace directory for Fusion 360 projects",
+      "default": "~/Documents/Fusion 360 CAD"
+    },
+    "communicationPort": {
+      "type": "number",
+      "label": "Communication Port",
+      "description": "Port for HTTP communication with Fusion 360 add-in bridge",
+      "default": 8360
+    },
+    "enableAddInBridge": {
+      "type": "boolean", 
+      "label": "Enable Add-in Bridge",
+      "description": "Enable HTTP communication bridge with Fusion 360 add-in",
+      "default": true
+    },
+    "autoLaunchFusion": {
+      "type": "boolean",
+      "label": "Auto-launch Fusion 360",
+      "description": "Automatically launch Fusion 360 when plugin starts",
+      "default": false
+    },
+    "enableCAM": {
+      "type": "boolean",
+      "label": "Enable CAM Operations",
+      "description": "Enable Computer-Aided Manufacturing toolpath generation",
+      "default": true
+    },
+    "enableSimulation": {
+      "type": "boolean",
+      "label": "Enable Simulation",
+      "description": "Enable structural and thermal simulation capabilities", 
+      "default": true
+    },
+    "enableGenerativeDesign": {
+      "type": "boolean",
+      "label": "Enable Generative Design",
+      "description": "Enable AI-powered generative design features",
+      "default": false
+    },
+    "defaultTimeout": {
+      "type": "number",
+      "label": "Command Timeout (ms)",
+      "description": "Default timeout for Fusion 360 API commands in milliseconds",
+      "default": 60000
+    },
+    "enableFileWatcher": {
+      "type": "boolean",
+      "label": "Enable File Watching",
+      "description": "Watch for changes in Fusion 360 project files",
+      "default": true
+    },
+    "cloudSync": {
+      "type": "boolean",
+      "label": "Enable Cloud Sync",
+      "description": "Enable cloud-based project synchronization",
+      "default": true
+    },
+    "enableTeamCollaboration": {
+      "type": "boolean",
+      "label": "Enable Team Collaboration",
+      "description": "Enable team collaboration and data management features",
+      "default": false
+    }
+  }
+}

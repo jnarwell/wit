@@ -1,0 +1,24 @@
+{
+  "name": "wit-fusion360-plugin",
+  "version": "1.0.0",
+  "description": "Fusion 360 integration plugin for W.I.T. Universal Desktop Controller",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "fusion360",
+    "cad",
+    "cam",
+    "autodesk",
+    "wit",
+    "automation"
+  ],
+  "author": "W.I.T. Team",
+  "license": "MIT",
+  "dependencies": {
+    "glob": "^8.1.0",
+    "axios": "^1.6.0",
+    "chokidar": "^3.5.3"
+  }
+}
