@@ -422,11 +422,16 @@ async def get_jlcpcb_quote(
 @router.post("/connect-ai/{provider}")
 async def connect_ai_provider(
     provider: str,
-    api_key: str
+    request_body: Dict[str, str]
 ):
     """Connect an AI provider account"""
     if provider not in AI_PROVIDERS:
         raise HTTPException(status_code=400, detail="Invalid AI provider")
+    
+    # Extract API key from request body
+    api_key = request_body.get("api_key")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API key is required")
     
     provider_config = AI_PROVIDERS[provider]
     
