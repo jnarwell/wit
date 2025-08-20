@@ -11,9 +11,9 @@ from pydantic import BaseModel
 import httpx
 import logging
 
-from ..services.database_services import get_session, LinkedAccount, User
-from ..services.auth_services import get_current_user
-from ..services.oauth_service import get_oauth_provider, TokenEncryption
+from services.database_services import get_session, LinkedAccount, User
+from services.auth_services import get_current_user
+from services.oauth_service import get_oauth_provider, TokenEncryption
 
 router = APIRouter(tags=["enhanced_accounts"])
 logger = logging.getLogger(__name__)

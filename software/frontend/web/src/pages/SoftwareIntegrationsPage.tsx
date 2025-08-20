@@ -144,6 +144,15 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       pluginId: 'node-red'
     },
     {
+      id: 'openscad',
+      name: 'OpenSCAD',
+      type: 'cad',
+      status: 'disconnected',
+      description: 'The Programmers Solid 3D CAD Modeller - Create 3D models using code',
+      isUDCPlugin: true,
+      pluginId: 'openscad'
+    },
+    {
       id: 'file-browser',
       name: 'File Browser',
       type: 'other',
@@ -917,6 +926,39 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
                             title="Open Editor"
                           >
                             <FaCode /> Editor
+                          </button>
+                        </>
+                      ) : integration.pluginId === 'openscad' ? (
+                        <>
+                          <button 
+                            className="quick-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleLaunchSoftware(integration);
+                            }}
+                            title="Open OpenSCAD"
+                          >
+                            <FaCube /> OpenSCAD
+                          </button>
+                          <button 
+                            className="quick-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              sendCommand(integration.pluginId, 'newFile', { template: 'parametric_box' });
+                            }}
+                            title="New Model"
+                          >
+                            <FaPlus /> New
+                          </button>
+                          <button 
+                            className="quick-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              sendCommand(integration.pluginId, 'getExamples');
+                            }}
+                            title="Examples"
+                          >
+                            <FaFolder /> Examples
                           </button>
                         </>
                       ) : (

@@ -468,7 +468,8 @@ class LabVIEWPlugin extends WITPlugin {
                 // The user will need to save the VI manually from LabVIEW
                 return { 
                     success: true, 
-                    message: 'LabVIEW opened. Please create and save your new VI.',
+                    message: 'LabVIEW opened. Please create and save your new VI using File > New VI.',
+                    note: 'Tip: You can save VI templates in the plugin templates folder for quick reuse.',
                     viPath: viPath 
                 };
             }

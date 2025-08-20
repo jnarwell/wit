@@ -121,8 +121,8 @@ class UniversalDesktopController {
             'kicad',              // KiCad EDA integration
             'labview',            // LabVIEW data acquisition integration
             'node-red',           // Node-RED IoT automation integration
+            'openscad',           // OpenSCAD programmatic 3D CAD modeller
             'file-browser',       // File system access and management
-            'file-manager',       // File creation and management utilities
         ];
         
         for (const pluginName of builtInPlugins) {
