@@ -298,17 +298,77 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [credentialsProvider, setCredentialsProvider] = useState<string | null>(null);
+  const [credentials, setCredentials] = useState<any>({});
+
   const handleConnect = async (providerId: string) => {
+    const provider = [...PROVIDERS, ...AI_PROVIDERS].find(p => p.id === providerId);
+    if (!provider) return;
+
     setConnectingProvider(providerId);
-    try {
-      const response = await accountService.linkAccount(providerId);
-      // Redirect to OAuth provider
-      window.location.href = response.auth_url;
-    } catch (error) {
-      console.error(`Failed to connect ${providerId}:`, error);
-      // For development, show a message instead of failing silently
-      alert(`OAuth integration for ${providerId} is not yet implemented on the backend.`);
+    
+    // Check if provider needs credentials/API key
+    const procurementProviders = ['mcmaster', 'digikey', 'mouser', 'jlcpcb', 'pcbway', 'oshcut', 'xometry', 'protolabs'];
+    const aiProviders = ['anthropic', 'openai', 'google-ai'];
+    
+    if (procurementProviders.includes(providerId) || aiProviders.includes(providerId)) {
+      // Show credentials modal
+      setCredentialsProvider(providerId);
+      setCredentials({});
+      setShowCredentialsModal(true);
       setConnectingProvider(null);
+    } else {
+      // OAuth flow
+      try {
+        const response = await accountService.linkAccount(providerId);
+        // Redirect to OAuth provider
+        window.location.href = response.auth_url;
+      } catch (error) {
+        console.error(`Failed to connect ${providerId}:`, error);
+        // For development, show a message instead of failing silently
+        alert(`OAuth integration for ${providerId} is not yet implemented on the backend.`);
+        setConnectingProvider(null);
+      }
+    }
+  };
+
+  const handleCredentialsSubmit = async () => {
+    if (!credentialsProvider) return;
+    
+    try {
+      let result;
+      const aiProviders = ['anthropic', 'openai', 'google-ai'];
+      
+      if (aiProviders.includes(credentialsProvider)) {
+        // AI provider
+        const enhancedService = (await import('../services/enhancedAccountService')).default;
+        result = await enhancedService.connectAIProvider(credentialsProvider, credentials.api_key);
+      } else {
+        // Procurement provider
+        const enhancedService = (await import('../services/enhancedAccountService')).default;
+        
+        // Transform credentials for McMaster-Carr
+        let procurementCreds = { ...credentials };
+        if (credentialsProvider === 'mcmaster' && credentials.email) {
+          procurementCreds = {
+            username: credentials.email,
+            password: credentials.password,
+            email: credentials.email
+          };
+        }
+        
+        result = await enhancedService.connectProcurementAccount(credentialsProvider, procurementCreds);
+      }
+      
+      // Refresh accounts list
+      await fetchLinkedAccounts();
+      setShowCredentialsModal(false);
+      setCredentialsProvider(null);
+      setCredentials({});
+    } catch (error) {
+      console.error('Failed to connect account:', error);
+      alert('Failed to connect account. Please check your credentials.');
     }
   };
 
@@ -781,6 +841,140 @@ const SettingsPage: React.FC = () => {
 
       {showMCPSettings && (
         <MCPSettingsComponent onClose={() => setShowMCPSettings(false)} />
+      )}
+
+      {showCredentialsModal && credentialsProvider && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">
+              Connect to {[...PROVIDERS, ...AI_PROVIDERS].find(p => p.id === credentialsProvider)?.name}
+            </h3>
+            
+            {(() => {
+              const provider = [...PROVIDERS, ...AI_PROVIDERS].find(p => p.id === credentialsProvider);
+              const isAIProvider = AI_PROVIDERS.some(p => p.id === credentialsProvider);
+              const isProcurementProvider = PROVIDERS.some(p => p.id === credentialsProvider && p.category === 'procurement');
+              
+              if (isAIProvider) {
+                return (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Enter your API key to connect to {provider?.name}
+                    </p>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        API Key
+                      </label>
+                      <input
+                        type="password"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="sk-..."
+                        value={credentials.api_key || ''}
+                        onChange={(e) => setCredentials({ ...credentials, api_key: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                );
+              } else if (isProcurementProvider) {
+                const provider = PROVIDERS.find(p => p.id === credentialsProvider);
+                
+                // McMaster-Carr uses username/password
+                if (credentialsProvider === 'mcmaster') {
+                  return (
+                    <div>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Enter your McMaster-Carr account credentials
+                      </p>
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={credentials.email || ''}
+                          onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
+                        />
+                      </div>
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Password
+                        </label>
+                        <input
+                          type="password"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={credentials.password || ''}
+                          onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  );
+                } else {
+                  // Other procurement providers use API keys
+                  return (
+                    <div>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Enter your API credentials for {provider?.name}
+                      </p>
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          API Key
+                        </label>
+                        <input
+                          type="password"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Enter your API key"
+                          value={credentials.api_key || ''}
+                          onChange={(e) => setCredentials({ ...credentials, api_key: e.target.value })}
+                        />
+                      </div>
+                      {credentialsProvider === 'mouser' && (
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            API Secret (if required)
+                          </label>
+                          <input
+                            type="password"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter your API secret"
+                            value={credentials.api_secret || ''}
+                            onChange={(e) => setCredentials({ ...credentials, api_secret: e.target.value })}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+              }
+              
+              return null;
+            })()}
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                onClick={() => {
+                  setShowCredentialsModal(false);
+                  setCredentialsProvider(null);
+                  setCredentials({});
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                onClick={handleCredentialsSubmit}
+                disabled={
+                  (AI_PROVIDERS.some(p => p.id === credentialsProvider) && !credentials.api_key) ||
+                  (credentialsProvider === 'mcmaster' && (!credentials.email || !credentials.password)) ||
+                  (PROVIDERS.some(p => p.id === credentialsProvider && p.id !== 'mcmaster') && !credentials.api_key)
+                }
+              >
+                Connect
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

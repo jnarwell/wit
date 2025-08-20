@@ -1,0 +1,22 @@
+{
+    "name": "wit-file-browser-plugin",
+    "version": "1.0.0",
+    "description": "File Browser plugin for W.I.T. Universal Desktop Controller",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "file",
+        "browser",
+        "filesystem",
+        "explorer",
+        "manager"
+    ],
+    "author": "W.I.T. Team",
+    "license": "MIT",
+    "dependencies": {
+        "chokidar": "^3.5.3",
+        "mime-types": "^2.1.35"
+    }
+}

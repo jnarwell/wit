@@ -25,6 +25,8 @@ from routers import (
 )
 # Use simplified admin router for development
 from admin_dev import router as admin_router
+# Import enhanced accounts API
+from api.enhanced_accounts_api import router as enhanced_accounts_router
 import uvicorn
 import sys
 import os
@@ -154,6 +156,7 @@ app.include_router(workspace_router)
 app.include_router(system_router)
 app.include_router(network_router)
 app.include_router(accounts_router)
+app.include_router(enhanced_accounts_router)
 app.include_router(admin_router)
 app.include_router(terminal_router)
 app.include_router(ai_config_router)
@@ -2134,7 +2137,12 @@ desktop_controllers = {}
 plugin_status = {
     "arduino-ide": "inactive",
     "unified-slicer": "inactive",
-    "matlab": "inactive"
+    "matlab": "inactive",
+    "kicad": "inactive",
+    "labview": "inactive",
+    "node-red": "inactive",
+    "file-browser": "inactive",
+    "openscad": "inactive"
 }
 
 @app.post("/api/v1/desktop-controller/arduino/launch")
@@ -2275,6 +2283,46 @@ async def websocket_desktop_controller(websocket: WebSocket):
                                         "status": plugin_status.get("matlab", "inactive"),
                                         "description": "Advanced computational analysis and modeling with MATLAB",
                                         "icon": "FaCalculator"
+                                    },
+                                    {
+                                        "id": "kicad",
+                                        "name": "KiCad",
+                                        "version": "1.0.0",
+                                        "status": plugin_status.get("kicad", "inactive"),
+                                        "description": "Complete KiCad EDA integration for PCB design",
+                                        "icon": "FaMicrochip"
+                                    },
+                                    {
+                                        "id": "labview",
+                                        "name": "LabVIEW",
+                                        "version": "1.0.0",
+                                        "status": plugin_status.get("labview", "inactive"),
+                                        "description": "Graphical programming platform for measurement systems and data acquisition",
+                                        "icon": "FaChartLine"
+                                    },
+                                    {
+                                        "id": "node-red",
+                                        "name": "Node-RED",
+                                        "version": "1.0.0",
+                                        "status": plugin_status.get("node-red", "inactive"),
+                                        "description": "Flow-based visual programming for IoT automation and sensor integration",
+                                        "icon": "FaProjectDiagram"
+                                    },
+                                    {
+                                        "id": "openscad",
+                                        "name": "OpenSCAD",
+                                        "version": "1.0.0",
+                                        "status": plugin_status.get("openscad", "inactive"),
+                                        "description": "The Programmers Solid 3D CAD Modeller - Create 3D models using code",
+                                        "icon": "FaCube"
+                                    },
+                                    {
+                                        "id": "file-browser",
+                                        "name": "File Browser",
+                                        "version": "1.0.0",
+                                        "status": plugin_status.get("file-browser", "inactive"),
+                                        "description": "Complete file system access and management - browse, read, write, and manage files across your entire system",
+                                        "icon": "FaFolder"
                                     }
                                 ],
                                 "version": "1.0.0",

@@ -26,6 +26,10 @@ import SoftwareIntegrationsPage from './pages/SoftwareIntegrationsPage';
 import ApplicationControlPage from './pages/ApplicationControlPage';
 import SlicerControlPage from './pages/SlicerControlPage';
 import MATLABControlPage from './pages/MATLABControlPage';
+import KiCadControlPage from './pages/KiCadControlPage';
+import LabVIEWControlPage from './pages/LabVIEWControlPage';
+import NodeREDControlPage from './pages/NodeREDControlPage';
+import FileBrowserPage from './pages/FileBrowserPage';
 import FunctionPage from './components/FunctionPage';
 
 type Page = 'dashboard' | 'machines' | 'projects' | 'sensors' | 'wit' | 'settings' | 'software' | 'function' |
@@ -193,6 +197,14 @@ function AppContent() {
             <SlicerControlPage onClose={handleDetailClose} />
           ) : detailPageState.id === 'matlab' ? (
             <MATLABControlPage onClose={handleDetailClose} />
+          ) : detailPageState.id === 'kicad' ? (
+            <KiCadControlPage onClose={handleDetailClose} />
+          ) : detailPageState.id === 'labview' ? (
+            <LabVIEWControlPage onClose={handleDetailClose} />
+          ) : detailPageState.id === 'node-red' ? (
+            <NodeREDControlPage onClose={handleDetailClose} />
+          ) : detailPageState.id === 'file-browser' ? (
+            <FileBrowserPage onNavigateBack={handleDetailClose} />
           ) : (
             <ApplicationControlPage 
               pluginId={detailPageState.id}

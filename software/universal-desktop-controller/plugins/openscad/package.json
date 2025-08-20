@@ -1,0 +1,25 @@
+{
+  "name": "openscad-plugin",
+  "version": "1.0.0",
+  "description": "OpenSCAD integration plugin for W.I.T. Universal Desktop Controller",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [
+    "openscad",
+    "cad",
+    "3d-modeling",
+    "parametric",
+    "wit"
+  ],
+  "author": "W.I.T. Team",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

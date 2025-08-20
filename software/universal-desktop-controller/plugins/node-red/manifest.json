@@ -1,0 +1,116 @@
+{
+  "id": "node-red",
+  "name": "Node-RED",
+  "version": "1.0.0",
+  "description": "Visual flow-based IoT automation and sensor data integration",
+  "author": "W.I.T. Team",
+  "main": "index.js",
+  "icon": "🔴",
+  "category": "automation",
+  "keywords": ["node-red", "iot", "automation", "flow", "sensors", "mqtt", "dashboard"],
+  "permissions": [
+    "network",
+    "filesystem:read",
+    "filesystem:write",
+    "process:spawn"
+  ],
+  "config": {
+    "nodeRedPath": {
+      "type": "string",
+      "default": "",
+      "platform": {
+        "darwin": "/usr/local/bin/node-red",
+        "win32": "C:\\Program Files\\nodejs\\node-red.cmd",
+        "linux": "/usr/bin/node-red"
+      },
+      "description": "Path to Node-RED executable"
+    },
+    "port": {
+      "type": "number",
+      "default": 1880,
+      "description": "Port for Node-RED editor"
+    },
+    "userDir": {
+      "type": "string",
+      "default": "~/.node-red-wit",
+      "description": "Node-RED user directory for flows and nodes"
+    },
+    "flowsFile": {
+      "type": "string",
+      "default": "wit-flows.json",
+      "description": "Name of the flows file"
+    },
+    "autoStart": {
+      "type": "boolean",
+      "default": false,
+      "description": "Automatically start Node-RED when plugin loads"
+    },
+    "enableProjects": {
+      "type": "boolean",
+      "default": true,
+      "description": "Enable Node-RED projects feature"
+    },
+    "witIntegration": {
+      "type": "object",
+      "default": {
+        "enableSensorNodes": true,
+        "enableMachineNodes": true,
+        "enableProjectNodes": true,
+        "autoDiscoverDevices": true
+      },
+      "description": "W.I.T. specific integration settings"
+    }
+  },
+  "commands": [
+    {
+      "id": "start",
+      "name": "Start Node-RED",
+      "description": "Launch Node-RED server"
+    },
+    {
+      "id": "stop",
+      "name": "Stop Node-RED",
+      "description": "Stop Node-RED server"
+    },
+    {
+      "id": "restart",
+      "name": "Restart Node-RED",
+      "description": "Restart Node-RED server"
+    },
+    {
+      "id": "openEditor",
+      "name": "Open Editor",
+      "description": "Open Node-RED flow editor in browser"
+    },
+    {
+      "id": "deployFlow",
+      "name": "Deploy Flow",
+      "description": "Deploy a flow to Node-RED"
+    },
+    {
+      "id": "getFlows",
+      "name": "Get Flows",
+      "description": "Retrieve all flows"
+    },
+    {
+      "id": "createFlow",
+      "name": "Create Flow",
+      "description": "Create a new flow"
+    },
+    {
+      "id": "installNode",
+      "name": "Install Node",
+      "description": "Install a Node-RED node package"
+    },
+    {
+      "id": "getStatus",
+      "name": "Get Status",
+      "description": "Get Node-RED server status"
+    },
+    {
+      "id": "syncWithWIT",
+      "name": "Sync with W.I.T.",
+      "description": "Synchronize sensors and machines with W.I.T."
+    }
+  ]
+}

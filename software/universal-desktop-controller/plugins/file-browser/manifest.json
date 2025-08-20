@@ -1,0 +1,42 @@
+{
+    "id": "file-browser",
+    "name": "File Browser",
+    "version": "1.0.0",
+    "description": "Complete file system access and management for W.I.T. - browse, read, write, and manage files across your entire system",
+    "main": "index.js",
+    "permissions": [
+        "file:read",
+        "file:write",
+        "file:delete",
+        "file:execute",
+        "system:execute",
+        "process:spawn"
+    ],
+    "config": {
+        "rootPaths": {
+            "type": "array",
+            "default": "auto",
+            "description": "Root paths accessible to the file browser (auto-detect if not specified)"
+        },
+        "hiddenFiles": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show hidden files and directories"
+        },
+        "followSymlinks": {
+            "type": "boolean",
+            "default": true,
+            "description": "Follow symbolic links when browsing"
+        },
+        "watchChanges": {
+            "type": "boolean",
+            "default": true,
+            "description": "Watch for file system changes and notify"
+        },
+        "maxFileSize": {
+            "type": "number",
+            "default": 104857600,
+            "description": "Maximum file size to read (100MB default)"
+        }
+    }
+}

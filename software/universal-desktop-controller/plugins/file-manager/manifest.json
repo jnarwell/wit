@@ -1,0 +1,24 @@
+{
+  "id": "file-manager",
+  "name": "File Manager",
+  "version": "1.0.0",
+  "description": "File creation and management utilities for W.I.T.",
+  "author": "W.I.T.",
+  "main": "index.js",
+  "permissions": [
+    "fileSystem",
+    "processManagement"
+  ],
+  "supportedPlatforms": ["win32", "darwin", "linux"],
+  "commands": {
+    "createFile": "Create a new file",
+    "createDirectory": "Create a new directory",
+    "readFile": "Read file contents",
+    "writeFile": "Write to a file",
+    "listDirectory": "List directory contents",
+    "deleteFile": "Delete a file",
+    "copyFile": "Copy a file",
+    "moveFile": "Move/rename a file",
+    "getFileInfo": "Get file information"
+  }
+}

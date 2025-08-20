@@ -1,0 +1,97 @@
+{
+  "id": "openscad",
+  "name": "OpenSCAD",
+  "version": "1.0.0",
+  "description": "The Programmers Solid 3D CAD Modeller - Create 3D models using code",
+  "author": "W.I.T. Team",
+  "main": "index.js",
+  "icon": "FaCube",
+  "category": "cad",
+  "permissions": [
+    "fileSystem",
+    "processManagement",
+    "network"
+  ],
+  "requirements": {
+    "openscad": {
+      "version": ">=2019.05",
+      "paths": {
+        "darwin": [
+          "/Applications/OpenSCAD.app/Contents/MacOS/OpenSCAD",
+          "/usr/local/bin/openscad",
+          "/opt/homebrew/bin/openscad"
+        ],
+        "win32": [
+          "C:\\Program Files\\OpenSCAD\\openscad.exe",
+          "C:\\Program Files (x86)\\OpenSCAD\\openscad.exe",
+          "%LOCALAPPDATA%\\Programs\\OpenSCAD\\openscad.exe"
+        ],
+        "linux": [
+          "/usr/bin/openscad",
+          "/usr/local/bin/openscad",
+          "/snap/bin/openscad",
+          "/opt/openscad/bin/openscad"
+        ]
+      }
+    }
+  },
+  "config": {
+    "projectsPath": {
+      "default": "~/Documents/OpenSCAD",
+      "description": "Default directory for OpenSCAD projects"
+    },
+    "autoSave": {
+      "default": true,
+      "description": "Automatically save files before rendering"
+    },
+    "renderQuality": {
+      "default": "preview",
+      "options": ["preview", "render"],
+      "description": "Default render quality"
+    },
+    "exportFormats": {
+      "default": ["stl", "off", "amf", "3mf", "dxf", "svg", "png"],
+      "description": "Supported export formats"
+    },
+    "customizer": {
+      "enabled": true,
+      "description": "Enable Customizer for parametric models"
+    },
+    "defaultCamera": {
+      "default": {
+        "translation": [0, 0, 0],
+        "rotation": [55, 0, 25],
+        "distance": 140
+      },
+      "description": "Default camera position"
+    }
+  },
+  "commands": {
+    "launch": "Launch OpenSCAD application",
+    "openFile": "Open a .scad file in OpenSCAD",
+    "newFile": "Create a new OpenSCAD file",
+    "render": "Render the current model",
+    "export": "Export model to various formats",
+    "compile": "Compile OpenSCAD code",
+    "getStatus": "Get OpenSCAD plugin status",
+    "listProjects": "List OpenSCAD projects",
+    "createProject": "Create a new project",
+    "getVariables": "Extract customizable variables",
+    "updateVariables": "Update model variables",
+    "generateSTL": "Generate STL file",
+    "generatePreview": "Generate preview image",
+    "checkSyntax": "Check syntax of SCAD file",
+    "getExamples": "Get example models",
+    "watchFile": "Watch file for changes"
+  },
+  "features": [
+    "Programmatic 3D modeling",
+    "Parametric design support",
+    "Real-time preview",
+    "Export to multiple formats",
+    "Customizer integration",
+    "Command-line rendering",
+    "Syntax checking",
+    "Variable extraction"
+  ]
+}

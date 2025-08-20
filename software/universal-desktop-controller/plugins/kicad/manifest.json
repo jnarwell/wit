@@ -1,0 +1,36 @@
+{
+    "id": "kicad",
+    "name": "KiCad EDA Integration",
+    "version": "1.0.0",
+    "description": "Complete integration for KiCad EDA suite - schematic capture and PCB design",
+    "main": "index.js",
+    "permissions": [
+        "file:read",
+        "file:write",
+        "file:delete",
+        "app:launch",
+        "system:execute"
+    ],
+    "config": {
+        "kicadPath": {
+            "type": "string",
+            "default": "auto",
+            "description": "Path to KiCad executable (auto-detect if not specified)"
+        },
+        "projectsPath": {
+            "type": "string",
+            "default": "~/Documents/KiCad",
+            "description": "Default path for KiCad projects"
+        },
+        "autoBackup": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically backup projects before operations"
+        },
+        "pythonPath": {
+            "type": "string",
+            "default": "auto",
+            "description": "Path to Python for KiCad scripting"
+        }
+    }
+}

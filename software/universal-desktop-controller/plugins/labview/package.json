@@ -1,0 +1,22 @@
+{
+  "name": "wit-labview-plugin",
+  "version": "1.0.0",
+  "description": "LabVIEW integration plugin for W.I.T. Universal Desktop Controller",
+  "main": "index.js",
+  "keywords": [
+    "labview",
+    "ni",
+    "national-instruments",
+    "data-acquisition",
+    "measurement",
+    "graphical-programming",
+    "vi",
+    "virtual-instrument"
+  ],
+  "author": "W.I.T.",
+  "license": "MIT",
+  "dependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

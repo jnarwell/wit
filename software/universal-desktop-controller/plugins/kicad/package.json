@@ -1,0 +1,18 @@
+{
+    "name": "wit-kicad-plugin",
+    "version": "1.0.0",
+    "description": "KiCad EDA integration plugin for W.I.T. Universal Desktop Controller",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "kicad",
+        "eda",
+        "pcb",
+        "schematic",
+        "electronics"
+    ],
+    "author": "W.I.T. Team",
+    "license": "MIT"
+}

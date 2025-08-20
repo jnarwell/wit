@@ -1,0 +1,83 @@
+{
+  "id": "matlab",
+  "name": "MATLAB Integration",
+  "version": "1.0.0",
+  "description": "Integrates MATLAB with W.I.T. for advanced computational analysis and modeling",
+  "author": "W.I.T. Team",
+  "main": "index.js",
+  "permissions": [
+    "app:launch",
+    "file:read",
+    "file:write",
+    "network:request",
+    "system:execute"
+  ],
+  "config": {
+    "matlabPath": {
+      "type": "string",
+      "label": "MATLAB Executable Path",
+      "description": "Path to MATLAB executable",
+      "default": "",
+      "platform": {
+        "darwin": "/Applications/MATLAB_R2024b.app/bin/matlab",
+        "win32": "C:\\Program Files\\MATLAB\\R2024b\\bin\\matlab.exe",
+        "linux": "/usr/local/MATLAB/R2024b/bin/matlab"
+      }
+    },
+    "workspacePath": {
+      "type": "string",
+      "label": "MATLAB Workspace",
+      "description": "Default MATLAB workspace directory",
+      "default": "~/Documents/MATLAB"
+    },
+    "enableEngine": {
+      "type": "boolean",
+      "label": "Enable MATLAB Engine",
+      "description": "Enable MATLAB Engine API for programmatic control",
+      "default": true
+    },
+    "engineMode": {
+      "type": "string",
+      "label": "Engine Mode",
+      "description": "MATLAB Engine execution mode",
+      "default": "shared",
+      "options": ["shared", "dedicated", "background"]
+    },
+    "defaultTimeout": {
+      "type": "number",
+      "label": "Command Timeout (ms)",
+      "description": "Default timeout for MATLAB commands in milliseconds",
+      "default": 30000
+    },
+    "autoStartEngine": {
+      "type": "boolean",
+      "label": "Auto-start Engine",
+      "description": "Automatically start MATLAB Engine when plugin initializes",
+      "default": false
+    },
+    "enableWebApps": {
+      "type": "boolean",
+      "label": "Enable Web Apps",
+      "description": "Enable MATLAB web app deployment capabilities",
+      "default": false
+    },
+    "webAppPort": {
+      "type": "number",
+      "label": "Web App Port",
+      "description": "Port for MATLAB web app server",
+      "default": 9090
+    },
+    "enableGPU": {
+      "type": "boolean",
+      "label": "Enable GPU Computing",
+      "description": "Enable GPU-accelerated computing if available",
+      "default": false
+    },
+    "enableParallel": {
+      "type": "boolean",
+      "label": "Enable Parallel Computing",
+      "description": "Enable Parallel Computing Toolbox features",
+      "default": false
+    }
+  }
+}

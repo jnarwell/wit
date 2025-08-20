@@ -20,7 +20,7 @@ interface UDCStatus {
 interface UseUDCWebSocketReturn {
   status: UDCStatus;
   wsStatus: 'connected' | 'disconnected' | 'connecting' | 'failed';
-  sendCommand: (plugin: string, command: string, args?: any) => void;
+  sendCommand: (plugin: string, command: string, args?: any) => Promise<any>;
   refreshStatus: () => void;
   resetConnection: () => void;
   lastPluginResponse: any | null;
@@ -34,6 +34,7 @@ export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
+  const pendingCommandsRef = useRef<Map<string, { resolve: (value: any) => void, reject: (reason?: any) => void }>>(new Map());
   
   const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected' | 'connecting' | 'failed'>('disconnected');
   const [udcStatus, setUdcStatus] = useState<UDCStatus>({
@@ -42,20 +43,36 @@ export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
   });
   const [lastPluginResponse, setLastPluginResponse] = useState<any | null>(null);
 
-  const sendCommand = useCallback((plugin: string, command: string, args?: any) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      const message = {
-        type: 'plugin_command',
-        pluginId: plugin,
-        command,
-        args: args || {},
-        messageId: `${Date.now()}-${Math.random()}`
-      };
-      console.log('[UDC WebSocket] Sending command:', message);
-      wsRef.current.send(JSON.stringify(message));
-    } else {
-      console.warn('[UDC WebSocket] Cannot send command - WebSocket not connected');
-    }
+  const sendCommand = useCallback((plugin: string, command: string, args?: any): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        const messageId = `${Date.now()}-${Math.random()}`;
+        const message = {
+          type: 'plugin_command',
+          pluginId: plugin,
+          command,
+          args: args || {},
+          messageId
+        };
+        
+        // Store the promise handlers
+        pendingCommandsRef.current.set(messageId, { resolve, reject });
+        
+        // Set a timeout to reject if no response
+        setTimeout(() => {
+          if (pendingCommandsRef.current.has(messageId)) {
+            pendingCommandsRef.current.delete(messageId);
+            reject(new Error('Command timeout'));
+          }
+        }, 30000); // 30 second timeout
+        
+        console.log('[UDC WebSocket] Sending command:', message);
+        wsRef.current.send(JSON.stringify(message));
+      } else {
+        console.warn('[UDC WebSocket] Cannot send command - WebSocket not connected');
+        reject(new Error('WebSocket not connected'));
+      }
+    });
   }, []);
 
   const refreshStatus = useCallback(() => {
@@ -136,6 +153,19 @@ export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
               console.log('[UDC WebSocket] Received plugin response:', data);
               // Store the latest plugin response for subscribers
               setLastPluginResponse(data);
+              
+              // Resolve pending command if there's a matching messageId
+              if (data.messageId && pendingCommandsRef.current.has(data.messageId)) {
+                const { resolve, reject } = pendingCommandsRef.current.get(data.messageId)!;
+                pendingCommandsRef.current.delete(data.messageId);
+                
+                if (data.success) {
+                  resolve(data);
+                } else {
+                  reject(new Error(data.error || 'Command failed'));
+                }
+              }
+              
               // Check if the response indicates no controller available
               if (data.error && data.error.includes('No desktop controller available')) {
                 setUdcStatus(prev => ({ 

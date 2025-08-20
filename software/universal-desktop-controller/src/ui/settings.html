@@ -390,8 +390,9 @@
                 item.className = 'plugin-item';
                 item.innerHTML = `
                     <div class="plugin-info">
-                        <h3>${plugin.name}</h3>
-                        <p>${plugin.version} - ${plugin.state || 'unknown'}</p>
+                        <h3>${plugin.name || pluginId}</h3>
+                        <p>v${plugin.version || '0.0.0'} - ${plugin.state || 'unknown'}</p>
+                        ${plugin.description ? `<p>${plugin.description}</p>` : ''}
                     </div>
                     <div class="plugin-actions">
                         ${plugin.state === 'started' 
@@ -399,10 +400,7 @@
                             : `<button onclick="startPlugin('${pluginId}')">Start</button>`
                         }
                         <button onclick="configurePlugin('${pluginId}')">Configure</button>
-                        ${pluginId === 'arduino-ide' && (plugin.state === 'started' || plugin.state === 'loaded')
-                            ? `<button onclick="launchArduino()">Launch Arduino</button>`
-                            : ''
-                        }
+                        ${(plugin.state === 'started' || plugin.state === 'loaded') ? getPluginLaunchButton(pluginId, plugin.name) : ''}
                     </div>
                 `;
                 pluginList.appendChild(item);
@@ -417,6 +415,27 @@
             } else {
                 statusDiv.className = 'status disconnected';
                 statusDiv.textContent = 'Disconnected from W.I.T. server';
+            }
+        });
+        
+        // Handle plugin start/stop responses
+        ipcRenderer.on('plugin-started', (event, data) => {
+            console.log('Plugin started:', data);
+            if (data.success) {
+                // Refresh plugin list to show updated state
+                loadPlugins();
+            } else {
+                alert(`Failed to start plugin ${data.pluginId}: ${data.error}`);
+            }
+        });
+        
+        ipcRenderer.on('plugin-stopped', (event, data) => {
+            console.log('Plugin stopped:', data);
+            if (data.success) {
+                // Refresh plugin list to show updated state
+                loadPlugins();
+            } else {
+                alert(`Failed to stop plugin ${data.pluginId}: ${data.error}`);
             }
         });
         
@@ -437,12 +456,39 @@
             ipcRenderer.send('load-plugin');
         }
         
-        function launchArduino() {
+        function getPluginLaunchButton(pluginId, pluginName) {
+            // Define which plugins have launch capability
+            const launchablePlugins = {
+                'arduino-ide': 'Arduino IDE',
+                'matlab': 'MATLAB',
+                'kicad': 'KiCad',
+                'labview': 'LabVIEW',
+                'unified-slicer': 'Slicer'
+            };
+            
+            if (launchablePlugins[pluginId]) {
+                const buttonText = `Launch ${launchablePlugins[pluginId]}`;
+                return `<button onclick="launchPlugin('${pluginId}')">${buttonText}</button>`;
+            }
+            
+            return '';
+        }
+        
+        function launchPlugin(pluginId) {
             ipcRenderer.send('plugin-command', {
-                pluginId: 'arduino-ide',
+                pluginId: pluginId,
                 action: 'launch',
                 payload: {}
             });
+        }
+        
+        // Legacy functions for backward compatibility
+        function launchArduino() {
+            launchPlugin('arduino-ide');
+        }
+        
+        function launchMATLAB() {
+            launchPlugin('matlab');
         }
         
         // Advanced functions

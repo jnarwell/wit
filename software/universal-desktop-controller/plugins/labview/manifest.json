@@ -1,0 +1,95 @@
+{
+  "id": "labview",
+  "name": "LabVIEW",
+  "version": "1.0.0",
+  "description": "National Instruments LabVIEW integration for graphical programming and data acquisition",
+  "author": "W.I.T.",
+  "main": "index.js",
+  "permissions": [
+    "fileSystem",
+    "processManagement",
+    "network",
+    "shell"
+  ],
+  "supportedPlatforms": ["win32", "darwin", "linux"],
+  "requirements": {
+    "labview": {
+      "minVersion": "2020",
+      "paths": {
+        "win32": [
+          "C:\\Program Files\\National Instruments\\LabVIEW Community\\LabVIEW.exe",
+          "C:\\Program Files (x86)\\National Instruments\\LabVIEW Community\\LabVIEW.exe",
+          "C:\\Program Files\\National Instruments\\LabVIEW 2025\\LabVIEWCommunity.exe",
+          "C:\\Program Files\\National Instruments\\LabVIEW 2025 (32-bit)\\LabVIEWCommunity.exe",
+          "C:\\Program Files\\National Instruments\\LabVIEW 2024\\LabVIEW.exe",
+          "C:\\Program Files\\National Instruments\\LabVIEW 2023\\LabVIEW.exe",
+          "C:\\Program Files\\National Instruments\\LabVIEW 2022\\LabVIEW.exe",
+          "C:\\Program Files\\National Instruments\\LabVIEW 2021\\LabVIEW.exe",
+          "C:\\Program Files\\National Instruments\\LabVIEW 2020\\LabVIEW.exe",
+          "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2024\\LabVIEW.exe",
+          "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2023\\LabVIEW.exe",
+          "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2022\\LabVIEW.exe",
+          "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2021\\LabVIEW.exe",
+          "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2020\\LabVIEW.exe"
+        ],
+        "darwin": [
+          "/Applications/National Instruments/LabVIEW 2025 64-bit/LabVIEWCommunity.app/Contents/MacOS/LabVIEWCommunity",
+          "/Applications/LabVIEW Community.app/Contents/MacOS/LabVIEW",
+          "/Applications/LabVIEW Community Edition.app/Contents/MacOS/LabVIEW",
+          "/Applications/National Instruments/LabVIEW Community.app/Contents/MacOS/LabVIEW",
+          "/Applications/National Instruments/LabVIEW 2024.app/Contents/MacOS/LabVIEW",
+          "/Applications/National Instruments/LabVIEW 2023.app/Contents/MacOS/LabVIEW",
+          "/Applications/National Instruments/LabVIEW 2022.app/Contents/MacOS/LabVIEW",
+          "/Applications/National Instruments/LabVIEW 2021.app/Contents/MacOS/LabVIEW",
+          "/Applications/National Instruments/LabVIEW 2020.app/Contents/MacOS/LabVIEW"
+        ],
+        "linux": [
+          "/usr/local/natinst/LabVIEW-Community/labview",
+          "/opt/natinst/LabVIEW-Community/labview",
+          "/usr/local/natinst/LabVIEW-2025/labview",
+          "/opt/natinst/LabVIEW-2025/labview",
+          "/usr/local/natinst/LabVIEW-2024/labview",
+          "/usr/local/natinst/LabVIEW-2023/labview",
+          "/usr/local/natinst/LabVIEW-2022/labview",
+          "/usr/local/natinst/LabVIEW-2021/labview",
+          "/usr/local/natinst/LabVIEW-2020/labview",
+          "/opt/natinst/LabVIEW-2024/labview",
+          "/opt/natinst/LabVIEW-2023/labview",
+          "/opt/natinst/LabVIEW-2022/labview",
+          "/opt/natinst/LabVIEW-2021/labview",
+          "/opt/natinst/LabVIEW-2020/labview"
+        ]
+      }
+    }
+  },
+  "defaultConfig": {
+    "viPath": "~/Documents/LabVIEW Data",
+    "projectsPath": "~/Documents/LabVIEW Data/Projects",
+    "autoSaveInterval": 300,
+    "webServicePort": 8080,
+    "enableRemotePanel": false,
+    "enableWebServices": true,
+    "defaultTargetType": "myComputer",
+    "viServerPort": 3363,
+    "viServerEnabled": false
+  },
+  "commands": {
+    "launch": "Launch LabVIEW",
+    "openVI": "Open VI file",
+    "openProject": "Open LabVIEW project",
+    "newVI": "Create new VI",
+    "newProject": "Create new project",
+    "buildExecutable": "Build executable",
+    "runVI": "Run VI",
+    "stopVI": "Stop VI execution",
+    "deployToTarget": "Deploy to RT/FPGA target",
+    "startWebService": "Start web service",
+    "stopWebService": "Stop web service",
+    "enableRemotePanel": "Enable remote panel",
+    "disableRemotePanel": "Disable remote panel",
+    "exportData": "Export measurement data",
+    "importData": "Import data",
+    "startVIServer": "Start VI Server",
+    "stopVIServer": "Stop VI Server"
+  }
+}

@@ -118,7 +118,11 @@ class UniversalDesktopController {
             'arduino-ide',        // Arduino IDE integration
             'unified-slicer',     // Unified 3D slicer integration
             'matlab',             // MATLAB analysis integration
-            // 'file-browser',    // Will be implemented
+            'kicad',              // KiCad EDA integration
+            'labview',            // LabVIEW data acquisition integration
+            'node-red',           // Node-RED IoT automation integration
+            'file-browser',       // File system access and management
+            'file-manager',       // File creation and management utilities
         ];
         
         for (const pluginName of builtInPlugins) {

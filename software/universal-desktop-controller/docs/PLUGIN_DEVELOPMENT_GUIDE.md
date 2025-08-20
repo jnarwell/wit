@@ -836,13 +836,254 @@ See `plugins/db-client/` for an example of:
 - Schema exploration
 - Export functionality
 
+## Common Issues and Solutions
+
+### 1. Plugin Status Not Updating in Frontend
+
+**Issue**: Plugin shows as "inactive" or "configured" even though it's running.
+
+**Solution**: Emit the proper status update event when your plugin starts:
+```javascript
+async start() {
+    await super.start();
+    
+    // Your initialization code...
+    
+    // IMPORTANT: Emit status update
+    this.emit('plugin_status_update', {
+        pluginId: this.id,
+        status: 'active'
+    });
+}
+```
+
+### 2. Application Not Found Errors
+
+**Issue**: Plugin tries to launch application with null path.
+
+**Solution**: Always check if the application is installed before using the path:
+```javascript
+async launchApplication() {
+    if (!this.appPath) {
+        throw new Error('Application not installed. Please install MyApp first.');
+    }
+    
+    // Proceed with launch...
+}
+
+async openFile(filePath) {
+    if (!this.appPath) {
+        throw new Error('Application not installed. Please install MyApp first.');
+    }
+    
+    // Open file...
+}
+```
+
+### 3. Spawn ENOENT Errors
+
+**Issue**: Cannot find executable when using spawn.
+
+**Solution**: Use proper paths for executables:
+```javascript
+// For local node modules
+const localBin = path.join(__dirname, 'node_modules', '.bin', 'executable');
+
+// For global commands, check if they exist first
+const { execSync } = require('child_process');
+try {
+    execSync('which mycommand', { stdio: 'ignore' });
+    // Command exists globally
+} catch {
+    // Use local installation or throw error
+}
+```
+
+### 4. Backend Plugin List Not Updating
+
+**Issue**: New plugin doesn't appear in frontend.
+
+**Solution**: Add your plugin to both locations:
+
+1. **Backend** (`software/backend/dev_server.py`):
+```python
+# Add to plugin_status dictionary
+plugin_status = {
+    "arduino-ide": "inactive",
+    "your-plugin": "inactive",  # Add this
+    # ...
+}
+
+# Add to plugin list in WebSocket handler
+{
+    "id": "your-plugin",
+    "name": "Your Plugin",
+    "version": "1.0.0",
+    "status": plugin_status.get("your-plugin", "inactive"),
+    "description": "Your plugin description",
+    "icon": "FaYourIcon"
+}
+```
+
+2. **UDC** (`software/universal-desktop-controller/src/main.js`):
+```javascript
+const builtInPlugins = [
+    'arduino-ide',
+    'your-plugin',  // Add this
+    // ...
+];
+```
+
+### 5. Frontend Integration Not Showing
+
+**Issue**: Plugin works but doesn't appear in frontend UI.
+
+**Solution**: Add to frontend integrations list:
+```javascript
+// In SoftwareIntegrationsPage.tsx
+const UDC_INTEGRATIONS = [
+    // ...
+    {
+        id: 'your-app',
+        name: 'Your App',
+        type: 'productivity',
+        status: 'disconnected',
+        description: 'Your app description',
+        isUDCPlugin: true,
+        pluginId: 'your-plugin'  // Must match plugin ID
+    }
+];
+```
+
+### 6. Plugin Not Auto-Starting
+
+**Issue**: Plugin loads but doesn't start automatically.
+
+**Solution**: Ensure manifest.json has proper structure:
+```json
+{
+    "id": "your-plugin",
+    "name": "Your Plugin", 
+    "version": "1.0.0",
+    "main": "index.js",
+    "autoStart": true,  // Add this if needed
+    "permissions": ["fileSystem", "processManagement"]
+}
+```
+
+## Complete Integration Checklist
+
+When creating a new plugin integration, ensure you complete ALL of these steps:
+
+### ✅ 1. Plugin Structure
+- [ ] Create plugin directory: `plugins/your-plugin/`
+- [ ] Create `manifest.json` with all required fields
+- [ ] Create `package.json` with dependencies
+- [ ] Create `index.js` extending `WITPlugin` class
+- [ ] Implement ALL required methods: `initialize()`, `start()`, `stop()`, `onMessage()`
+- [ ] Add `getStatus()` method for status reporting
+- [ ] Create README.md documenting plugin usage
+
+### ✅ 2. Plugin Implementation
+- [ ] Handle application detection for all platforms (Windows, macOS, Linux)
+- [ ] Implement proper error handling with user-friendly messages
+- [ ] Add null checks before using application paths
+- [ ] Emit `plugin_status_update` event in `start()` method
+- [ ] Support all basic commands: launch, getStatus, etc.
+- [ ] Clean up resources in `stop()` method
+
+### ✅ 3. Backend Integration
+- [ ] Add plugin ID to `plugin_status` dictionary
+- [ ] Add plugin info to WebSocket `plugin_list` handler
+- [ ] Test WebSocket communication
+
+### ✅ 4. UDC Integration  
+- [ ] Add plugin to `builtInPlugins` array in main.js
+- [ ] Test plugin loading and lifecycle
+- [ ] Verify status updates are sent
+
+### ✅ 5. Frontend Integration
+- [ ] Add integration object to `UDC_INTEGRATIONS` array
+- [ ] Set correct `pluginId` matching your plugin ID
+- [ ] Choose appropriate icon from React Icons
+- [ ] Add any custom quick actions needed
+- [ ] Create dedicated control page if complex UI needed
+
+### ✅ 6. Testing
+- [ ] Test on all target platforms
+- [ ] Test with application not installed
+- [ ] Test with application installed
+- [ ] Test all commands and features
+- [ ] Verify status updates in frontend
+- [ ] Check error handling and messages
+
+### ✅ 7. Documentation
+- [ ] Document all supported commands
+- [ ] List system requirements
+- [ ] Provide installation instructions
+- [ ] Include troubleshooting section
+- [ ] Add examples of usage
+
+## Plugin Development Best Practices
+
+### Always Emit Status Updates
+```javascript
+class MyPlugin extends WITPlugin {
+    async start() {
+        await super.start();
+        
+        // Initialize your plugin...
+        
+        // ALWAYS emit status update
+        this.emit('plugin_status_update', {
+            pluginId: this.id,
+            status: 'active'
+        });
+    }
+}
+```
+
+### Handle Missing Applications Gracefully
+```javascript
+async handleCommand(command, payload) {
+    // Check installation first
+    if (!this.appPath && command !== 'getStatus') {
+        return {
+            success: false,
+            message: 'MyApp is not installed. Please install MyApp first.'
+        };
+    }
+    
+    switch (command) {
+        case 'launch':
+            return await this.launchApp();
+        // ...
+    }
+}
+```
+
+### Provide Detailed Status
+```javascript
+getStatus() {
+    return {
+        ...super.getStatus(),
+        appInstalled: !!this.appPath,
+        appPath: this.appPath,
+        appRunning: !!this.appProcess,
+        version: this.appVersion,
+        lastError: this.lastError
+    };
+}
+```
+
 ## Support
 
 For questions or issues:
 1. Check existing plugins for examples
-2. Review the [UDC Architecture](./ARCHITECTURE.md) document
-3. Open an issue on GitHub
-4. Join our Discord community
+2. Review this guide's Common Issues section
+3. Review the [UDC Architecture](./ARCHITECTURE.md) document
+4. Open an issue on GitHub
+5. Join our Discord community
 
 ## License
 

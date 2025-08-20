@@ -295,14 +295,38 @@ class PluginManager {
     getLoadedPlugins() {
         const plugins = {};
         for (const [id, plugin] of this.plugins) {
-            plugins[id] = {
-                id: plugin.id,
-                name: plugin.manifest.name,
-                version: plugin.manifest.version,
-                description: plugin.manifest.description,
-                state: plugin.state,
-                status: plugin.instance ? plugin.instance.getStatus() : null
-            };
+            try {
+                // Get status in a safe way
+                let status = {};
+                if (plugin.instance && typeof plugin.instance.getStatus === 'function') {
+                    try {
+                        status = plugin.instance.getStatus() || {};
+                    } catch (err) {
+                        logger.warn(`Failed to get status for plugin ${id}:`, err.message);
+                    }
+                }
+                
+                plugins[id] = {
+                    id: id,
+                    name: plugin.manifest.name,
+                    version: plugin.manifest.version,
+                    description: plugin.manifest.description,
+                    state: plugin.state,
+                    // Ensure status is serializable
+                    status: JSON.parse(JSON.stringify(status))
+                };
+            } catch (error) {
+                logger.error(`Error processing plugin ${id} for serialization:`, error);
+                // Add minimal plugin info on error
+                plugins[id] = {
+                    id: id,
+                    name: plugin.manifest?.name || 'Unknown',
+                    version: plugin.manifest?.version || '0.0.0',
+                    description: plugin.manifest?.description || '',
+                    state: plugin.state || 'error',
+                    status: {}
+                };
+            }
         }
         return plugins;
     }

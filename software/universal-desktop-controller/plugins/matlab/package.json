@@ -1,0 +1,81 @@
+{
+  "name": "wit-matlab-plugin",
+  "version": "1.0.0",
+  "description": "MATLAB integration plugin for W.I.T. Universal Desktop Controller",
+  "main": "index.js",
+  "plugin": {
+    "id": "matlab",
+    "displayName": "MATLAB",
+    "category": "analysis",
+    "permissions": [
+      "launch-application",
+      "file-system-read",
+      "file-system-write",
+      "network-request"
+    ],
+    "platforms": {
+      "darwin": {
+        "path": "/Applications/MATLAB_R2024b.app/bin/matlab"
+      },
+      "win32": {
+        "path": "C:\\Program Files\\MATLAB\\R2024b\\bin\\matlab.exe"
+      },
+      "linux": {
+        "path": "/usr/local/MATLAB/R2024b/bin/matlab"
+      }
+    },
+    "config": {
+      "matlabPath": {
+        "type": "string",
+        "platform": {
+          "darwin": "/Applications/MATLAB_R2024b.app/bin/matlab",
+          "win32": "C:\\Program Files\\MATLAB\\R2024b\\bin\\matlab.exe",
+          "linux": "/usr/local/MATLAB/R2024b/bin/matlab"
+        },
+        "default": "",
+        "label": "MATLAB Executable Path",
+        "description": "Path to the MATLAB executable"
+      },
+      "workspacePath": {
+        "type": "string",
+        "default": "~/Documents/MATLAB",
+        "label": "MATLAB Workspace",
+        "description": "Default MATLAB workspace directory"
+      },
+      "enableEngine": {
+        "type": "boolean",
+        "default": true,
+        "label": "Enable MATLAB Engine",
+        "description": "Enable MATLAB Engine API for programmatic control"
+      },
+      "enableWebApp": {
+        "type": "boolean",
+        "default": false,
+        "label": "Enable Web Apps",
+        "description": "Enable MATLAB web app deployment capabilities"
+      },
+      "defaultTimeout": {
+        "type": "number",
+        "default": 30000,
+        "label": "Command Timeout (ms)",
+        "description": "Default timeout for MATLAB commands in milliseconds"
+      },
+      "autoStartEngine": {
+        "type": "boolean",
+        "default": false,
+        "label": "Auto-start Engine",
+        "description": "Automatically start MATLAB Engine when plugin initializes"
+      },
+      "enginePort": {
+        "type": "number",
+        "default": 9090,
+        "label": "Engine Port",
+        "description": "Port for MATLAB Engine API communication"
+      }
+    }
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "ws": "^8.14.0"
+  }
+}

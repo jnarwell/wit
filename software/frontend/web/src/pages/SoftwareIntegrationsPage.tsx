@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCode, FaCloud, FaDatabase, FaRobot, FaCubes, FaChartLine, FaMicrochip, FaCube, FaPrint, FaCheck, FaExclamationTriangle, FaClock, FaDesktop, FaCog, FaCalculator } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCode, FaCloud, FaDatabase, FaRobot, FaCubes, FaChartLine, FaMicrochip, FaCube, FaPrint, FaCheck, FaExclamationTriangle, FaClock, FaDesktop, FaCog, FaCalculator, FaProjectDiagram, FaFolder } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { useUDCWebSocket } from '../hooks/useUDCWebSocket';
 import './SoftwareIntegrationsPage.css';
@@ -11,7 +11,7 @@ interface SoftwareIntegration {
   id: string;
   name: string;
   type: 'cad' | 'simulation' | 'embedded' | 'pcb' | 'data_acquisition' | 'manufacturing' | 'api' | 'database' | 'cloud' | 'ai' | 'other';
-  status: 'connected' | 'disconnected' | 'error' | 'pending';
+  status: 'active' | 'configured' | 'inactive' | 'error' | 'pending';
   description: string;
   endpoint?: string;
   apiKey?: string;
@@ -115,6 +115,42 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       description: 'Advanced computational analysis, modeling, and simulation platform with comprehensive toolboxes',
       isUDCPlugin: true,
       pluginId: 'matlab'
+    },
+    {
+      id: 'kicad',
+      name: 'KiCad',
+      type: 'pcb',
+      status: 'disconnected',
+      description: 'Open-source electronics design automation suite for schematic capture and PCB design',
+      isUDCPlugin: true,
+      pluginId: 'kicad'
+    },
+    {
+      id: 'labview',
+      name: 'LabVIEW',
+      type: 'data_acquisition',
+      status: 'disconnected',
+      description: 'Graphical programming platform for measurement systems and data acquisition',
+      isUDCPlugin: true,
+      pluginId: 'labview'
+    },
+    {
+      id: 'node-red',
+      name: 'Node-RED',
+      type: 'data_acquisition',
+      status: 'disconnected',
+      description: 'Flow-based visual programming for IoT automation and sensor integration',
+      isUDCPlugin: true,
+      pluginId: 'node-red'
+    },
+    {
+      id: 'file-browser',
+      name: 'File Browser',
+      type: 'other',
+      status: 'disconnected',
+      description: 'Complete file system access and management - browse, read, write, and manage files across your entire system',
+      isUDCPlugin: true,
+      pluginId: 'file-browser'
     }
   ];
 
@@ -304,14 +340,6 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       comingSoon: true
     },
     {
-      id: 'kicad-001',
-      name: 'KiCad',
-      type: 'pcb',
-      status: 'pending',
-      description: 'Open-source electronics design automation',
-      comingSoon: true
-    },
-    {
       id: 'eagle-001',
       name: 'Eagle',
       type: 'pcb',
@@ -351,14 +379,6 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       type: 'data_acquisition',
       status: 'pending',
       description: 'Data acquisition and analysis platform',
-      comingSoon: true
-    },
-    {
-      id: 'labview-001',
-      name: 'LabVIEW',
-      type: 'data_acquisition',
-      status: 'pending',
-      description: 'Graphical programming for measurement systems',
       comingSoon: true
     },
     {
@@ -531,12 +551,12 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       // Check if this plugin is active in UDC
       const plugin = udcStatus.plugins.find(p => p.id === integration.pluginId);
       if (plugin) {
-        // Map UDC plugin status to frontend status
-        let status = 'disconnected';
-        if (plugin.status === 'active' || plugin.status === 'running' || plugin.status === 'started') {
-          status = 'connected';
+        // Map UDC plugin status to frontend status  
+        let status = 'inactive';
+        if (plugin.status === 'active') {
+          status = 'active';
         } else if (plugin.status === 'inactive') {
-          status = 'disconnected';
+          status = 'configured'; // Loaded but not active
         }
         return {
           ...integration,
@@ -575,10 +595,10 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
     // Filter by tab
     switch (activeTab) {
       case 'active':
-        filtered = integrations.filter(i => i.isUDCPlugin && i.status === 'connected');
+        filtered = integrations.filter(i => i.isUDCPlugin && i.status === 'active');
         break;
       case 'configured':
-        filtered = integrations.filter(i => i.isUDCPlugin && i.status === 'disconnected');
+        filtered = integrations.filter(i => i.isUDCPlugin && i.status === 'configured');
         break;
       case 'coming-soon':
         filtered = integrations.filter(i => i.comingSoon);
@@ -634,12 +654,12 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
 
   const getStatusIcon = (status: SoftwareIntegration['status']) => {
     switch (status) {
-      case 'connected':
+      case 'active':
         return <div className="status-indicator connected" />;
+      case 'configured':
+        return <div className="status-indicator pending" />;
       case 'error':
         return <div className="status-indicator error" />;
-      case 'pending':
-        return <div className="status-indicator pending" />;
       default:
         return <div className="status-indicator disconnected" />;
     }
@@ -654,9 +674,9 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
   const getTabCount = (tab: string) => {
     switch (tab) {
       case 'active':
-        return integrations.filter(i => i.isUDCPlugin && i.status === 'connected').length;
+        return integrations.filter(i => i.isUDCPlugin && i.status === 'active').length;
       case 'configured':
-        return integrations.filter(i => i.isUDCPlugin && i.status === 'disconnected').length;
+        return integrations.filter(i => i.isUDCPlugin && i.status === 'configured').length;
       case 'coming-soon':
         return integrations.filter(i => i.comingSoon).length;
       default:
@@ -767,40 +787,150 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
                 <p className="integration-description">{integration.description}</p>
                 {integration.comingSoon ? (
                   <p className="coming-soon-label">Coming Soon</p>
-                ) : integration.isUDCPlugin && integration.status === 'connected' ? (
+                ) : integration.isUDCPlugin && integration.status === 'active' ? (
                   <>
                     <div className="quick-actions">
-                      <button 
-                        className="quick-action-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleLaunchSoftware(integration);
-                        }}
-                        title="Open IDE"
-                      >
-                        <FaDesktop /> IDE
-                      </button>
-                      <button 
-                        className="quick-action-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          sendCommand(integration.pluginId, 'startSerial', { baudRate: 9600 });
-                        }}
-                        title="Serial Monitor"
-                      >
-                        <FaCode /> Serial
-                      </button>
-                      <button 
-                        className="quick-action-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfigureIntegration(integration);
-                          setShowConfigureModal(true);
-                        }}
-                        title="Configure"
-                      >
-                        <FaCog /> Config
-                      </button>
+                      {integration.pluginId === 'arduino-ide' ? (
+                        <>
+                          <button 
+                            className="quick-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleLaunchSoftware(integration);
+                            }}
+                            title="Open IDE"
+                          >
+                            <FaDesktop /> IDE
+                          </button>
+                          <button 
+                            className="quick-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              sendCommand(integration.pluginId, 'startSerial', { baudRate: 9600 });
+                            }}
+                            title="Serial Monitor"
+                          >
+                            <FaCode /> Serial
+                          </button>
+                          <button 
+                            className="quick-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfigureIntegration(integration);
+                              setShowConfigureModal(true);
+                            }}
+                            title="Configure"
+                          >
+                            <FaCog /> Config
+                          </button>
+                        </>
+                      ) : integration.pluginId === 'unified-slicer' ? (
+                        <>
+                          <button 
+                            className="quick-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleLaunchSoftware(integration);
+                            }}
+                            title="Open Slicer"
+                          >
+                            <FaCube /> Slice
+                          </button>
+                        </>
+                      ) : integration.pluginId === 'kicad' ? (
+                        <>
+                          <button 
+                            className="quick-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleLaunchSoftware(integration);
+                            }}
+                            title="Open KiCad"
+                          >
+                            <FaDesktop /> KiCad
+                          </button>
+                          <button 
+                            className="quick-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              sendCommand(integration.pluginId, 'openSchematic');
+                            }}
+                            title="Schematic Editor"
+                          >
+                            <FaMicrochip /> Schematic
+                          </button>
+                          <button 
+                            className="quick-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              sendCommand(integration.pluginId, 'openPCB');
+                            }}
+                            title="PCB Editor"
+                          >
+                            <FaMicrochip /> PCB
+                          </button>
+                        </>
+                      ) : integration.pluginId === 'matlab' ? (
+                        <>
+                          <button 
+                            className="quick-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleLaunchSoftware(integration);
+                            }}
+                            title="Open MATLAB"
+                          >
+                            <FaCalculator /> MATLAB
+                          </button>
+                        </>
+                      ) : integration.pluginId === 'labview' ? (
+                        <>
+                          <button 
+                            className="quick-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleLaunchSoftware(integration);
+                            }}
+                            title="Open LabVIEW"
+                          >
+                            <FaChartLine /> LabVIEW
+                          </button>
+                        </>
+                      ) : integration.pluginId === 'node-red' ? (
+                        <>
+                          <button 
+                            className="quick-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              sendCommand(integration.pluginId, 'start');
+                            }}
+                            title="Start Node-RED"
+                          >
+                            <FaProjectDiagram /> Start
+                          </button>
+                          <button 
+                            className="quick-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              sendCommand(integration.pluginId, 'openEditor');
+                            }}
+                            title="Open Editor"
+                          >
+                            <FaCode /> Editor
+                          </button>
+                        </>
+                      ) : (
+                        <button 
+                          className="quick-action-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleLaunchSoftware(integration);
+                          }}
+                          title="Launch"
+                        >
+                          <FaDesktop /> Launch
+                        </button>
+                      )}
                     </div>
                     <button 
                       className="full-control-btn"
