@@ -37,8 +37,18 @@ W.I.T. is a comprehensive industrial workshop terminal system that unifies equip
 ### Desktop Integration
 - **Universal Desktop Controller (UDC)**: Plugin-based desktop companion app
 - **Arduino IDE Integration**: Direct integration with Arduino development
+- **MATLAB Integration**: Full computational analysis with real MATLAB engine
+- **3D Slicer Control**: Unified interface for PrusaSlicer, OrcaSlicer, and more
+- **KiCad Integration**: PCB design and schematic capture
+- **Node-RED Integration**: Visual IoT automation and sensor workflows
 - **Application Launcher**: Launch and control desktop applications
 - **File System Monitoring**: Watch for project file changes
+
+### Procurement Integration
+- **Component Suppliers**: DigiKey, Mouser for electronic parts
+- **Hardware Suppliers**: McMaster-Carr for mechanical components  
+- **PCB Manufacturing**: JLCPCB, PCBWay, OSHCut for board fabrication
+- **Custom Manufacturing**: Xometry, Protolabs for CNC and 3D printing
 
 ### Industrial Interface
 - **No-Scroll Design**: All critical information visible without scrolling

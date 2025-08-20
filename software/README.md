@@ -34,6 +34,7 @@ The main web interface for W.I.T. featuring:
 - Project management interface
 - AI-powered terminal
 - Settings and configuration
+- Connected accounts for procurement integrations
 
 **Tech Stack**: React, TypeScript, Tailwind CSS, Vite
 
@@ -41,11 +42,20 @@ The main web interface for W.I.T. featuring:
 Desktop companion application that provides:
 - Plugin architecture for desktop integrations
 - Arduino IDE integration
+- MATLAB integration with real computational engine
+- Unified 3D slicer control (PrusaSlicer, OrcaSlicer, BambuStudio)
+- KiCad EDA integration for PCB design
+- Node-RED visual IoT automation
 - System tray interface
 - Local file system access
 - Application launching capabilities
 
 **Tech Stack**: Electron, Node.js, JavaScript
+
+**Integrated Applications**:
+- Arduino IDE - Full development environment integration
+- MATLAB - Real-time code execution and visualization
+- 3D Slicers - Unified control for multiple slicer applications
 
 ## Quick Start
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiSettings, FiUser, FiShield, FiLink, FiCheck, FiX, FiRefreshCw, FiChevronDown, FiChevronUp, FiCpu, FiServer, FiCopy, FiEye, FiEyeOff, FiKey } from 'react-icons/fi';
-import { FaGoogle, FaGithub, FaAws, FaMicrosoft, FaApple, FaJira, FaRobot, FaBrain } from 'react-icons/fa';
+import { FaGoogle, FaGithub, FaAws, FaMicrosoft, FaApple, FaJira, FaRobot, FaBrain, FaWrench, FaMicrochip, FaCube, FaCog, FaIndustry } from 'react-icons/fa';
 import { SiNotion, SiLinear, SiOpenai, SiGooglegemini } from 'react-icons/si';
 import { useAuth } from '../contexts/AuthContext';
 import accountService from '../services/accountService';
@@ -26,7 +26,7 @@ interface ProviderConfig {
   bgColor: string;
   description: string;
   scopes: string[];
-  category: 'project_management' | 'file_management' | 'development' | 'cloud' | 'ai';
+  category: 'project_management' | 'file_management' | 'development' | 'cloud' | 'ai' | 'procurement';
 }
 
 const PROVIDERS: ProviderConfig[] = [
@@ -109,6 +109,86 @@ const PROVIDERS: ProviderConfig[] = [
     description: 'Sync Linear issues and projects',
     scopes: ['read', 'write', 'admin'],
     category: 'project_management'
+  },
+  {
+    id: 'mcmaster',
+    name: 'McMaster-Carr',
+    icon: FaWrench,
+    color: 'text-red-600',
+    bgColor: 'bg-red-50',
+    description: 'Access your McMaster-Carr account for automated parts ordering',
+    scopes: ['account', 'cart', 'orders', 'pricing'],
+    category: 'procurement'
+  },
+  {
+    id: 'digikey',
+    name: 'DigiKey',
+    icon: FaMicrochip,
+    color: 'text-red-500',
+    bgColor: 'bg-red-50',
+    description: 'Electronic components ordering and inventory management',
+    scopes: ['account', 'cart', 'orders', 'pricing', 'inventory'],
+    category: 'procurement'
+  },
+  {
+    id: 'mouser',
+    name: 'Mouser Electronics',
+    icon: FaMicrochip,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
+    description: 'Electronic components and semiconductors procurement',
+    scopes: ['account', 'cart', 'orders', 'pricing', 'inventory'],
+    category: 'procurement'
+  },
+  {
+    id: 'oshcut',
+    name: 'OSHCut',
+    icon: FaCog,
+    color: 'text-green-600',
+    bgColor: 'bg-green-50',
+    description: 'Custom PCB manufacturing and assembly services',
+    scopes: ['account', 'projects', 'quotes', 'orders', 'files'],
+    category: 'procurement'
+  },
+  {
+    id: 'jlcpcb',
+    name: 'JLCPCB',
+    icon: FaCube,
+    color: 'text-green-700',
+    bgColor: 'bg-green-50',
+    description: 'PCB manufacturing, SMT assembly, and 3D printing services',
+    scopes: ['account', 'projects', 'quotes', 'orders', 'files'],
+    category: 'procurement'
+  },
+  {
+    id: 'pcbway',
+    name: 'PCBWay',
+    icon: FaCube,
+    color: 'text-blue-700',
+    bgColor: 'bg-blue-50',
+    description: 'PCB fabrication, assembly, and CNC machining services',
+    scopes: ['account', 'projects', 'quotes', 'orders', 'files'],
+    category: 'procurement'
+  },
+  {
+    id: 'xometry',
+    name: 'Xometry',
+    icon: FaIndustry,
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50',
+    description: 'On-demand manufacturing: CNC machining, 3D printing, sheet metal',
+    scopes: ['account', 'projects', 'quotes', 'orders', 'files'],
+    category: 'procurement'
+  },
+  {
+    id: 'protolabs',
+    name: 'Protolabs',
+    icon: FaIndustry,
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-50',
+    description: 'Digital manufacturing: injection molding, CNC, 3D printing',
+    scopes: ['account', 'projects', 'quotes', 'orders', 'files'],
+    category: 'procurement'
   }
 ];
 
@@ -307,6 +387,8 @@ const SettingsPage: React.FC = () => {
         return 'Development Tools';
       case 'cloud':
         return 'Cloud Services';
+      case 'procurement':
+        return 'Procurement & Ordering';
       default:
         return category;
     }
@@ -463,6 +545,7 @@ const SettingsPage: React.FC = () => {
                 {renderCategorySection('file_management', PROVIDERS)}
                 {renderCategorySection('development', PROVIDERS)}
                 {renderCategorySection('cloud', PROVIDERS)}
+                {renderCategorySection('procurement', PROVIDERS)}
               </div>
             )}
           </div>
