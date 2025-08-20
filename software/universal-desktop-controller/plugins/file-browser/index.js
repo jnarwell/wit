@@ -414,9 +414,21 @@ class FileBrowserPlugin extends WITPlugin {
         
         this.validatePath(dirPath);
         
-        await fs.mkdir(dirPath, { recursive });
-        
-        return { success: true, path: dirPath };
+        try {
+            await fs.mkdir(dirPath, { recursive });
+            return { success: true, path: dirPath };
+        } catch (error) {
+            // Provide more user-friendly error messages
+            if (error.code === 'EACCES') {
+                throw new Error(`Permission denied: Cannot create directory at ${dirPath}`);
+            } else if (error.code === 'EEXIST') {
+                throw new Error(`Directory already exists: ${dirPath}`);
+            } else if (error.code === 'ENOENT') {
+                throw new Error(`Parent directory does not exist: ${path.dirname(dirPath)}`);
+            } else {
+                throw error;
+            }
+        }
     }
     
     async deleteItem(payload) {

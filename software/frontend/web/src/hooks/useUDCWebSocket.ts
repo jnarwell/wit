@@ -159,10 +159,15 @@ export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
                 const { resolve, reject } = pendingCommandsRef.current.get(data.messageId)!;
                 pendingCommandsRef.current.delete(data.messageId);
                 
-                if (data.success) {
-                  resolve(data);
+                // Check if there's an error property
+                if (data.error) {
+                  reject(new Error(data.error));
+                } else if (data.result !== undefined) {
+                  // Return the result directly
+                  resolve(data.result);
                 } else {
-                  reject(new Error(data.error || 'Command failed'));
+                  // Fallback to old behavior for compatibility
+                  resolve(data);
                 }
               }
               

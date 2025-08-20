@@ -40,40 +40,54 @@ class OpenSCADPlugin extends WITPlugin {
     }
     
     async initialize() {
-        await super.initialize();
-        
-        this.log('OpenSCAD plugin initializing...');
-        
-        // Ensure projects directory exists
         try {
-            await fs.mkdir(this.expandPath(this.config.projectsPath), { recursive: true });
+            await super.initialize();
             
-            // Create subdirectories for organization
-            const subdirs = ['models', 'libraries', 'exports', 'templates'];
-            for (const subdir of subdirs) {
-                await fs.mkdir(path.join(this.expandPath(this.config.projectsPath), subdir), { recursive: true });
+            this.log('OpenSCAD plugin initializing...');
+            
+            // Ensure projects directory exists
+            try {
+                const projectsPath = this.expandPath(this.config.projectsPath);
+                await fs.mkdir(projectsPath, { recursive: true });
+                
+                // Create subdirectories for organization
+                const subdirs = ['models', 'libraries', 'exports', 'templates'];
+                for (const subdir of subdirs) {
+                    await fs.mkdir(path.join(projectsPath, subdir), { recursive: true });
+                }
+            } catch (error) {
+                this.log('Warning: Could not create project directories:', error.message);
             }
+            
+            // Detect OpenSCAD installation
+            await this.detectOpenSCAD();
+            
+            if (this.openscadPath) {
+                this.log(`OpenSCAD found at: ${this.openscadPath}`);
+                this.log(`OpenSCAD version: ${this.openscadVersion || 'unknown'}`);
+                
+                // Load recent projects
+                try {
+                    await this.loadRecentProjects();
+                } catch (error) {
+                    this.log('Warning: Could not load recent projects:', error.message);
+                }
+                
+                // Create example templates if they don't exist
+                try {
+                    await this.createExampleTemplates();
+                } catch (error) {
+                    this.log('Warning: Could not create example templates:', error.message);
+                }
+            } else {
+                this.log('OpenSCAD not found. Please install OpenSCAD from https://openscad.org/downloads.html');
+            }
+            
+            this.log('OpenSCAD plugin initialized');
         } catch (error) {
-            this.log('Warning: Could not create project directories:', error.message);
+            this.log('Error during initialization:', error.message);
+            // Don't throw - allow plugin to load even with errors
         }
-        
-        // Detect OpenSCAD installation
-        await this.detectOpenSCAD();
-        
-        if (this.openscadPath) {
-            this.log(`OpenSCAD found at: ${this.openscadPath}`);
-            this.log(`OpenSCAD version: ${this.openscadVersion || 'unknown'}`);
-            
-            // Load recent projects
-            await this.loadRecentProjects();
-            
-            // Create example templates if they don't exist
-            await this.createExampleTemplates();
-        } else {
-            this.log('OpenSCAD not found. Please install OpenSCAD from https://openscad.org/downloads.html');
-        }
-        
-        this.log('OpenSCAD plugin initialized');
     }
     
     async start() {
@@ -113,53 +127,61 @@ class OpenSCADPlugin extends WITPlugin {
     }
     
     async detectOpenSCAD() {
-        this.log('Detecting OpenSCAD installation...');
-        
-        // Check configured path first
-        if (this.config.openscadPath && this.config.openscadPath !== 'auto') {
-            try {
-                await fs.access(this.config.openscadPath);
-                this.openscadPath = this.config.openscadPath;
-                this.openscadVersion = await this.getOpenSCADVersion(this.openscadPath);
-                return;
-            } catch (error) {
-                this.log('Configured OpenSCAD path not found:', this.config.openscadPath);
-            }
-        }
-        
-        // Auto-detect OpenSCAD
-        const platform = os.platform();
-        const manifest = require('./manifest.json');
-        const possiblePaths = manifest.requirements.openscad.paths[platform] || [];
-        
-        for (const testPath of possiblePaths) {
-            try {
-                const expandedPath = testPath.replace('%LOCALAPPDATA%', process.env.LOCALAPPDATA || '');
-                await fs.access(expandedPath);
-                this.openscadPath = expandedPath;
-                this.openscadVersion = await this.getOpenSCADVersion(expandedPath);
-                
-                // Save detected path
-                this.config.openscadPath = expandedPath;
-                await this.saveData('config.json', this.config);
-                break;
-            } catch (error) {
-                // Continue searching
-            }
-        }
-        
-        // Try command line
-        if (!this.openscadPath) {
-            try {
-                const { stdout } = await execAsync('which openscad || where openscad');
-                const cmdPath = stdout.trim().split('\n')[0];
-                if (cmdPath) {
-                    this.openscadPath = cmdPath;
-                    this.openscadVersion = await this.getOpenSCADVersion(cmdPath);
+        try {
+            this.log('Detecting OpenSCAD installation...');
+            
+            // Check configured path first
+            if (this.config.openscadPath && this.config.openscadPath !== 'auto') {
+                try {
+                    await fs.access(this.config.openscadPath);
+                    this.openscadPath = this.config.openscadPath;
+                    this.openscadVersion = await this.getOpenSCADVersion(this.openscadPath);
+                    return;
+                } catch (error) {
+                    this.log('Configured OpenSCAD path not found:', this.config.openscadPath);
                 }
-            } catch (error) {
-                // Command not found
             }
+            
+            // Auto-detect OpenSCAD
+            const platform = os.platform();
+            const manifest = require('./manifest.json');
+            const possiblePaths = manifest.requirements.openscad.paths[platform] || [];
+            
+            for (const testPath of possiblePaths) {
+                try {
+                    const expandedPath = testPath.replace('%LOCALAPPDATA%', process.env.LOCALAPPDATA || '');
+                    await fs.access(expandedPath);
+                    this.openscadPath = expandedPath;
+                    this.openscadVersion = await this.getOpenSCADVersion(expandedPath);
+                    
+                    // Save detected path
+                    this.config.openscadPath = expandedPath;
+                    try {
+                        await this.saveData('config.json', this.config);
+                    } catch (error) {
+                        this.log('Warning: Could not save config:', error.message);
+                    }
+                    break;
+                } catch (error) {
+                    // Continue searching
+                }
+            }
+            
+            // Try command line
+            if (!this.openscadPath) {
+                try {
+                    const { stdout } = await execAsync('which openscad || where openscad');
+                    const cmdPath = stdout.trim().split('\n')[0];
+                    if (cmdPath) {
+                        this.openscadPath = cmdPath;
+                        this.openscadVersion = await this.getOpenSCADVersion(cmdPath);
+                    }
+                } catch (error) {
+                    // Command not found
+                }
+            }
+        } catch (error) {
+            this.log('Error detecting OpenSCAD:', error.message);
         }
     }
     
@@ -241,17 +263,27 @@ class OpenSCADPlugin extends WITPlugin {
     }
     
     async getStatus() {
-        return {
-            ...super.getStatus(),
-            installed: !!this.openscadPath,
-            path: this.openscadPath,
-            version: this.openscadVersion,
-            projectsPath: this.config.projectsPath,
-            activeProcesses: this.activeProcesses.size,
-            watchedFiles: this.watchedFiles.size,
-            recentProjects: this.recentProjects.slice(0, 5),
-            supportedFormats: this.config.exportFormats
-        };
+        try {
+            const baseStatus = super.getStatus();
+            return {
+                ...baseStatus,
+                installed: !!this.openscadPath,
+                path: this.openscadPath || null,
+                version: this.openscadVersion || 'unknown',
+                projectsPath: this.config.projectsPath,
+                activeProcesses: this.activeProcesses.size,
+                watchedFiles: this.watchedFiles.size,
+                recentProjects: this.recentProjects.slice(0, 5),
+                supportedFormats: this.config.exportFormats || []
+            };
+        } catch (error) {
+            this.log('Error getting status:', error);
+            return {
+                initialized: false,
+                started: false,
+                error: error.message
+            };
+        }
     }
     
     async launchOpenSCAD(payload = {}) {

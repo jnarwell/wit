@@ -82,7 +82,9 @@ const FileBrowserPage: React.FC<FileBrowserPageProps> = ({ onNavigateBack }) => 
   // Load root paths
   const loadRootPaths = useCallback(async () => {
     try {
+      console.log('[FileBrowser] Loading root paths...');
       const result = await sendCommand('file-browser', 'getRoots');
+      console.log('[FileBrowser] getRoots result:', result);
       if (result && Array.isArray(result)) {
         setRootPaths(result);
         // Set initial path to first root if available
@@ -90,6 +92,9 @@ const FileBrowserPage: React.FC<FileBrowserPageProps> = ({ onNavigateBack }) => 
           setCurrentPath(result[0].path);
           loadDirectory(result[0].path);
         }
+      } else {
+        console.error('[FileBrowser] Invalid getRoots result:', result);
+        setError('Invalid response from file browser');
       }
     } catch (error) {
       console.error('[FileBrowser] Error loading root paths:', error);
@@ -104,14 +109,19 @@ const FileBrowserPage: React.FC<FileBrowserPageProps> = ({ onNavigateBack }) => 
     setSelectedItems(new Set());
     
     try {
+      console.log('[FileBrowser] Loading directory:', path);
       const result = await sendCommand('file-browser', 'listDirectory', {
         path,
         showHidden
       });
+      console.log('[FileBrowser] listDirectory result:', result);
       
       if (result && Array.isArray(result)) {
         setItems(result);
         setCurrentPath(path);
+      } else {
+        console.error('[FileBrowser] Invalid listDirectory result:', result);
+        setError('Invalid response from file browser');
       }
     } catch (error) {
       console.error('[FileBrowser] Error loading directory:', error);
@@ -165,10 +175,15 @@ const FileBrowserPage: React.FC<FileBrowserPageProps> = ({ onNavigateBack }) => 
     if (!newFolderName.trim()) return;
     
     try {
-      const folderPath = `${currentPath}/${newFolderName}`;
-      await sendCommand('file-browser', 'createDirectory', {
+      const folderPath = currentPath === '/' 
+        ? `/${newFolderName}` 
+        : `${currentPath}/${newFolderName}`;
+      console.log('[FileBrowser] Creating folder:', folderPath);
+      
+      const result = await sendCommand('file-browser', 'createDirectory', {
         path: folderPath
       });
+      console.log('[FileBrowser] createDirectory result:', result);
       
       setShowNewFolderDialog(false);
       setNewFolderName('');
@@ -176,6 +191,7 @@ const FileBrowserPage: React.FC<FileBrowserPageProps> = ({ onNavigateBack }) => 
     } catch (error) {
       console.error('[FileBrowser] Error creating folder:', error);
       setError(`Failed to create folder: ${error}`);
+      // Don't close dialog on error
     }
   }, [sendCommand, currentPath, newFolderName, loadDirectory]);
 

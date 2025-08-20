@@ -21,6 +21,20 @@ export interface LinkAccountResponse {
 
 class AccountService {
   private getAuthHeaders() {
+    // Try to get token from wit-auth-tokens first (new auth system)
+    const storedTokens = localStorage.getItem('wit-auth-tokens') || sessionStorage.getItem('wit-auth-tokens');
+    if (storedTokens) {
+      try {
+        const tokens = JSON.parse(storedTokens);
+        if (tokens.access_token) {
+          return { Authorization: `Bearer ${tokens.access_token}` };
+        }
+      } catch (error) {
+        console.error('Failed to parse stored tokens:', error);
+      }
+    }
+    
+    // Fallback to direct access_token (old system)
     const token = localStorage.getItem('access_token');
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
