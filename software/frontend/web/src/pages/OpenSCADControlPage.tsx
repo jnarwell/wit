@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaCube, FaFolder, FaPlus, FaDownload, FaCog, FaPlay, FaEye, FaSave, FaCode } from 'react-icons/fa';
+import { FaCube, FaFolder, FaPlus, FaDownload, FaCog, FaPlay, FaEye, FaSave, FaCode, FaArrowLeft } from 'react-icons/fa';
 import { useUDCWebSocket } from '../hooks/useUDCWebSocket';
 import './OpenSCADControlPage.css';
 
@@ -23,7 +23,11 @@ interface OpenSCADVariable {
   description?: string;
 }
 
-const OpenSCADControlPage: React.FC = () => {
+interface OpenSCADControlPageProps {
+  onClose?: () => void;
+}
+
+const OpenSCADControlPage: React.FC<OpenSCADControlPageProps> = ({ onClose }) => {
   const { sendCommand, lastMessage } = useUDCWebSocket();
   const [status, setStatus] = useState<any>(null);
   const [projects, setProjects] = useState<OpenSCADProject[]>([]);
@@ -189,6 +193,11 @@ const OpenSCADControlPage: React.FC = () => {
     <div className="openscad-control-page">
       <div className="page-header">
         <div className="header-info">
+          {onClose && (
+            <button onClick={onClose} className="back-button">
+              <FaArrowLeft />
+            </button>
+          )}
           <FaCube className="page-icon" />
           <div>
             <h1>OpenSCAD Control</h1>

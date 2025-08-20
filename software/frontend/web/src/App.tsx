@@ -29,6 +29,7 @@ import MATLABControlPage from './pages/MATLABControlPage';
 import KiCadControlPage from './pages/KiCadControlPage';
 import LabVIEWControlPage from './pages/LabVIEWControlPage';
 import NodeREDControlPage from './pages/NodeREDControlPage';
+import OpenSCADControlPage from './pages/OpenSCADControlPage';
 import FileBrowserPage from './pages/FileBrowserPage';
 import FunctionPage from './components/FunctionPage';
 
@@ -203,6 +204,8 @@ function AppContent() {
             <LabVIEWControlPage onClose={handleDetailClose} />
           ) : detailPageState.id === 'node-red' ? (
             <NodeREDControlPage onClose={handleDetailClose} />
+          ) : detailPageState.id === 'openscad' ? (
+            <OpenSCADControlPage onClose={handleDetailClose} />
           ) : detailPageState.id === 'file-browser' ? (
             <FileBrowserPage onNavigateBack={handleDetailClose} />
           ) : (
