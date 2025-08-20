@@ -120,6 +120,7 @@ class PluginManager {
             
             this.pluginStates.set(pluginId, 'started');
             plugin.state = 'started';
+            plugin.instance.state = 'started';
             
             logger.info(`Started plugin: ${pluginId}`);
             this.eventBus.emit('plugin:started', { pluginId });
@@ -150,6 +151,7 @@ class PluginManager {
             
             this.pluginStates.set(pluginId, 'stopped');
             plugin.state = 'stopped';
+            plugin.instance.state = 'stopped';
             
             logger.info(`Stopped plugin: ${pluginId}`);
             this.eventBus.emit('plugin:stopped', { pluginId });
@@ -358,7 +360,7 @@ class PluginManager {
         }
         
         // Try to load saved configuration
-        const configPath = path.join(plugin.pluginPath, 'config.json');
+        const configPath = path.join(plugin.path, 'config.json');
         try {
             const configData = await fs.readFile(configPath, 'utf8');
             const savedConfig = JSON.parse(configData);
@@ -388,7 +390,7 @@ class PluginManager {
         }
         
         // Save configuration to plugin directory
-        const configPath = path.join(plugin.pluginPath, 'config.json');
+        const configPath = path.join(plugin.path, 'config.json');
         await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf8');
         
         // If plugin is running, notify it of configuration change

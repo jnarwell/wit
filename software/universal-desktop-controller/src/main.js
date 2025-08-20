@@ -474,6 +474,28 @@ class UniversalDesktopController {
                 event.reply('plugin-command-result', { success: false, error: error.message });
             }
         });
+
+        // Create custom plugin
+        ipcMain.on('create-plugin', async (event, pluginInfo) => {
+            try {
+                const pluginPath = await this.pluginManager.createPlugin(pluginInfo);
+                
+                // Load the newly created plugin
+                await this.pluginManager.loadPlugin(pluginPath);
+                
+                event.reply('plugin-created', { success: true, pluginId: pluginInfo.id, path: pluginPath });
+                
+                // Refresh plugin list
+                setTimeout(() => {
+                    const plugins = this.pluginManager.getLoadedPlugins();
+                    event.reply('plugins', plugins);
+                }, 100);
+                
+            } catch (error) {
+                logger.error('Failed to create plugin:', error);
+                event.reply('plugin-created', { success: false, error: error.message });
+            }
+        });
     }
     
     async quit() {

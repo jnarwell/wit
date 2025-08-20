@@ -395,6 +395,60 @@
             <button class="secondary" onclick="resetConfig()">Reset to Defaults</button>
         </div>
     </div>
+
+    <!-- Plugin Configuration Modal -->
+    <div id="plugin-config-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="config-modal-title">Configure Plugin</h2>
+                <button class="close-btn" onclick="closeConfigModal()">&times;</button>
+            </div>
+            <form id="plugin-config-form" class="config-form">
+                <!-- Configuration fields will be generated dynamically -->
+            </form>
+            <div class="modal-actions">
+                <button type="button" class="secondary" onclick="closeConfigModal()">Cancel</button>
+                <button type="button" onclick="savePluginConfiguration()">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Plugin Modal -->
+    <div id="create-plugin-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create Custom Plugin</h2>
+                <button class="close-btn" onclick="closeCreatePluginModal()">&times;</button>
+            </div>
+            <form id="create-plugin-form" class="config-form">
+                <div class="config-field">
+                    <label for="plugin-id">Plugin ID</label>
+                    <input type="text" id="plugin-id" placeholder="my-custom-plugin" pattern="^[a-z0-9-]+$" required>
+                    <small>Lowercase letters, numbers, and hyphens only</small>
+                </div>
+                <div class="config-field">
+                    <label for="plugin-name">Plugin Name</label>
+                    <input type="text" id="plugin-name" placeholder="My Custom Plugin" required>
+                </div>
+                <div class="config-field">
+                    <label for="plugin-description">Description</label>
+                    <textarea id="plugin-description" placeholder="What does your plugin do?"></textarea>
+                </div>
+                <div class="config-field">
+                    <label for="plugin-template">Template Type</label>
+                    <select id="plugin-template" required>
+                        <option value="basic">Basic Plugin - Simple plugin with basic functionality</option>
+                        <option value="application">Application Plugin - Launch and control external applications</option>
+                        <option value="service">Service Plugin - Background service with HTTP interface</option>
+                    </select>
+                </div>
+            </form>
+            <div class="modal-actions">
+                <button type="button" class="secondary" onclick="closeCreatePluginModal()">Cancel</button>
+                <button type="button" onclick="createCustomPlugin()">Create Plugin</button>
+            </div>
+        </div>
+    </div>
     
     <script>
         const { ipcRenderer } = require('electron');
@@ -551,6 +605,34 @@
                 alert(`Failed to stop plugin ${data.pluginId}: ${data.error}`);
             }
         });
+
+        // Handle plugin configuration responses
+        ipcRenderer.on('plugin-configuration', (event, data) => {
+            if (data.success) {
+                showPluginConfigModal(data.pluginId, data.config);
+            } else {
+                alert(`Failed to load configuration for ${data.pluginId}: ${data.error}`);
+            }
+        });
+
+        ipcRenderer.on('plugin-config-saved', (event, data) => {
+            if (data.success) {
+                closeConfigModal();
+                alert('Configuration saved successfully!');
+            } else {
+                alert(`Failed to save configuration: ${data.error}`);
+            }
+        });
+
+        // Handle plugin creation responses
+        ipcRenderer.on('plugin-created', (event, data) => {
+            if (data.success) {
+                alert(`Plugin "${data.pluginId}" created successfully!\nLocation: ${data.path}\n\nYou can now start and configure your new plugin.`);
+                // Plugin list will be refreshed automatically via the 'plugins' event
+            } else {
+                alert(`Failed to create plugin: ${data.error}`);
+            }
+        });
         
         // Plugin management
         function startPlugin(pluginId) {
@@ -622,6 +704,168 @@
                 ipcRenderer.send('reset-config');
             }
         }
+
+        // Plugin configuration modal functions
+        let currentConfigPluginId = null;
+
+        function showPluginConfigModal(pluginId, config) {
+            currentConfigPluginId = pluginId;
+            document.getElementById('config-modal-title').textContent = `Configure ${pluginId}`;
+            
+            const form = document.getElementById('plugin-config-form');
+            form.innerHTML = '';
+
+            // Generate form fields based on schema
+            const schema = config.schema;
+            const values = config.values || {};
+
+            for (const [key, fieldSchema] of Object.entries(schema)) {
+                const field = document.createElement('div');
+                field.className = 'config-field';
+
+                const label = document.createElement('label');
+                label.textContent = fieldSchema.title || key;
+                if (fieldSchema.description) {
+                    label.title = fieldSchema.description;
+                }
+
+                let input;
+                const currentValue = values[key] !== undefined ? values[key] : fieldSchema.default;
+
+                switch (fieldSchema.type) {
+                    case 'boolean':
+                        input = document.createElement('input');
+                        input.type = 'checkbox';
+                        input.checked = currentValue || false;
+                        break;
+                    case 'number':
+                        input = document.createElement('input');
+                        input.type = 'number';
+                        input.value = currentValue || '';
+                        if (fieldSchema.min !== undefined) input.min = fieldSchema.min;
+                        if (fieldSchema.max !== undefined) input.max = fieldSchema.max;
+                        break;
+                    case 'string':
+                    default:
+                        if (fieldSchema.enum) {
+                            input = document.createElement('select');
+                            fieldSchema.enum.forEach(option => {
+                                const optionEl = document.createElement('option');
+                                optionEl.value = option;
+                                optionEl.textContent = option;
+                                optionEl.selected = option === currentValue;
+                                input.appendChild(optionEl);
+                            });
+                        } else if (fieldSchema.multiline) {
+                            input = document.createElement('textarea');
+                            input.value = currentValue || '';
+                        } else {
+                            input = document.createElement('input');
+                            input.type = 'text';
+                            input.value = currentValue || '';
+                        }
+                        break;
+                }
+
+                input.name = key;
+                input.id = `config-${key}`;
+                
+                field.appendChild(label);
+                field.appendChild(input);
+                
+                if (fieldSchema.description) {
+                    const help = document.createElement('small');
+                    help.textContent = fieldSchema.description;
+                    help.style.color = '#666';
+                    field.appendChild(help);
+                }
+
+                form.appendChild(field);
+            }
+
+            document.getElementById('plugin-config-modal').classList.add('show');
+        }
+
+        function closeConfigModal() {
+            document.getElementById('plugin-config-modal').classList.remove('show');
+            currentConfigPluginId = null;
+        }
+
+        function savePluginConfiguration() {
+            if (!currentConfigPluginId) return;
+
+            const form = document.getElementById('plugin-config-form');
+            const formData = new FormData(form);
+            const config = {};
+
+            for (const [key, value] of formData.entries()) {
+                const input = form.querySelector(`[name="${key}"]`);
+                if (input.type === 'checkbox') {
+                    config[key] = input.checked;
+                } else if (input.type === 'number') {
+                    config[key] = parseFloat(value) || 0;
+                } else {
+                    config[key] = value;
+                }
+            }
+
+            // Handle checkboxes that aren't checked (FormData doesn't include them)
+            const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                if (!formData.has(checkbox.name)) {
+                    config[checkbox.name] = false;
+                }
+            });
+
+            ipcRenderer.send('save-plugin-config', {
+                pluginId: currentConfigPluginId,
+                config: config
+            });
+        }
+
+        // Create plugin modal functions
+        function showCreatePluginModal() {
+            document.getElementById('create-plugin-modal').classList.add('show');
+        }
+
+        function closeCreatePluginModal() {
+            document.getElementById('create-plugin-modal').classList.remove('show');
+            document.getElementById('create-plugin-form').reset();
+        }
+
+        function createCustomPlugin() {
+            const form = document.getElementById('create-plugin-form');
+            const pluginId = document.getElementById('plugin-id').value.trim();
+            const pluginName = document.getElementById('plugin-name').value.trim();
+            const description = document.getElementById('plugin-description').value.trim();
+            const template = document.getElementById('plugin-template').value;
+
+            if (!pluginId || !pluginName || !template) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            if (!/^[a-z0-9-]+$/.test(pluginId)) {
+                alert('Plugin ID must contain only lowercase letters, numbers, and hyphens');
+                return;
+            }
+
+            ipcRenderer.send('create-plugin', {
+                id: pluginId,
+                name: pluginName,
+                description: description,
+                template: template
+            });
+
+            closeCreatePluginModal();
+        }
+
+        // Click outside modal to close
+        window.addEventListener('click', (event) => {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('show');
+            }
+        });
     </script>
 </body>
 </html>
