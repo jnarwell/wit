@@ -19,6 +19,28 @@
   gap: 20px;
 }
 
+.back-button {
+  background-color: transparent;
+  border: 1px solid #555;
+  color: #999;
+  padding: 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.3s;
+  min-width: 48px;
+  height: 48px;
+}
+
+.back-button:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #e0e0e0;
+  border-color: #666;
+}
+
 .header-info .page-icon {
   font-size: 48px;
   color: #4CAF50;

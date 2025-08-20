@@ -14,6 +14,10 @@ import logging
 router = APIRouter(tags=["enhanced_accounts"])
 logger = logging.getLogger(__name__)
 
+# Import the shared connected accounts store from simple accounts API
+# This allows both APIs to share the same in-memory storage
+from .accounts_api_simple import connected_accounts_store
+
 # Enhanced provider configurations
 PROVIDER_CONFIGS = {
     "github": {
@@ -309,12 +313,36 @@ async def connect_procurement_account(
         if "username" not in credentials or "password" not in credentials:
             raise HTTPException(status_code=400, detail="Username and password required")
     
-    # For dev server, just return success without storing in database
-    # In production, this would encrypt and store credentials
+    # For dev server, store in memory and return success
+    # In production, this would encrypt and store credentials in database
+    account_data = {
+        "id": f"dev-{provider}-account",
+        "provider": provider,
+        "provider_user_id": credentials.get("username", credentials.get("api_key", "")[:10] + "..."),
+        "email": credentials.get("email"),
+        "name": provider_config["name"],
+        "connected_at": datetime.now(timezone.utc).isoformat(),
+        "last_sync": None,
+        "scopes": provider_config["features"],
+        "status": "connected"
+    }
+    
+    # Store in our in-memory store (using "admin" as default username for dev)
+    username = "admin"  # Default dev user
+    if username not in connected_accounts_store:
+        connected_accounts_store[username] = []
+    
+    # Check if account already exists, if so update it
+    existing_account = next((acc for acc in connected_accounts_store[username] if acc["provider"] == provider), None)
+    if existing_account:
+        existing_account.update(account_data)
+    else:
+        connected_accounts_store[username].append(account_data)
+    
     logger.info(f"Successfully connected {provider} account for development")
     
     return {
-        "id": f"dev-{provider}-account",
+        "id": account_data["id"],
         "provider": provider,
         "name": provider_config["name"],
         "status": "connected"
@@ -402,12 +430,36 @@ async def connect_ai_provider(
     
     provider_config = AI_PROVIDERS[provider]
     
-    # For dev server, just return success without storing in database
-    # In production, this would encrypt and store the API key
+    # For dev server, store in memory and return success
+    # In production, this would encrypt and store the API key in database
+    account_data = {
+        "id": f"dev-{provider}-ai-account",
+        "provider": provider,
+        "provider_user_id": f"{provider}_user",
+        "email": None,
+        "name": provider_config["name"],
+        "connected_at": datetime.now(timezone.utc).isoformat(),
+        "last_sync": None,
+        "scopes": provider_config["features"],
+        "status": "connected"
+    }
+    
+    # Store in our in-memory store (using "admin" as default username for dev)
+    username = "admin"  # Default dev user
+    if username not in connected_accounts_store:
+        connected_accounts_store[username] = []
+    
+    # Check if account already exists, if so update it
+    existing_account = next((acc for acc in connected_accounts_store[username] if acc["provider"] == provider), None)
+    if existing_account:
+        existing_account.update(account_data)
+    else:
+        connected_accounts_store[username].append(account_data)
+    
     logger.info(f"Successfully connected {provider} AI provider for development")
     
     return {
-        "id": f"dev-{provider}-ai-account",
+        "id": account_data["id"],
         "provider": provider,
         "name": provider_config["name"],
         "status": "connected"

@@ -17,6 +17,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 router = APIRouter(prefix="/api/v1/accounts", tags=["accounts"])
 
+# In-memory storage for connected accounts (dev mode only)
+connected_accounts_store = {}
+
 class User(BaseModel):
     username: str
     email: Optional[str] = None
@@ -45,10 +48,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
 @router.get("/linked")
 async def get_linked_accounts(current_user: User = Depends(get_current_user)):
-    """Get all linked accounts for the current user - returns empty list in dev mode"""
-    # In development, just return an empty list
-    # This prevents the 401 errors that were causing login redirects
-    return []
+    """Get all linked accounts for the current user"""
+    # Return accounts from our in-memory store
+    user_accounts = connected_accounts_store.get(current_user.username, [])
+    return user_accounts
 
 @router.post("/link/{provider}")
 async def link_account(provider: str, current_user: User = Depends(get_current_user)):
