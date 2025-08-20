@@ -34,6 +34,9 @@ class SecurityManager {
         
         // Load saved permissions
         await this.loadPermissions();
+        
+        // Auto-trust built-in plugins from W.I.T.
+        this.autoTrustBuiltinPlugins();
     }
     
     /**
@@ -225,6 +228,33 @@ class SecurityManager {
         }
     }
     
+    /**
+     * Auto-trust built-in W.I.T. plugins
+     */
+    autoTrustBuiltinPlugins() {
+        const builtinPlugins = [
+            'arduino-ide',
+            'unified-slicer', 
+            'matlab',
+            'kicad',
+            'labview',
+            'node-red',
+            'openscad',
+            'vscode',
+            'docker',
+            'blender',
+            'file-browser'
+        ];
+        
+        for (const pluginId of builtinPlugins) {
+            if (!this.blockedPlugins.has(pluginId)) {
+                this.trustedPlugins.add(pluginId);
+            }
+        }
+        
+        logger.info(`Auto-trusted ${builtinPlugins.length} built-in plugins`);
+    }
+
     /**
      * Get security status
      */
