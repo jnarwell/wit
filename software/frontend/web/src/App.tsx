@@ -31,6 +31,7 @@ import LabVIEWControlPage from './pages/LabVIEWControlPage';
 import NodeREDControlPage from './pages/NodeREDControlPage';
 import OpenSCADControlPage from './pages/OpenSCADControlPage';
 import VSCodeControlPage from './pages/VSCodeControlPage';
+import DockerControlPage from './pages/DockerControlPage';
 import BlenderControlPage from './pages/BlenderControlPage';
 import FileBrowserPage from './pages/FileBrowserPage';
 import FunctionPage from './components/FunctionPage';
@@ -210,6 +211,8 @@ function AppContent() {
             <OpenSCADControlPage onClose={handleDetailClose} />
           ) : detailPageState.id === 'vscode' ? (
             <VSCodeControlPage onClose={handleDetailClose} />
+          ) : detailPageState.id === 'docker' ? (
+            <DockerControlPage onClose={handleDetailClose} />
           ) : detailPageState.id === 'blender' ? (
             <BlenderControlPage onClose={handleDetailClose} />
           ) : detailPageState.id === 'file-browser' ? (

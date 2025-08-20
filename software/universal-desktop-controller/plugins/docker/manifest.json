@@ -1,0 +1,88 @@
+{
+  "id": "docker",
+  "name": "Docker Desktop",
+  "version": "1.0.0",
+  "description": "Docker Desktop integration for container management, image building, and development workflows",
+  "author": "W.I.T.",
+  "main": "index.js",
+  "permissions": [
+    "fileSystem",
+    "processManagement",
+    "shell",
+    "network"
+  ],
+  "supportedPlatforms": ["win32", "darwin", "linux"],
+  "requirements": {
+    "docker": {
+      "minVersion": "20.0.0",
+      "paths": {
+        "win32": [
+          "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe",
+          "C:\\Program Files (x86)\\Docker\\Docker\\Docker Desktop.exe",
+          "%LOCALAPPDATA%\\Docker\\Docker\\Docker Desktop.exe",
+          "%PROGRAMFILES%\\Docker\\Docker\\Docker Desktop.exe"
+        ],
+        "darwin": [
+          "/Applications/Docker.app/Contents/MacOS/Docker Desktop",
+          "/Applications/Docker Desktop.app/Contents/MacOS/Docker Desktop",
+          "$HOME/Applications/Docker.app/Contents/MacOS/Docker Desktop",
+          "/usr/local/bin/docker",
+          "/opt/homebrew/bin/docker"
+        ],
+        "linux": [
+          "/usr/bin/docker",
+          "/usr/local/bin/docker",
+          "/snap/bin/docker",
+          "/opt/docker/bin/docker",
+          "$HOME/.local/bin/docker"
+        ]
+      }
+    }
+  },
+  "defaultConfig": {
+    "autoStartDaemon": false,
+    "enableBuildkit": true,
+    "defaultRegistry": "docker.io",
+    "composeProfiles": [],
+    "resourceLimits": {
+      "cpus": 4,
+      "memory": "8GB",
+      "swap": "1GB"
+    },
+    "networkSettings": {
+      "enableIPv6": false,
+      "dnsServers": []
+    }
+  },
+  "commands": {
+    "launch": "Launch Docker Desktop",
+    "getStatus": "Get Docker daemon status",
+    "listContainers": "List all containers",
+    "listImages": "List all images",
+    "createContainer": "Create a new container",
+    "startContainer": "Start a container",
+    "stopContainer": "Stop a container",
+    "restartContainer": "Restart a container",
+    "removeContainer": "Remove a container",
+    "buildImage": "Build image from Dockerfile",
+    "pullImage": "Pull image from registry",
+    "pushImage": "Push image to registry",
+    "removeImage": "Remove an image",
+    "getContainerLogs": "Get container logs",
+    "execCommand": "Execute command in container",
+    "inspectContainer": "Get detailed container information",
+    "inspectImage": "Get detailed image information",
+    "getSystemInfo": "Get Docker system information",
+    "pruneSystem": "Clean up unused Docker resources",
+    "createNetwork": "Create Docker network",
+    "listNetworks": "List Docker networks",
+    "removeNetwork": "Remove Docker network",
+    "createVolume": "Create Docker volume",
+    "listVolumes": "List Docker volumes",
+    "removeVolume": "Remove Docker volume",
+    "composeUp": "Start Docker Compose services",
+    "composeDown": "Stop Docker Compose services",
+    "composePs": "List Compose services",
+    "composeLogs": "Get Compose service logs"
+  }
+}

@@ -2145,7 +2145,8 @@ plugin_status = {
     "docker": "inactive",
     "blender": "inactive",
     "file-browser": "inactive",
-    "openscad": "inactive"
+    "openscad": "inactive",
+    "fusion360": "inactive"
 }
 
 @app.post("/api/v1/desktop-controller/arduino/launch")
@@ -2350,6 +2351,14 @@ async def websocket_desktop_controller(websocket: WebSocket):
                                         "status": plugin_status.get("file-browser", "inactive"),
                                         "description": "Complete file system access and management - browse, read, write, and manage files across your entire system",
                                         "icon": "FaFolder"
+                                    },
+                                    {
+                                        "id": "fusion360",
+                                        "name": "Fusion 360",
+                                        "version": "1.0.0",
+                                        "status": plugin_status.get("fusion360", "inactive"),
+                                        "description": "Professional CAD/CAM integration with Autodesk Fusion 360 - AI-driven parametric design, simulation, and manufacturing workflows",
+                                        "icon": "FaCube"
                                     }
                                 ],
                                 "version": "1.0.0",
