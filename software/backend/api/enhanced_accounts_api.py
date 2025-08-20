@@ -135,8 +135,7 @@ class DataFetchResponse(BaseModel):
     total_count: int
     fetched_at: datetime
 
-class AIProviderRequest(BaseModel):
-    api_key: str
+# Removed separate AIProviderRequest model to match procurement pattern
 
 @router.get("/providers")
 async def get_available_providers():
@@ -425,13 +424,16 @@ async def get_jlcpcb_quote(
 @router.post("/connect-ai/{provider}")
 async def connect_ai_provider(
     provider: str,
-    request: AIProviderRequest
+    credentials: Dict[str, str]
 ):
     """Connect an AI provider account"""
     if provider not in AI_PROVIDERS:
         raise HTTPException(status_code=400, detail="Invalid AI provider")
     
-    api_key = request.api_key
+    # Extract API key from credentials
+    api_key = credentials.get("api_key")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API key is required")
     
     provider_config = AI_PROVIDERS[provider]
     
