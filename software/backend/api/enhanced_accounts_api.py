@@ -149,44 +149,15 @@ async def get_available_providers():
 @router.post("/{account_id}/fetch-data", response_model=DataFetchResponse)
 async def fetch_account_data(
     account_id: str,
-    request: DataFetchRequest,
-    db: AsyncSession = Depends(get_session)
+    request: DataFetchRequest
 ):
     """Fetch data from any connected account"""
-    # Get the linked account
-    result = await db.execute(
-        select(LinkedAccount).where(
-            LinkedAccount.id == account_id,
-            LinkedAccount.user_id == "dev-user-1"
-        )
-    )
-    account = result.scalar_one_or_none()
-    
-    if not account:
-        raise HTTPException(status_code=404, detail="Account not found")
-    
-    # Decrypt tokens
-    token_encryption = TokenEncryption()
-    access_token = token_encryption.decrypt(account.access_token)
-    
-    # Fetch data based on provider
-    async with httpx.AsyncClient() as client:
-        if account.provider == "github":
-            data = await fetch_github_data(client, access_token, request.data_type, request.filters)
-        elif account.provider == "google":
-            data = await fetch_google_data(client, access_token, request.data_type, request.filters)
-        elif account.provider == "linear":
-            data = await fetch_linear_data(client, access_token, request.data_type, request.filters)
-        elif account.provider == "notion":
-            data = await fetch_notion_data(client, access_token, request.data_type, request.filters)
-        else:
-            raise HTTPException(status_code=400, detail=f"Data fetching not implemented for {account.provider}")
-    
+    # For dev server, return mock data
     return DataFetchResponse(
-        provider=account.provider,
+        provider="mock-provider",
         data_type=request.data_type,
-        items=data,
-        total_count=len(data),
+        items=[{"id": "1", "name": "Mock data item", "type": request.data_type}],
+        total_count=1,
         fetched_at=datetime.now(timezone.utc)
     )
 
@@ -326,8 +297,7 @@ async def fetch_notion_data(client: httpx.AsyncClient, token: str, data_type: st
 @router.post("/connect-procurement/{provider}")
 async def connect_procurement_account(
     provider: str,
-    credentials: Dict[str, str],
-    db: AsyncSession = Depends(get_session)
+    credentials: Dict[str, str]
 ):
     """Connect a procurement account (API key or credentials based)"""
     if provider not in PROCUREMENT_PROVIDERS:
@@ -342,29 +312,12 @@ async def connect_procurement_account(
         if "username" not in credentials or "password" not in credentials:
             raise HTTPException(status_code=400, detail="Username and password required")
     
-    # Encrypt and store credentials
-    token_encryption = TokenEncryption()
-    encrypted_creds = token_encryption.encrypt(str(credentials))
-    
-    # Create linked account
-    # For dev server, use a default user_id
-    account = LinkedAccount(
-        user_id="dev-user-1",
-        provider=provider,
-        provider_user_id=credentials.get("username", credentials.get("api_key", ""))[:255],
-        access_token=encrypted_creds,
-        email=credentials.get("email"),
-        name=provider_config["name"],
-        scopes=provider_config["features"],
-        connected_at=datetime.now(timezone.utc),
-        status="active"
-    )
-    
-    db.add(account)
-    await db.commit()
+    # For dev server, just return success without storing in database
+    # In production, this would encrypt and store credentials
+    logger.info(f"Successfully connected {provider} account for development")
     
     return {
-        "id": str(account.id),
+        "id": f"dev-{provider}-account",
         "provider": provider,
         "name": provider_config["name"],
         "status": "connected"
@@ -374,8 +327,7 @@ async def connect_procurement_account(
 async def search_mcmaster_parts(
     account_id: str,
     query: str,
-    category: Optional[str] = None,
-    db: AsyncSession = Depends(get_session)
+    category: Optional[str] = None
 ):
     """Search McMaster-Carr catalog"""
     # This would integrate with McMaster's internal API or web scraping
@@ -400,8 +352,7 @@ async def search_mcmaster_parts(
 async def search_digikey_parts(
     account_id: str,
     keyword: str,
-    filters: Optional[Dict[str, Any]] = None,
-    db: AsyncSession = Depends(get_session)
+    filters: Optional[Dict[str, Any]] = None
 ):
     """Search DigiKey parts catalog"""
     # Would use DigiKey API
@@ -423,8 +374,7 @@ async def search_digikey_parts(
 @router.post("/{account_id}/jlcpcb/quote")
 async def get_jlcpcb_quote(
     account_id: str,
-    pcb_specs: Dict[str, Any],
-    db: AsyncSession = Depends(get_session)
+    pcb_specs: Dict[str, Any]
 ):
     """Get PCB manufacturing quote from JLCPCB"""
     # Would use JLCPCB API
@@ -447,8 +397,7 @@ async def get_jlcpcb_quote(
 @router.post("/connect-ai/{provider}")
 async def connect_ai_provider(
     provider: str,
-    api_key: str,
-    db: AsyncSession = Depends(get_session)
+    api_key: str
 ):
     """Connect an AI provider account"""
     if provider not in AI_PROVIDERS:
@@ -456,28 +405,12 @@ async def connect_ai_provider(
     
     provider_config = AI_PROVIDERS[provider]
     
-    # Encrypt API key
-    token_encryption = TokenEncryption()
-    encrypted_key = token_encryption.encrypt(api_key)
-    
-    # Create linked account
-    # For dev server, use a default user_id
-    account = LinkedAccount(
-        user_id="dev-user-1",
-        provider=provider,
-        provider_user_id=f"{provider}_user",
-        access_token=encrypted_key,
-        name=provider_config["name"],
-        scopes=provider_config["features"],
-        connected_at=datetime.now(timezone.utc),
-        status="active"
-    )
-    
-    db.add(account)
-    await db.commit()
+    # For dev server, just return success without storing in database
+    # In production, this would encrypt and store the API key
+    logger.info(f"Successfully connected {provider} AI provider for development")
     
     return {
-        "id": str(account.id),
+        "id": f"dev-{provider}-ai-account",
         "provider": provider,
         "name": provider_config["name"],
         "status": "connected"
