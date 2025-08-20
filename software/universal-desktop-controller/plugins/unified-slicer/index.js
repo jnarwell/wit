@@ -661,23 +661,10 @@ class UnifiedSlicerPlugin extends WITPlugin {
                 args.push('--support-material', profile.supportMaterial ? '1' : '0');
             }
         } else if (slicer === 'bambustudio') {
-            // Bambu Studio specific arguments use --key=value format
-            if (profile.layerHeight) {
-                args.push(`--layer_height=${profile.layerHeight}`);
-            }
-            
-            if (profile.infillDensity) {
-                const densityStr = profile.infillDensity.replace('%', '');
-                args.push(`--sparse_infill_density=${densityStr}`);
-            }
-            
-            if (profile.printSpeed) {
-                args.push(`--outer_wall_speed=${profile.printSpeed}`);
-            }
-            
-            if (profile.supportMaterial !== undefined) {
-                args.push(`--enable_support=${profile.supportMaterial ? '1' : '0'}`);
-            }
+            // Bambu Studio - skip individual parameter overrides for now
+            // The slicer will use default settings or settings from loaded config files
+            // Individual parameter setting via command line may not be supported
+            this.log('Using Bambu Studio with default settings - individual parameter override not yet supported');
         } else {
             // Generic arguments for other slicers
             if (profile.layerHeight) {
@@ -928,24 +915,56 @@ class UnifiedSlicerPlugin extends WITPlugin {
         }
         
         try {
-            const content = await fs.readFile(filePath, 'utf8');
-            const lines = content.split('\n');
+            const fileExt = path.extname(filePath).toLowerCase();
             
+            if (fileExt === '.3mf') {
+                // Handle 3MF files (Bambu Studio output)
+                return this.analyze3MFFile(filePath);
+            } else {
+                // Handle G-code files (PrusaSlicer, etc.)
+                const content = await fs.readFile(filePath, 'utf8');
+                const lines = content.split('\n');
+                
+                const analysis = {
+                    filePath,
+                    fileSize: content.length,
+                    lineCount: lines.length,
+                    estimatedPrintTime: this.parseGCodeTime(content),
+                    filamentUsed: this.parseGCodeFilament(content),
+                    layerCount: this.parseGCodeLayers(content),
+                    temperature: this.parseGCodeTemperature(content),
+                    bedTemperature: this.parseGCodeBedTemperature(content),
+                    generatedBy: this.parseGCodeGenerator(content)
+                };
+                
+                return analysis;
+            }
+        } catch (error) {
+            throw new Error(`Failed to analyze file: ${error.message}`);
+        }
+    }
+    
+    async analyze3MFFile(filePath) {
+        try {
+            const stats = await fs.stat(filePath);
+            
+            // Basic analysis for 3MF files - limited compared to G-code
             const analysis = {
                 filePath,
-                fileSize: content.length,
-                lineCount: lines.length,
-                estimatedPrintTime: this.parseGCodeTime(content),
-                filamentUsed: this.parseGCodeFilament(content),
-                layerCount: this.parseGCodeLayers(content),
-                temperature: this.parseGCodeTemperature(content),
-                bedTemperature: this.parseGCodeBedTemperature(content),
-                generatedBy: this.parseGCodeGenerator(content)
+                fileSize: stats.size,
+                lineCount: 'N/A (3MF format)',
+                estimatedPrintTime: 'See Bambu Studio',
+                filamentUsed: 'See Bambu Studio',
+                layerCount: 'See Bambu Studio',
+                temperature: 'See Bambu Studio',
+                bedTemperature: 'See Bambu Studio',
+                generatedBy: 'Bambu Studio'
             };
             
+            this.log(`Analyzed 3MF file: ${filePath} (${stats.size} bytes)`);
             return analysis;
         } catch (error) {
-            throw new Error(`Failed to analyze G-code: ${error.message}`);
+            throw new Error(`Failed to analyze 3MF file: ${error.message}`);
         }
     }
     
