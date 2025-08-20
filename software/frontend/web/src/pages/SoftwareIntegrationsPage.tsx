@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaChevronLeft, FaChevronRight, FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCode, FaCloud, FaDatabase, FaRobot, FaCubes, FaChartLine, FaMicrochip, FaCube, FaPrint, FaCheck, FaExclamationTriangle, FaClock, FaDesktop, FaCog, FaCalculator, FaProjectDiagram, FaFolder, FaDocker } from 'react-icons/fa';
+import { FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCode, FaCloud, FaDatabase, FaRobot, FaCubes, FaChartLine, FaMicrochip, FaCube, FaPrint, FaCheck, FaExclamationTriangle, FaClock, FaDesktop, FaCog, FaCalculator, FaProjectDiagram, FaFolder, FaDocker } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { useUDCWebSocket } from '../hooks/useUDCWebSocket';
 import './SoftwareIntegrationsPage.css';
@@ -62,13 +62,9 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
   const [error, setError] = useState<string | null>(null);
   
   const [showAddModal, setShowAddModal] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [gridSize, setGridSize] = useState({ cellWidth: 0, cellHeight: 0 });
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [sortBy, setSortBy] = useState('name');
-  const [gridCols, setGridCols] = useState(4);
-  const [gridRows, setGridRows] = useState(3);
   const [activeTab, setActiveTab] = useState('active');
   
   const [newIntegration, setNewIntegration] = useState({
@@ -571,8 +567,6 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
     }
   ];
 
-  const gridRef = useRef<HTMLDivElement>(null);
-
   // Request fresh plugin list when component mounts
   useEffect(() => {
     if (wsStatus === 'connected') {
@@ -605,23 +599,6 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
     setIntegrations([...udcIntegrations, ...COMING_SOON_SOFTWARE]);
     setIsLoading(false);
   }, [isAuthenticated, udcStatus]);
-
-  // Calculate grid size
-  useEffect(() => {
-    const updateGridSize = () => {
-      if (gridRef.current) {
-        const rect = gridRef.current.getBoundingClientRect();
-        setGridSize({
-          cellWidth: rect.width / gridCols,
-          cellHeight: rect.height / gridRows
-        });
-      }
-    };
-
-    updateGridSize();
-    window.addEventListener('resize', updateGridSize);
-    return () => window.removeEventListener('resize', updateGridSize);
-  }, [gridCols, gridRows]);
 
   // Filter integrations based on active tab
   const getFilteredIntegrations = () => {
@@ -665,13 +642,8 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
 
   const filteredIntegrations = getFilteredIntegrations();
 
-  // Pagination
-  const integrationsPerPage = gridCols * gridRows;
-  const totalPages = Math.ceil(filteredIntegrations.length / integrationsPerPage);
-  const paginatedIntegrations = filteredIntegrations.slice(
-    (currentPage - 1) * integrationsPerPage,
-    currentPage * integrationsPerPage
-  );
+  // Show all integrations (no pagination for now)
+  const paginatedIntegrations = filteredIntegrations;
 
   const handleAddIntegration = async () => {
     // TODO: Implement API call to add integration
@@ -783,7 +755,7 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
         </button>
       </div>
 
-      <div className="integrations-grid" ref={gridRef}>
+      <div className="integrations-grid">
         {isLoading ? (
           <div className="loading-message">Loading integrations...</div>
         ) : error ? (
@@ -1025,23 +997,6 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
         )}
       </div>
 
-      {totalPages > 1 && (
-        <div className="pagination">
-          <button
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-            disabled={currentPage === 1}
-          >
-            <FaChevronLeft />
-          </button>
-          <span>{currentPage} / {totalPages}</span>
-          <button
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-            disabled={currentPage === totalPages}
-          >
-            <FaChevronRight />
-          </button>
-        </div>
-      )}
 
       {showConfigureModal && configureIntegration && (
         <div className="modal-overlay" onClick={() => setShowConfigureModal(false)}>

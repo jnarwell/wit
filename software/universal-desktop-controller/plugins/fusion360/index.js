@@ -8,7 +8,7 @@ const { spawn, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs').promises;
 const os = require('os');
-const glob = require('glob').glob;
+const { glob } = require('glob');
 const axios = require('axios');
 const chokidar = require('chokidar');
 
