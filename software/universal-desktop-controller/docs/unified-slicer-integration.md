@@ -10,8 +10,8 @@ The Unified 3D Slicer integration provides comprehensive control of all major 3D
 - ✅ **OrcaSlicer** - Enhanced PrusaSlicer fork with better automation and multi-printer support
 - ✅ **SuperSlicer** - Feature-rich PrusaSlicer fork with advanced calibration tools
 
-### **Secondary Slicers** (Good CLI Support):
-- ✅ **Bambu Studio** - Optimized slicer for Bambu Lab printers with cloud features
+### **Secondary Slicers** (Limited CLI Support):
+- ✅ **Bambu Studio** - Optimized slicer for Bambu Lab printers (3MF output only, no parameter override)
 - ✅ **Ultimaker Cura** - Popular open-source slicer with wide printer compatibility
 
 ### **Specialized Slicers** (Coming Soon):
@@ -47,7 +47,9 @@ src/pages/
 
 ### **File Processing**
 - **Supported Input Formats**: STL, 3MF, OBJ, AMF, PLY
-- **Supported Output Formats**: G-code, 3MF (Bambu Studio)
+- **Supported Output Formats**: 
+  - G-code (PrusaSlicer, OrcaSlicer, SuperSlicer, Cura)
+  - 3MF (Bambu Studio only)
 - **Batch Processing**: Slice multiple files simultaneously
 - **File Management**: Built-in file browser for sliced files
 
@@ -67,12 +69,16 @@ src/pages/
 - **Error Handling**: Comprehensive error reporting and recovery
 - **Job Management**: Cancel running jobs, view job history
 
-### **G-code Analysis**
-- **Print Time Estimation**: Accurate print time calculations
-- **Filament Usage**: Material consumption estimates
-- **Layer Analysis**: Layer count and height analysis
-- **Temperature Settings**: Hotend and bed temperature detection
-- **File Metadata**: Generator information and file statistics
+### **File Analysis**
+- **G-code Analysis** (PrusaSlicer, OrcaSlicer, SuperSlicer, Cura):
+  - Print Time Estimation: Accurate print time calculations
+  - Filament Usage: Material consumption estimates
+  - Layer Analysis: Layer count and height analysis
+  - Temperature Settings: Hotend and bed temperature detection
+  - File Metadata: Generator information and file statistics
+- **3MF Analysis** (Bambu Studio):
+  - Basic file size and metadata
+  - Detailed analysis available in Bambu Studio application
 
 ### **Printer Integration**
 - **Direct Upload**: Send sliced files directly to connected printers
@@ -238,6 +244,16 @@ npm start
 - Ensure sufficient disk space available
 - Verify file wasn't moved or deleted externally
 
+#### **Bambu Studio Specific Issues**
+- **Parameter Override Not Working**: Bambu Studio doesn't support individual parameter overrides via CLI
+  - Solution: Use default settings or configure profiles within Bambu Studio
+- **Invalid Option Errors**: Ensure you're using the simplified command structure
+  - Working: `--slice 2 --outputdir /path --export-3mf file.3mf input.stl`
+  - Not Working: `--layer_height=0.2` or other parameter overrides
+- **3MF Output Only**: Bambu Studio outputs 3MF files, not G-code
+  - Use Bambu Studio application to convert 3MF to G-code if needed
+  - 3MF files contain full project data and can be opened in Bambu Studio
+
 ### **Debug Information:**
 - Plugin logs available in UDC console
 - WebSocket messages logged in browser developer tools
@@ -261,6 +277,7 @@ npm start
 ---
 
 **Status**: Production-ready with comprehensive multi-slicer support
-**Last Updated**: August 19, 2025
-**Version**: 1.0.0
+**Last Updated**: August 20, 2025
+**Version**: 1.1.0
 **Supported Slicers**: 5 (PrusaSlicer, OrcaSlicer, Bambu Studio, SuperSlicer, Cura)
+**Notable Updates**: Complete Bambu Studio CLI integration with 3MF file support

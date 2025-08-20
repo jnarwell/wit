@@ -2,6 +2,18 @@
 
 The Universal Desktop Controller (UDC) is the desktop companion app for the W.I.T. platform. It manages all connections between the W.I.T. web interface and local desktop resources including printers, software applications, files, and hardware devices.
 
+## Current Integrations
+
+### ✅ **Production Ready**
+- **Arduino IDE** - Full serial communication and sketch management
+- **Unified 3D Slicers** - PrusaSlicer, OrcaSlicer, Bambu Studio, SuperSlicer, Cura
+- **MATLAB** - Computational analysis and simulation (basic integration)
+
+### 🚧 **In Development**
+- **Printer Bridge** - Direct printer control and monitoring
+- **File Browser** - Local file system access and management
+- **KiCad** - PCB design software integration
+
 ## Architecture
 
 The UDC uses a plugin-based architecture where each integration (printer, Arduino IDE, etc.) is implemented as a plugin. This provides:
@@ -190,6 +202,9 @@ Logs are stored in:
 - [ ] Add integration tests
 - [ ] Improve error handling
 - [ ] Add performance monitoring
+- [ ] Add individual parameter support for Bambu Studio CLI
+- [ ] Implement resin slicer support (CHITUBOX, Lychee)
+- [ ] Add thumbnail extraction for G-code files
 
 ## License
 
