@@ -9,10 +9,12 @@ The Universal Desktop Controller (UDC) is the desktop companion app for the W.I.
 - **Unified 3D Slicers** - PrusaSlicer, OrcaSlicer, Bambu Studio, SuperSlicer, Cura
 - **MATLAB** - Computational analysis and simulation (basic integration)
 
+- **KiCad** - PCB design software integration
+- **File Browser** - Local file system access and management
+- **Fusion 360** - Professional CAD/CAM integration with Autodesk Fusion 360
+
 ### 🚧 **In Development**
 - **Printer Bridge** - Direct printer control and monitoring
-- **File Browser** - Local file system access and management
-- **KiCad** - PCB design software integration
 
 ## Architecture
 

@@ -30,14 +30,16 @@ The Fusion 360 plugin provides comprehensive integration with Autodesk Fusion 36
 ## Installation
 
 ### Prerequisites
-- Autodesk Fusion 360 (Personal or Commercial license)
 - W.I.T. Universal Desktop Controller
 - Node.js dependencies (automatically installed)
+- Autodesk Fusion 360 (Personal or Commercial license) - Optional for initial setup
 
 ### Setup Steps
 
 #### 1. UDC Plugin Installation
 The UDC plugin is automatically available in the W.I.T. software integrations.
+
+**Note**: The plugin will load successfully even if Fusion 360 is not installed on your system. You can configure the Fusion 360 installation path later through the plugin settings.
 
 #### 2. Fusion 360 Add-in Installation
 

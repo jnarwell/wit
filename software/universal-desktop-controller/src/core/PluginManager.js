@@ -39,10 +39,14 @@ class PluginManager {
      */
     async loadPlugin(pluginPath) {
         try {
+            logger.info(`[PluginManager] Attempting to load plugin from: ${pluginPath}`);
+            
             // Load plugin manifest
             const manifestPath = path.join(pluginPath, 'manifest.json');
             const manifestData = await fs.readFile(manifestPath, 'utf8');
             const manifest = JSON.parse(manifestData);
+            
+            logger.info(`[PluginManager] Loading plugin: ${manifest.id} from ${pluginPath}`);
             
             // Validate manifest
             this.validateManifest(manifest);

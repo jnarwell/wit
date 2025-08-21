@@ -15,6 +15,12 @@ const chokidar = require('chokidar');
 class Fusion360Plugin extends WITPlugin {
     constructor(context) {
         super(context);
+        console.log('[fusion360] Plugin constructor called');
+        console.log('[fusion360] Context:', JSON.stringify({
+            pluginId: context.pluginId,
+            pluginPath: context.pluginPath,
+            manifest: context.manifest
+        }, null, 2));
         
         this.fusion360Process = null;
         this.bridgeServer = null;
@@ -50,7 +56,14 @@ class Fusion360Plugin extends WITPlugin {
     }
     
     async initialize() {
-        await super.initialize();
+        console.log('[fusion360] Initialize called');
+        try {
+            await super.initialize();
+            console.log('[fusion360] Super initialize completed');
+        } catch (error) {
+            console.error('[fusion360] Error in super.initialize:', error);
+            throw error;
+        }
         
         // Initialize config from manifest defaults if needed
         const manifestConfig = require('./manifest.json').config;
@@ -81,8 +94,12 @@ class Fusion360Plugin extends WITPlugin {
             this.log('Warning: Could not create workspace directory:', error.message);
         }
         
-        // Check if Fusion 360 is installed
-        await this.checkFusion360Installation();
+        // Check if Fusion 360 is installed (don't fail if not found)
+        try {
+            await this.checkFusion360Installation();
+        } catch (error) {
+            this.log('Warning: Could not check Fusion 360 installation:', error.message || error);
+        }
         
         // Set up file watcher if enabled
         if (this.config.enableFileWatcher) {
@@ -265,7 +282,7 @@ class Fusion360Plugin extends WITPlugin {
             return true;
         }
         
-        this.error('Fusion 360 not found. Please ensure Fusion 360 is installed.');
+        this.log('Fusion 360 not found. Plugin will load but Fusion 360 features will be unavailable.');
         return false;
     }
     
@@ -312,7 +329,7 @@ class Fusion360Plugin extends WITPlugin {
         }
         
         if (!await this.checkFusion360Installation()) {
-            throw new Error('Fusion 360 not found. Please configure the Fusion 360 installation path.');
+            throw new Error('Fusion 360 not found. Please install Fusion 360 or configure the installation path in plugin settings.');
         }
         
         this.isLaunching = true;

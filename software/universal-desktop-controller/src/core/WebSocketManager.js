@@ -52,6 +52,8 @@ class WebSocketManager {
             let wsUrl = this.serverUrl.replace(/^http/, 'ws');
             // Replace localhost with 127.0.0.1 to force IPv4
             wsUrl = wsUrl.replace('localhost', '127.0.0.1');
+            // Remove trailing slash if present
+            wsUrl = wsUrl.replace(/\/$/, '');
             const fullUrl = `${wsUrl}/ws/desktop-controller`;
             
             logger.info(`Connecting to W.I.T. backend at ${fullUrl}`);

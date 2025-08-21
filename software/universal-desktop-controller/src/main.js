@@ -125,12 +125,15 @@ class UniversalDesktopController {
             'vscode',             // Visual Studio Code integration
             'docker',             // Docker Desktop integration
             'blender',            // Blender 3D modeling and animation
+            'freecad',            // FreeCAD parametric 3D CAD modeller
             'file-browser',       // File system access and management
+            'fusion360',          // Autodesk Fusion 360 CAD/CAM integration
         ];
         
         for (const pluginName of builtInPlugins) {
             try {
                 const pluginPath = path.join(__dirname, '..', 'plugins', pluginName);
+                logger.info(`Attempting to load plugin ${pluginName} from ${pluginPath}`);
                 await this.pluginManager.loadPlugin(pluginPath);
                 logger.info(`Loaded built-in plugin: ${pluginName}`);
                 
