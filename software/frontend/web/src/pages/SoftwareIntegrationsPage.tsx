@@ -48,8 +48,8 @@ const SOFTWARE_TYPES = {
 };
 
 const SOFTWARE_STATUS = {
-  'connected': { label: 'Connected', color: 'bg-green-500' },
-  'disconnected': { label: 'Disconnected', color: 'bg-gray-500' },
+  'active': { label: 'Active', color: 'bg-green-500' },
+  'configured': { label: 'Configured', color: 'bg-gray-500' },
   'error': { label: 'Error', color: 'bg-red-500' },
   'pending': { label: 'Pending', color: 'bg-yellow-500' },
 };
@@ -91,7 +91,7 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       id: 'arduino-ide',
       name: 'Arduino IDE',
       type: 'embedded',
-      status: 'disconnected',
+      status: 'configured',
       description: 'Programming environment for Arduino microcontrollers',
       isUDCPlugin: true,
       pluginId: 'arduino-ide'
@@ -100,7 +100,7 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       id: 'unified-slicer',
       name: 'Unified 3D Slicers',
       type: 'slicer',
-      status: 'disconnected',
+      status: 'configured',
       description: 'Complete integration for all major 3D slicing software including PrusaSlicer, OrcaSlicer, Bambu Studio, SuperSlicer, and Cura',
       isUDCPlugin: true,
       pluginId: 'unified-slicer'
@@ -109,7 +109,7 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       id: 'matlab',
       name: 'MATLAB',
       type: 'simulation',
-      status: 'disconnected',
+      status: 'configured',
       description: 'Advanced computational analysis, modeling, and simulation platform with comprehensive toolboxes',
       isUDCPlugin: true,
       pluginId: 'matlab'
@@ -118,7 +118,7 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       id: 'kicad',
       name: 'KiCad',
       type: 'pcb',
-      status: 'disconnected',
+      status: 'configured',
       description: 'Open-source electronics design automation suite for schematic capture and PCB design',
       isUDCPlugin: true,
       pluginId: 'kicad'
@@ -127,7 +127,7 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       id: 'labview',
       name: 'LabVIEW',
       type: 'data_acquisition',
-      status: 'disconnected',
+      status: 'configured',
       description: 'Graphical programming platform for measurement systems and data acquisition',
       isUDCPlugin: true,
       pluginId: 'labview'
@@ -136,7 +136,7 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       id: 'node-red',
       name: 'Node-RED',
       type: 'data_acquisition',
-      status: 'disconnected',
+      status: 'configured',
       description: 'Flow-based visual programming for IoT automation and sensor integration',
       isUDCPlugin: true,
       pluginId: 'node-red'
@@ -145,7 +145,7 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       id: 'vscode',
       name: 'Visual Studio Code',
       type: 'editor',
-      status: 'disconnected',
+      status: 'configured',
       description: 'Professional code editor with IntelliSense, debugging, and Git integration',
       isUDCPlugin: true,
       pluginId: 'vscode'
@@ -154,7 +154,7 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       id: 'docker',
       name: 'Docker Desktop',
       type: 'devops',
-      status: 'disconnected',
+      status: 'configured',
       description: 'Container management, image building, and Docker Compose orchestration for development workflows',
       isUDCPlugin: true,
       pluginId: 'docker'
@@ -163,7 +163,7 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       id: 'openscad',
       name: 'OpenSCAD',
       type: 'cad',
-      status: 'disconnected',
+      status: 'configured',
       description: 'The Programmers Solid 3D CAD Modeller - Create 3D models using code',
       isUDCPlugin: true,
       pluginId: 'openscad'
@@ -172,7 +172,7 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       id: 'blender',
       name: 'Blender',
       type: 'cad',
-      status: 'disconnected',
+      status: 'configured',
       description: 'AI-powered 3D modeling, animation, and rendering with comprehensive Python API',
       isUDCPlugin: true,
       pluginId: 'blender'
@@ -181,7 +181,7 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       id: 'file-browser',
       name: 'File Browser',
       type: 'other',
-      status: 'disconnected',
+      status: 'configured',
       description: 'Complete file system access and management - browse, read, write, and manage files across your entire system',
       isUDCPlugin: true,
       pluginId: 'file-browser'
@@ -578,18 +578,24 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
   useEffect(() => {
     if (!isAuthenticated) return;
     
+    console.log('[SoftwareIntegrationsPage] Updating integrations with UDC status:', udcStatus);
+    console.log('[SoftwareIntegrationsPage] Number of plugins from UDC:', udcStatus.plugins.length);
+    console.log('[SoftwareIntegrationsPage] Plugin IDs from UDC:', udcStatus.plugins.map(p => p.id));
+    
     // Start with UDC integrations
     const udcIntegrations = UDC_INTEGRATIONS.map(integration => {
       // Check if this plugin is active in UDC
       const plugin = udcStatus.plugins.find(p => p.id === integration.pluginId);
       if (plugin) {
-        // Map UDC plugin status to frontend status
-        // 'active' = plugin working and connected
-        // 'inactive' = plugin loaded but application not found/connected  
-        // 'configured' = plugin loaded and application found but not active
+        // Map UDC plugin state to frontend status
+        // UDC sends 'state' not 'status', with values: 'started', 'stopped'
+        let status = 'configured';
+        if (plugin.state === 'started') {
+          status = 'active';
+        }
         return {
           ...integration,
-          status: plugin.status === 'active' ? 'active' : 'configured'
+          status
         };
       }
       return integration;
@@ -662,13 +668,15 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
   const getStatusIcon = (status: SoftwareIntegration['status']) => {
     switch (status) {
       case 'active':
-        return <div className="status-indicator connected" />;
+        return <div className="status-indicator active" />;
       case 'configured':
-        return <div className="status-indicator pending" />;
+        return <div className="status-indicator configured" />;
       case 'error':
         return <div className="status-indicator error" />;
+      case 'pending':
+        return <div className="status-indicator pending" />;
       default:
-        return <div className="status-indicator disconnected" />;
+        return <div className="status-indicator configured" />;
     }
   };
 
@@ -737,19 +745,19 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       <div className="category-tabs">
         <button
           className={`tab-button ${activeTab === 'active' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('active'); setCurrentPage(1); }}
+          onClick={() => setActiveTab('active')}
         >
           <FaCheck /> Active ({getTabCount('active')})
         </button>
         <button
           className={`tab-button ${activeTab === 'configured' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('configured'); setCurrentPage(1); }}
+          onClick={() => setActiveTab('configured')}
         >
           <FaExclamationTriangle /> Configured ({getTabCount('configured')})
         </button>
         <button
           className={`tab-button ${activeTab === 'coming-soon' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('coming-soon'); setCurrentPage(1); }}
+          onClick={() => setActiveTab('coming-soon')}
         >
           <FaClock /> Coming Soon ({getTabCount('coming-soon')})
         </button>
@@ -777,7 +785,7 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
         ) : (
           paginatedIntegrations.map((integration, index) => {
             const Icon = SOFTWARE_TYPES[integration.type]?.icon || FaCode;
-            const isClickable = integration.isUDCPlugin && integration.status === 'connected';
+            const isClickable = integration.isUDCPlugin && integration.status === 'active';
             
             return (
               <div

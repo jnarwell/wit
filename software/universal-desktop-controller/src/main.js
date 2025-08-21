@@ -23,7 +23,7 @@ class UniversalDesktopController {
         this.configManager = new ConfigManager();
         this.securityManager = new SecurityManager(this.eventBus);
         this.pluginManager = new PluginManager(this.eventBus, this.securityManager);
-        this.wsManager = new WebSocketManager(this.eventBus, this.configManager);
+        this.wsManager = new WebSocketManager(this.eventBus, this.configManager, this.pluginManager);
         
         // Bind methods
         this.initialize = this.initialize.bind(this);

@@ -6,6 +6,7 @@ interface UDCPlugin {
   name: string;
   version: string;
   status: 'active' | 'inactive' | 'error';
+  state?: 'started' | 'stopped' | 'error'; // Add state property from UDC
   description?: string;
   icon?: string;
   permissions?: string[];
@@ -33,7 +34,7 @@ const WS_MAX_RECONNECT_ATTEMPTS = 3;
 export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
   const { tokens } = useAuth();
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const pendingCommandsRef = useRef<Map<string, { resolve: (value: any) => void, reject: (reason?: any) => void }>>(new Map());
   
@@ -141,6 +142,12 @@ export const useUDCWebSocket = (): UseUDCWebSocketReturn => {
               
             case 'plugin_list':
               console.log('[UDC WebSocket] Received plugin list:', data);
+              // Log each plugin for debugging
+              if (data.plugins) {
+                data.plugins.forEach((plugin: any) => {
+                  console.log(`[UDC WebSocket] Plugin: ${plugin.id}, state: ${plugin.state}, status: ${plugin.status}`);
+                });
+              }
               // Check if we have actual plugins - only connected if real plugins exist
               const hasPlugins = data.plugins && data.plugins.length > 0;
               setUdcStatus({

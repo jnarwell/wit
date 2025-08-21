@@ -2218,15 +2218,22 @@ async def websocket_desktop_controller(websocket: WebSocket):
         # TODO: Add proper authentication for WebSocket connections
         await websocket.accept()
         logger.info("Desktop controller WebSocket connection accepted")
+        print("[DEBUG] Desktop controller WebSocket connection accepted")
         
         # Log headers for debugging
         logger.info(f"WebSocket headers: {websocket.headers}")
+        print(f"[DEBUG] WebSocket headers: {websocket.headers}")
         
         # Wait for registration message
         data = await websocket.receive_json()
         if data.get("type") == "register":
             controller_id = data.get("controllerId")
             logger.info(f"Desktop controller registered: {controller_id}")
+            logger.info(f"Total controllers connected: {len(desktop_controllers) + 1}")
+            logger.info(f"Controller IDs: {list(desktop_controllers.keys()) + [controller_id]}")
+            print(f"[DEBUG] New controller registered: {controller_id}")
+            print(f"[DEBUG] Is web UI? {controller_id.startswith('web-ui-')}")
+            print(f"[DEBUG] Has dashes? {'-' in controller_id}")
             
             # Store the controller connection
             desktop_controllers[controller_id] = websocket
@@ -2252,10 +2259,77 @@ async def websocket_desktop_controller(websocket: WebSocket):
                     # Handle plugin list request
                     if message.get("type") == "plugin_list":
                         logger.info(f"Received plugin list request from {controller_id}")
+                        print(f"[DEBUG] Plugin list request from: {controller_id}")
+                        print(f"[DEBUG] All controllers: {list(desktop_controllers.keys())}")
+                        print(f"[DEBUG] Is this from web UI? {controller_id.startswith('web-ui-')}")
                         
-                        # Check if there's a real desktop controller connected
+                        # Only handle plugin list requests from web UI clients
+                        # Real UDC sends plugin list as a response, not a request
+                        if controller_id.startswith('web-ui-'):
+                            # Find the real desktop controller
+                            real_controller_id = None
+                            real_ws = None
+                            for cid, ws in desktop_controllers.items():
+                                # Real UDC controllers have UUID format and aren't web-ui or test clients
+                                if (cid != controller_id and 
+                                    not cid.startswith('web-ui-') and 
+                                    cid != "test-controller" and
+                                    '-' in cid):  # UUID format check
+                                    real_controller_id = cid
+                                    real_ws = ws
+                                    break
+                            
+                            if real_controller_id and real_ws:
+                                # Forward the request to the real UDC
+                                try:
+                                    await real_ws.send_json({
+                                        "type": "plugin_list",
+                                        "requestId": message.get("requestId", f"web-{controller_id}")
+                                    })
+                                    logger.info(f"Forwarded plugin list request to real controller: {real_controller_id}")
+                                    print(f"[DEBUG] Successfully forwarded to {real_controller_id}, waiting for response...")
+                                    # The response will be handled separately when it comes back
+                                    continue
+                                except Exception as e:
+                                    logger.error(f"Failed to forward plugin list request: {e}")
+                                    print(f"[DEBUG] Failed to forward: {e}")
+                            else:
+                                print(f"[DEBUG] No real controller found to forward to")
+                        
+                    # Handle plugin list response from UDC
+                    if message.get("type") == "plugin_list_response" and not controller_id.startswith('web-ui-'):
+                        logger.info(f"Received plugin list response from UDC: {controller_id}")
+                        print(f"[DEBUG] Received plugin list response from UDC: {controller_id}")
+                        print(f"[DEBUG] Plugin list contains {len(message.get('plugins', []))} plugins")
+                        
+                        # Transform plugin data: UDC sends 'state', web UI expects 'status'
+                        if message.get("plugins"):
+                            for plugin in message["plugins"]:
+                                if "state" in plugin:
+                                    plugin["status"] = "active" if plugin["state"] == "started" else "inactive"
+                                    print(f"[DEBUG] Transformed plugin {plugin['id']}: state={plugin.get('state')} -> status={plugin['status']}")
+                        
+                        # Forward to all web clients
+                        web_clients = [cid for cid in desktop_controllers.keys() if cid.startswith("web-ui-")]
+                        print(f"[DEBUG] Forwarding plugin list to {len(web_clients)} web clients")
+                        for web_client_id in web_clients:
+                            try:
+                                web_ws = desktop_controllers[web_client_id]
+                                # Change message type back to plugin_list for web UI compatibility
+                                response_message = {**message, "type": "plugin_list"}
+                                await web_ws.send_json(response_message)
+                                print(f"[DEBUG] Sent plugin list to web client: {web_client_id}")
+                            except Exception as e:
+                                logger.error(f"Failed to send plugin list to web client {web_client_id}: {e}")
+                        continue
+                    
+                    # Fallback to hardcoded list if no real controller or forward fails
+                    if message.get("type") == "plugin_list" and controller_id.startswith('web-ui-'):
                         real_controller_exists = any(
-                            cid != controller_id and cid.startswith('0eb5b7d6-') 
+                            cid != controller_id and 
+                            not cid.startswith('web-ui-') and 
+                            cid != "test-controller" and
+                            '-' in cid  # UUID format check
                             for cid in desktop_controllers.keys()
                         )
                         
@@ -2422,6 +2496,31 @@ async def websocket_desktop_controller(websocket: WebSocket):
                                 except Exception as e:
                                     logger.error(f"Failed to forward response to web client: {e}")
                         
+                    # Handle plugin list response from real UDC
+                    elif message.get("type") == "plugin_list" and not controller_id.startswith('web-ui-') and controller_id != "test-controller":
+                        logger.info(f"Received plugin list from real UDC: {message}")
+                        print(f"[DEBUG] Plugin list from real UDC ({controller_id})")
+                        print(f"[DEBUG] Number of plugins: {len(message.get('plugins', []))}")
+                        print(f"[DEBUG] First plugin: {message.get('plugins', [])[0] if message.get('plugins') else 'No plugins'}")
+                        
+                        # Transform plugin data: UDC sends 'state', web UI expects 'status'
+                        if message.get("plugins"):
+                            for plugin in message["plugins"]:
+                                # Map 'state' to 'status' for compatibility
+                                if "state" in plugin:
+                                    plugin["status"] = "active" if plugin["state"] == "started" else "inactive"
+                                    # Keep state for debugging
+                                    logger.info(f"Plugin {plugin.get('id')}: state={plugin.get('state')} -> status={plugin.get('status')}")
+                        
+                        # Forward to all web UI clients
+                        for web_controller_id, web_ws in desktop_controllers.items():
+                            if web_controller_id.startswith('web-ui-'):
+                                try:
+                                    await web_ws.send_json(message)
+                                    logger.info(f"Forwarded plugin list to web client: {web_controller_id}")
+                                except Exception as e:
+                                    logger.error(f"Failed to forward plugin list to web client: {e}")
+                    
                     # Handle plugin status updates from desktop controller
                     elif message.get("type") == "plugin_status_update":
                         logger.info(f"Received plugin status update from controller: {message}")
@@ -2446,8 +2545,11 @@ async def websocket_desktop_controller(websocket: WebSocket):
                                     logger.error(f"Failed to send status update to web client: {e}")
                         
                     else:
-                        # Echo back other messages for now
+                        # Log all other messages
                         logger.info(f"Received from controller {controller_id}: {message}")
+                        print(f"[DEBUG] Unhandled message type: {message.get('type')} from {controller_id}")
+                        
+                        # Echo back other messages for now
                         await websocket.send_json({
                             "type": "ack",
                             "messageId": message.get("messageId"),

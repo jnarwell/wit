@@ -7,9 +7,10 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('./Logger');
 
 class WebSocketManager {
-    constructor(eventBus, configManager) {
+    constructor(eventBus, configManager, pluginManager) {
         this.eventBus = eventBus;
         this.configManager = configManager;
+        this.pluginManager = pluginManager;
         this.ws = null;
         this.reconnectInterval = 5000;
         this.maxReconnectInterval = 30000;
@@ -171,6 +172,12 @@ class WebSocketManager {
                     this._handleConfigUpdate(message);
                     break;
                     
+                case 'plugin_list':
+                    // Respond to plugin list request
+                    logger.info('Received plugin list request, sending current plugin status');
+                    this._sendPluginList();
+                    break;
+                    
                 default:
                     logger.debug('Received message:', message);
             }
@@ -246,6 +253,27 @@ class WebSocketManager {
         } catch (error) {
             logger.error('Failed to send message:', error);
             throw error;
+        }
+    }
+    
+    /**
+     * Send plugin list to backend
+     */
+    async _sendPluginList() {
+        try {
+            const plugins = this.pluginManager.getLoadedPlugins();
+            const pluginList = Object.values(plugins);
+            
+            logger.info(`Sending plugin list with ${pluginList.length} plugins`);
+            console.log('[WebSocketManager] Sending plugin list:', JSON.stringify(pluginList, null, 2));
+            
+            this.sendMessage({
+                type: 'plugin_list_response',
+                plugins: pluginList,
+                timestamp: Date.now()
+            });
+        } catch (error) {
+            logger.error('Failed to send plugin list:', error);
         }
     }
     
