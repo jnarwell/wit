@@ -297,6 +297,30 @@ body {
   max-width: none !important;
 }
 
+/* Override any max-width on page containers */
+[class*="-page"],
+[class*="-container"],
+[class*="-layout"],
+[class*="-content"] {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+/* Specific overrides for control pages */
+.settings-page,
+.settings-container,
+.blender-control-page,
+.matlab-control-page,
+.openscad-control-page,
+.labview-control-page,
+.freecad-control-page,
+.docker-control-page,
+.vscode-control-page,
+.file-browser-page {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
 /* ===== EMPTY STATE FIXES ===== */
 /* Ensure empty states fill their containers */
 .empty-state {
