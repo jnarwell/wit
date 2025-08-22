@@ -1,0 +1,145 @@
+{
+  "id": "freecad",
+  "name": "FreeCAD",
+  "version": "1.0.0",
+  "description": "Open-source parametric 3D modeler with Python scripting for engineering and product design",
+  "author": "W.I.T. Team",
+  "main": "index.js",
+  "icon": "FaCubes",
+  "category": "cad",
+  "permissions": [
+    "fileSystem",
+    "processManagement",
+    "network"
+  ],
+  "requirements": {
+    "freecad": {
+      "version": ">=0.19",
+      "paths": {
+        "darwin": [
+          "/Applications/FreeCAD.app/Contents/MacOS/FreeCAD",
+          "/Applications/FreeCAD.app/Contents/Resources/bin/FreeCADCmd",
+          "/Applications/FreeCAD 0.21.app/Contents/MacOS/FreeCAD",
+          "/Applications/FreeCAD 0.21.app/Contents/Resources/bin/FreeCADCmd",
+          "/Applications/FreeCAD 0.20.app/Contents/MacOS/FreeCAD",
+          "/Applications/FreeCAD 0.20.app/Contents/Resources/bin/FreeCADCmd",
+          "/Applications/FreeCAD 0.19.app/Contents/MacOS/FreeCAD",
+          "/Applications/FreeCAD 0.19.app/Contents/Resources/bin/FreeCADCmd",
+          "/usr/local/bin/freecad",
+          "/usr/local/bin/FreeCAD",
+          "/opt/homebrew/bin/freecad"
+        ],
+        "win32": [
+          "C:\\Program Files\\FreeCAD 0.21\\bin\\FreeCAD.exe",
+          "C:\\Program Files\\FreeCAD 0.21\\bin\\FreeCADCmd.exe",
+          "C:\\Program Files\\FreeCAD 0.20\\bin\\FreeCAD.exe",
+          "C:\\Program Files\\FreeCAD 0.20\\bin\\FreeCADCmd.exe",
+          "C:\\Program Files\\FreeCAD 0.19\\bin\\FreeCAD.exe",
+          "C:\\Program Files\\FreeCAD 0.19\\bin\\FreeCADCmd.exe",
+          "C:\\Program Files (x86)\\FreeCAD\\bin\\FreeCAD.exe",
+          "C:\\Program Files (x86)\\FreeCAD\\bin\\FreeCADCmd.exe",
+          "%LOCALAPPDATA%\\Programs\\FreeCAD\\bin\\FreeCAD.exe"
+        ],
+        "linux": [
+          "/usr/bin/freecad",
+          "/usr/bin/FreeCAD",
+          "/usr/bin/freecadcmd",
+          "/usr/bin/FreeCADCmd",
+          "/usr/local/bin/freecad",
+          "/usr/local/bin/FreeCAD",
+          "/snap/bin/freecad",
+          "/opt/freecad/bin/FreeCAD",
+          "/opt/freecad/bin/FreeCADCmd"
+        ]
+      }
+    }
+  },
+  "config": {
+    "projectsPath": {
+      "default": "~/Documents/FreeCAD",
+      "description": "Default directory for FreeCAD projects"
+    },
+    "pythonScriptsPath": {
+      "default": "~/Documents/FreeCAD/Scripts",
+      "description": "Directory for custom Python scripts"
+    },
+    "macrosPath": {
+      "default": "~/Documents/FreeCAD/Macros",
+      "description": "Directory for FreeCAD macros"
+    },
+    "autoSave": {
+      "default": true,
+      "description": "Automatically save files before operations"
+    },
+    "defaultWorkbench": {
+      "default": "PartDesign",
+      "options": ["Part", "PartDesign", "Draft", "Sketcher", "Arch", "FEM", "Path", "Assembly"],
+      "description": "Default workbench to use"
+    },
+    "exportFormats": {
+      "default": ["step", "iges", "stl", "obj", "dxf", "svg", "pdf"],
+      "description": "Supported export formats"
+    },
+    "aiIntegration": {
+      "enabled": true,
+      "description": "Enable AI-driven parametric design"
+    },
+    "parametricEngine": {
+      "constraintSolver": "SolveSpace",
+      "description": "Constraint solver for parametric design"
+    },
+    "templates": {
+      "default": {
+        "mechanical": "Standard mechanical part template",
+        "assembly": "Assembly with constraints",
+        "sheet_metal": "Sheet metal part template",
+        "architectural": "Architectural design template"
+      },
+      "description": "Predefined project templates"
+    }
+  },
+  "commands": {
+    "launch": "Launch FreeCAD application",
+    "openFile": "Open a FreeCAD document (.FCStd)",
+    "newFile": "Create a new FreeCAD document",
+    "executeScript": "Execute Python script in FreeCAD",
+    "executeCommand": "Execute FreeCAD console command",
+    "getStatus": "Get FreeCAD plugin status",
+    "listProjects": "List FreeCAD projects",
+    "listObjects": "List objects in current document",
+    "createPrimitive": "Create primitive shape (box, cylinder, sphere, etc.)",
+    "createSketch": "Create 2D sketch on selected face",
+    "createFeature": "Create parametric feature (pad, pocket, revolution, etc.)",
+    "modifyObject": "Modify object properties",
+    "deleteObject": "Delete object from document",
+    "applyConstraint": "Apply geometric constraint",
+    "createAssembly": "Create assembly with parts",
+    "exportModel": "Export model to various formats",
+    "importModel": "Import model from external format",
+    "performFEA": "Perform Finite Element Analysis",
+    "generateDrawing": "Generate technical drawing",
+    "createMacro": "Create and save FreeCAD macro",
+    "getDocumentInfo": "Get current document information",
+    "saveDocument": "Save current document",
+    "renderScene": "Render 3D scene",
+    "generateGCode": "Generate G-code for CNC/3D printing"
+  },
+  "features": [
+    "Parametric 3D modeling",
+    "Feature-based solid modeling",
+    "Assembly design with constraints",
+    "Technical drawing generation",
+    "FEM (Finite Element Analysis)",
+    "CAM/Path workbench for CNC",
+    "Python scripting API",
+    "Macro recording and playback",
+    "Multi-format import/export",
+    "Sheet metal design",
+    "Architectural modeling",
+    "Robot simulation",
+    "Mesh handling and repair",
+    "OpenSCAD integration",
+    "Spreadsheet-driven design",
+    "AI-driven parametric modeling"
+  ]
+}

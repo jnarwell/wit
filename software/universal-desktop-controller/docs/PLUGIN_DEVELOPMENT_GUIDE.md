@@ -409,21 +409,25 @@ Edit `software/backend/dev_server.py` to include your plugin in the mock respons
 ]
 ```
 
-### Step 2: Add to Frontend Software List
-Edit `software/frontend/web/src/pages/SoftwareIntegrationsPage.tsx`:
+### Step 2: Add to Frontend Software List (CRITICAL)
+**⚠️ This step is REQUIRED - plugins won't show in the frontend without it!**
+
+Edit `software/frontend/web/src/pages/SoftwareIntegrationsPage.tsx` and add your plugin to the `UDC_INTEGRATIONS` array:
 
 ```javascript
-// Add to UDC_INTEGRATIONS array
+// Add to UDC_INTEGRATIONS array (around line 190)
 {
     id: 'my-awesome-app',
     name: 'My Awesome App',
     type: 'productivity',  // Choose appropriate type
-    status: 'disconnected',
+    status: 'configured',   // Use 'configured' not 'disconnected'
     description: 'Integration with My Awesome Application',
     isUDCPlugin: true,
-    pluginId: 'my-awesome-plugin'
+    pluginId: 'my-awesome-plugin'  // MUST match your plugin ID exactly
 }
 ```
+
+**Note**: Also remove any "Coming Soon" entries for your plugin from the `COMING_SOON_SOFTWARE` array in the same file.
 
 ### Step 3: Handle Plugin Commands
 The frontend automatically handles launching when clicking on active plugins:
@@ -1080,6 +1084,14 @@ const YourPluginControlPage: React.FC<Props> = ({ onClose }) => {
 **Example**: The OpenSCAD plugin implementation demonstrates this pattern - see `software/frontend/web/src/pages/OpenSCADControlPage.tsx` for a complete example.
 
 ## Complete Integration Checklist
+
+**⚠️ IMPORTANT**: All plugins require BOTH backend and frontend registration. Missing the frontend step is the most common cause of plugins not appearing in the UI.
+
+### Required Files for Every Plugin:
+1. **Backend Plugin**: `/plugins/your-plugin/index.js` extending WITPlugin
+2. **Backend Registration**: Add to `/src/main.js` builtInPlugins array  
+3. **Backend Mock**: Add to `/software/backend/dev_server.py` plugin_status and plugin list
+4. **Frontend Registration**: Add to `/software/frontend/web/src/pages/SoftwareIntegrationsPage.tsx` UDC_INTEGRATIONS array ← **MOST COMMONLY MISSED**
 
 When creating a new plugin integration, ensure you complete ALL of these steps:
 

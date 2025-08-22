@@ -1,0 +1,20 @@
+{
+  "name": "freecad-plugin",
+  "version": "1.0.0",
+  "description": "FreeCAD integration plugin for W.I.T. Universal Desktop Controller",
+  "main": "index.js",
+  "author": "W.I.T. Team",
+  "license": "MIT",
+  "dependencies": {},
+  "keywords": [
+    "freecad",
+    "cad",
+    "parametric",
+    "3d",
+    "modeling",
+    "engineering",
+    "python",
+    "fem",
+    "assembly"
+  ]
+}
