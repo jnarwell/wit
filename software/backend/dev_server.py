@@ -2147,7 +2147,8 @@ plugin_status = {
     "freecad": "inactive",
     "file-browser": "inactive",
     "openscad": "inactive",
-    "fusion360": "inactive"
+    "fusion360": "inactive",
+    "git": "inactive"
 }
 
 @app.post("/api/v1/desktop-controller/arduino/launch")
@@ -2442,6 +2443,14 @@ async def websocket_desktop_controller(websocket: WebSocket):
                                         "status": plugin_status.get("fusion360", "inactive"),
                                         "description": "Professional CAD/CAM integration with Autodesk Fusion 360 - AI-driven parametric design, simulation, and manufacturing workflows",
                                         "icon": "FaCube"
+                                    },
+                                    {
+                                        "id": "git",
+                                        "name": "Git Version Control",
+                                        "version": "1.0.0",
+                                        "status": plugin_status.get("git", "inactive"),
+                                        "description": "Comprehensive Git integration for version control of CAD files, code, and project assets with visual diff capabilities",
+                                        "icon": "FaGitAlt"
                                     }
                                 ],
                                 "version": "1.0.0",

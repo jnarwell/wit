@@ -1,0 +1,131 @@
+{
+  "id": "git",
+  "name": "Git Version Control",
+  "version": "1.0.0",
+  "description": "Comprehensive Git integration for version control of CAD files, code, and project assets with visual diff capabilities",
+  "author": "W.I.T. Team",
+  "main": "index.js",
+  "icon": "FaGitAlt",
+  "category": "development",
+  "permissions": [
+    "fileSystem",
+    "processManagement",
+    "network"
+  ],
+  "requirements": {
+    "git": {
+      "version": ">=2.0.0",
+      "paths": {
+        "darwin": [
+          "/usr/bin/git",
+          "/usr/local/bin/git",
+          "/opt/homebrew/bin/git"
+        ],
+        "win32": [
+          "C:\\Program Files\\Git\\bin\\git.exe",
+          "C:\\Program Files (x86)\\Git\\bin\\git.exe",
+          "%PROGRAMFILES%\\Git\\bin\\git.exe",
+          "%LOCALAPPDATA%\\Programs\\Git\\bin\\git.exe"
+        ],
+        "linux": [
+          "/usr/bin/git",
+          "/usr/local/bin/git"
+        ]
+      }
+    }
+  },
+  "config": {
+    "repositoriesPath": {
+      "default": "~/Documents/GitRepos",
+      "description": "Default directory for Git repositories"
+    },
+    "defaultBranch": {
+      "default": "main",
+      "description": "Default branch name for new repositories"
+    },
+    "autoFetch": {
+      "default": true,
+      "description": "Automatically fetch updates from remote"
+    },
+    "fetchInterval": {
+      "default": 300,
+      "description": "Interval in seconds for auto-fetch (5 minutes)"
+    },
+    "diffTool": {
+      "default": "internal",
+      "options": ["internal", "vscode", "meld", "kdiff3"],
+      "description": "Tool for viewing diffs"
+    },
+    "mergeStrategy": {
+      "default": "merge",
+      "options": ["merge", "rebase", "squash"],
+      "description": "Default merge strategy"
+    },
+    "cadDiffEnabled": {
+      "default": true,
+      "description": "Enable visual diff for CAD files"
+    },
+    "supportedCADFormats": {
+      "default": ["step", "stl", "iges", "fcstd", "f3d", "dwg", "dxf"],
+      "description": "CAD formats supported for visual diff"
+    },
+    "commitTemplate": {
+      "default": "",
+      "description": "Template for commit messages"
+    },
+    "signCommits": {
+      "default": false,
+      "description": "GPG sign all commits"
+    }
+  },
+  "commands": {
+    "init": "Initialize a new Git repository",
+    "clone": "Clone a repository from URL",
+    "status": "Get repository status",
+    "add": "Stage files for commit",
+    "commit": "Create a new commit",
+    "push": "Push commits to remote",
+    "pull": "Pull changes from remote",
+    "fetch": "Fetch updates from remote",
+    "branch": "Manage branches",
+    "checkout": "Switch branches or restore files",
+    "merge": "Merge branches",
+    "rebase": "Rebase current branch",
+    "log": "View commit history",
+    "diff": "View changes",
+    "diffCAD": "Visual diff for CAD files",
+    "stash": "Stash working changes",
+    "tag": "Manage tags",
+    "remote": "Manage remotes",
+    "config": "Configure Git settings",
+    "blame": "Show file blame information",
+    "cherry-pick": "Apply specific commits",
+    "revert": "Revert commits",
+    "reset": "Reset current HEAD",
+    "clean": "Remove untracked files",
+    "gc": "Garbage collection",
+    "lfs": "Manage Git LFS",
+    "submodule": "Manage submodules",
+    "worktree": "Manage working trees",
+    "bisect": "Binary search for bugs",
+    "archive": "Create archive of repository",
+    "syncWithServer": "Sync with W.I.T. server Git integration"
+  },
+  "features": [
+    "Full Git command-line integration",
+    "Visual diff for CAD files",
+    "Repository management dashboard",
+    "Branch visualization",
+    "Commit history graph",
+    "File change tracking",
+    "Remote repository sync",
+    "Git LFS support for large files",
+    "Automated commit suggestions",
+    "Integration with W.I.T. server Git",
+    "Multi-repository management",
+    "Git hooks support",
+    "Conflict resolution tools",
+    "Code review integration",
+    "CI/CD pipeline triggers"
+  ]
+}

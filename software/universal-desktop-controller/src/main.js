@@ -10,6 +10,7 @@ const { WebSocketManager } = require('./core/WebSocketManager');
 const { SecurityManager } = require('./core/SecurityManager');
 const { EventBus } = require('./core/EventBus');
 const { ConfigManager } = require('./core/ConfigManager');
+const { LocalWebSocketServer } = require('./core/LocalWebSocketServer');
 const logger = require('./core/Logger');
 
 class UniversalDesktopController {
@@ -24,6 +25,7 @@ class UniversalDesktopController {
         this.securityManager = new SecurityManager(this.eventBus);
         this.pluginManager = new PluginManager(this.eventBus, this.securityManager);
         this.wsManager = new WebSocketManager(this.eventBus, this.configManager, this.pluginManager);
+        this.localWsServer = new LocalWebSocketServer(this.eventBus, this.pluginManager);
         
         // Bind methods
         this.initialize = this.initialize.bind(this);
@@ -82,6 +84,14 @@ class UniversalDesktopController {
         await this.securityManager.initialize();
         await this.pluginManager.initialize();
         
+        // Start local WebSocket server for plugin testing
+        try {
+            await this.localWsServer.start();
+            logger.info('Local WebSocket server started for plugin testing');
+        } catch (error) {
+            logger.error('Failed to start local WebSocket server:', error);
+        }
+        
         // Load built-in plugins
         await this.loadBuiltInPlugins();
         
@@ -128,6 +138,7 @@ class UniversalDesktopController {
             'freecad',            // FreeCAD parametric 3D CAD modeller
             'file-browser',       // File system access and management
             'fusion360',          // Autodesk Fusion 360 CAD/CAM integration
+            'git',                // Git version control for CAD files and code
         ];
         
         for (const pluginName of builtInPlugins) {

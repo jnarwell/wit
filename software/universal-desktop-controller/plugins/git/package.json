@@ -1,0 +1,22 @@
+{
+  "name": "git-plugin",
+  "version": "1.0.0",
+  "description": "Git version control integration plugin for W.I.T. Universal Desktop Controller",
+  "main": "index.js",
+  "author": "W.I.T. Team",
+  "license": "MIT",
+  "dependencies": {
+    "simple-git": "^3.20.0",
+    "node-git-server": "^1.0.0",
+    "diff": "^5.1.0"
+  },
+  "keywords": [
+    "git",
+    "version-control",
+    "vcs",
+    "cad",
+    "diff",
+    "collaboration",
+    "wit"
+  ]
+}
