@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
@@ -33,6 +34,7 @@ import OpenSCADControlPage from './pages/OpenSCADControlPage';
 import VSCodeControlPage from './pages/VSCodeControlPage';
 import DockerControlPage from './pages/DockerControlPage';
 import BlenderControlPage from './pages/BlenderControlPage';
+import FreeCADControlPage from './pages/FreeCADControlPage';
 import FileBrowserPage from './pages/FileBrowserPage';
 import FunctionPage from './components/FunctionPage';
 
@@ -215,6 +217,8 @@ function AppContent() {
             <DockerControlPage onClose={handleDetailClose} />
           ) : detailPageState.id === 'blender' ? (
             <BlenderControlPage onClose={handleDetailClose} />
+          ) : detailPageState.id === 'freecad' ? (
+            <FreeCADControlPage onClose={handleDetailClose} />
           ) : detailPageState.id === 'file-browser' ? (
             <FileBrowserPage onNavigateBack={handleDetailClose} />
           ) : (
@@ -251,8 +255,9 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
+      <ThemeProvider>
+        <AuthProvider>
+          <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/login" element={<LoginPage redirectTo="/dashboard" />} />
@@ -260,8 +265,9 @@ function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/verify-email" element={<EmailVerificationPage />} />
           <Route path="/*" element={<AppContent />} />
-        </Routes>
-      </AuthProvider>
+          </Routes>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

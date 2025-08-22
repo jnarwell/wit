@@ -3,6 +3,41 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme-aware utility classes */
+@layer utilities {
+  .bg-theme-primary {
+    background-color: var(--color-bg-primary);
+  }
+  
+  .bg-theme-secondary {
+    background-color: var(--color-bg-secondary);
+  }
+  
+  .bg-theme-tertiary {
+    background-color: var(--color-bg-tertiary);
+  }
+  
+  .text-theme-primary {
+    color: var(--color-text-primary);
+  }
+  
+  .text-theme-secondary {
+    color: var(--color-text-secondary);
+  }
+  
+  .text-theme-tertiary {
+    color: var(--color-text-tertiary);
+  }
+  
+  .border-theme {
+    border-color: var(--color-border);
+  }
+  
+  .border-theme-light {
+    border-color: var(--color-border-light);
+  }
+}
+
 /* Global font family - Roboto Mono everywhere except terminal */
 * {
   font-family: 'Roboto Mono', monospace;

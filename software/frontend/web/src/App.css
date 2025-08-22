@@ -1,4 +1,4 @@
-/* Import scaling fixes */
-@import './styles/scaling-fixes.css';
+/* Import consolidated layout CSS */
+@import './styles/layout.css';
 
 /* App-specific styles are included in index.css for the industrial theme */

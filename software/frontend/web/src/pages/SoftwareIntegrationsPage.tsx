@@ -185,6 +185,24 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       description: 'Complete file system access and management - browse, read, write, and manage files across your entire system',
       isUDCPlugin: true,
       pluginId: 'file-browser'
+    },
+    {
+      id: 'freecad',
+      name: 'FreeCAD',
+      type: 'cad',
+      status: 'configured',
+      description: 'Open-source parametric 3D modeler with Python scripting for engineering and product design',
+      isUDCPlugin: true,
+      pluginId: 'freecad'
+    },
+    {
+      id: 'fusion360',
+      name: 'Fusion 360',
+      type: 'cad',
+      status: 'configured',
+      description: 'Professional CAD/CAM integration with Autodesk Fusion 360 - AI-driven parametric design, simulation, and manufacturing workflows',
+      isUDCPlugin: true,
+      pluginId: 'fusion360'
     }
   ];
 
@@ -197,14 +215,6 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       type: 'cad',
       status: 'pending',
       description: 'Comprehensive 3D CAD software',
-      comingSoon: true
-    },
-    {
-      id: 'fusion360-001',
-      name: 'Autodesk Fusion 360',
-      type: 'cad',
-      status: 'pending',
-      description: 'Cloud-based CAD/CAM/CAE platform',
       comingSoon: true
     },
     {
@@ -253,14 +263,6 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       type: 'cad',
       status: 'pending',
       description: 'NURBS-based 3D modeling',
-      comingSoon: true
-    },
-    {
-      id: 'freecad-001',
-      name: 'FreeCAD',
-      type: 'cad',
-      status: 'pending',
-      description: 'Open-source parametric 3D modeler',
       comingSoon: true
     },
     
@@ -413,14 +415,6 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       type: 'data_acquisition',
       status: 'pending',
       description: 'Data acquisition and analysis platform',
-      comingSoon: true
-    },
-    {
-      id: 'matlab-001',
-      name: 'MATLAB',
-      type: 'data_acquisition',
-      status: 'pending',
-      description: 'Technical computing and data analysis',
       comingSoon: true
     },
     {

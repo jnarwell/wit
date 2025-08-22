@@ -3,6 +3,7 @@ import { FiSettings, FiUser, FiShield, FiLink, FiCheck, FiX, FiRefreshCw, FiChev
 import { FaGoogle, FaGithub, FaAws, FaMicrosoft, FaApple, FaJira, FaRobot, FaBrain, FaWrench, FaMicrochip, FaCube, FaCog, FaIndustry } from 'react-icons/fa';
 import { SiNotion, SiLinear, SiOpenai, SiGooglegemini } from 'react-icons/si';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import accountService from '../services/accountService';
 import MCPSettingsComponent from '../components/MCPSettings';
 import './SettingsPage.css';
@@ -237,6 +238,7 @@ const AI_PROVIDERS: ProviderConfig[] = [
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
+  const { themeMode, setThemeMode } = useTheme();
   const [activeTab, setActiveTab] = useState<'profile' | 'accounts' | 'ai' | 'mcp' | 'security' | 'preferences'>('accounts');
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -753,11 +755,21 @@ const SettingsPage: React.FC = () => {
             <div className="preferences-options">
               <div className="preference-group">
                 <label>Theme</label>
-                <select className="preference-select">
-                  <option>Dark</option>
-                  <option>Light</option>
-                  <option>System</option>
+                <select 
+                  className="preference-select"
+                  value={themeMode}
+                  onChange={(e) => setThemeMode(e.target.value as 'dark' | 'light' | 'system')}
+                >
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                  <option value="system">System</option>
                 </select>
+                <p className="text-sm text-gray-500 mt-1">
+                  {themeMode === 'system' 
+                    ? 'Automatically matches your system preference' 
+                    : `Always use ${themeMode} theme`
+                  }
+                </p>
               </div>
               <div className="preference-group">
                 <label>Notifications</label>
