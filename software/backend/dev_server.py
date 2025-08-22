@@ -2144,6 +2144,7 @@ plugin_status = {
     "vscode": "inactive",
     "docker": "inactive",
     "blender": "inactive",
+    "freecad": "inactive",
     "file-browser": "inactive",
     "openscad": "inactive",
     "fusion360": "inactive"
@@ -2416,6 +2417,14 @@ async def websocket_desktop_controller(websocket: WebSocket):
                                         "version": "1.0.0",
                                         "status": plugin_status.get("blender", "inactive"),
                                         "description": "AI-powered 3D modeling, animation, and rendering with Blender's comprehensive Python API",
+                                        "icon": "FaCubes"
+                                    },
+                                    {
+                                        "id": "freecad",
+                                        "name": "FreeCAD",
+                                        "version": "1.0.0",
+                                        "status": plugin_status.get("freecad", "inactive"),
+                                        "description": "Open-source parametric 3D modeler with Python scripting for engineering and product design",
                                         "icon": "FaCubes"
                                     },
                                     {
