@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCode, FaCloud, FaDatabase, FaRobot, FaCubes, FaChartLine, FaMicrochip, FaCube, FaPrint, FaCheck, FaExclamationTriangle, FaClock, FaDesktop, FaCog, FaCalculator, FaProjectDiagram, FaFolder, FaDocker } from 'react-icons/fa';
+import { FaPlus, FaFilter, FaSortAmountDown, FaTimes, FaCode, FaCloud, FaDatabase, FaRobot, FaCubes, FaChartLine, FaMicrochip, FaCube, FaPrint, FaCheck, FaExclamationTriangle, FaClock, FaDesktop, FaCog, FaCalculator, FaProjectDiagram, FaFolder, FaDocker, FaGitAlt } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { useUDCWebSocket } from '../hooks/useUDCWebSocket';
 import './SoftwareIntegrationsPage.css';
@@ -10,7 +10,7 @@ const API_BASE_URL = 'http://localhost:8000';
 interface SoftwareIntegration {
   id: string;
   name: string;
-  type: 'cad' | 'simulation' | 'embedded' | 'pcb' | 'data_acquisition' | 'manufacturing' | 'api' | 'database' | 'cloud' | 'ai' | 'editor' | 'slicer' | 'other';
+  type: 'cad' | 'simulation' | 'embedded' | 'pcb' | 'data_acquisition' | 'manufacturing' | 'api' | 'database' | 'cloud' | 'ai' | 'editor' | 'slicer' | 'vcs' | 'devops' | 'other';
   status: 'active' | 'configured' | 'inactive' | 'error' | 'pending';
   description: string;
   endpoint?: string;
@@ -40,6 +40,7 @@ const SOFTWARE_TYPES = {
   'printer_control': { label: 'Printer Control', icon: FaPrint },
   'editor': { label: 'Code Editors & IDEs', icon: FaCode },
   'devops': { label: 'DevOps & Containers', icon: FaDocker },
+  'vcs': { label: 'Version Control', icon: FaGitAlt },
   'api': { label: 'API', icon: FaCode },
   'database': { label: 'Database', icon: FaDatabase },
   'cloud': { label: 'Cloud Service', icon: FaCloud },
@@ -203,6 +204,15 @@ const SoftwareIntegrationsPage: React.FC<SoftwareIntegrationsPageProps> = ({ onN
       description: 'Professional CAD/CAM integration with Autodesk Fusion 360 - AI-driven parametric design, simulation, and manufacturing workflows',
       isUDCPlugin: true,
       pluginId: 'fusion360'
+    },
+    {
+      id: 'git',
+      name: 'Git Desktop',
+      type: 'vcs',
+      status: 'configured',
+      description: 'Comprehensive Git integration for version control of CAD files, code, and project assets with visual diff capabilities',
+      isUDCPlugin: true,
+      pluginId: 'git'
     }
   ];
 
