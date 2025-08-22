@@ -862,7 +862,7 @@ class GitPlugin extends WITPlugin {
     async listRepositories() {
         const repos = [];
         
-        for (const [repoPath, repoInfo of this.repositories) {
+        for (const [repoPath, repoInfo] of this.repositories) {
             // Update repository info
             const updatedInfo = await this.getRepositoryInfo(repoPath);
             this.repositories.set(repoPath, updatedInfo);
