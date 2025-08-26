@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
-import { FiWifi, FiCpu, FiServer, FiPlus, FiCheck, FiX, FiRefreshCw, FiMinus, FiMaximize2 } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { FiWifi, FiCpu, FiServer, FiPlus, FiCheck, FiX, FiRefreshCw, FiMinus, FiMaximize2, FiActivity } from 'react-icons/fi';
 import ESP32ConfigModal from './ESP32ConfigModal';
+import ArduinoConfigModal from './ArduinoConfigModal';
+import { arduinoUDCService } from '../../services/arduinoUDCService';
+import { useUDCWebSocket } from '../../../hooks/useUDCWebSocket';
 
 interface ConnectionDevice {
   id: string;
@@ -15,6 +18,7 @@ interface ConnectionDevice {
 
 const SensorConfigurationPage: React.FC = () => {
   const [devices, setDevices] = useState<ConnectionDevice[]>([]);
+  const { status, wsStatus, sendCommand } = useUDCWebSocket();
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedType, setSelectedType] = useState<'esp32' | 'arduino' | 'daq' | null>(null);
@@ -25,6 +29,20 @@ const SensorConfigurationPage: React.FC = () => {
     arduino: true,
     daq: true
   });
+
+  useEffect(() => {
+    // Set up Arduino service to use UDC sendCommand
+    arduinoUDCService.setMessageHandler(sendCommand);
+
+    // Subscribe to Arduino sensor data
+    const unsubscribe = arduinoUDCService.subscribe((data) => {
+      console.log('[SensorConfig] Arduino data:', data);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [sendCommand]);
 
   const toggleSection = (section: string) => {
     setCollapsedSections(prev => ({
@@ -276,14 +294,163 @@ const SensorConfigurationPage: React.FC = () => {
 
             {!collapsedSections.arduino && (
               <div className="px-6 pb-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {devices.filter(d => d.type === 'arduino').length === 0 && (
-                <div className="col-span-full text-center py-8 text-gray-500">
-                  <FiCpu className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No Arduino devices configured</p>
-                  <p className="text-sm mt-1">Connect via Universal Desktop Controller</p>
+                {/* UDC Connection Status */}
+                <div className="mb-4 flex items-center gap-2 text-sm">
+                  <span className="text-gray-400">UDC Status:</span>
+                  <div className={`flex items-center gap-1 ${
+                    wsStatus === 'connected' && status.plugins.length > 0 ? 'text-green-400' :
+                    wsStatus === 'connected' ? 'text-yellow-400' :
+                    wsStatus === 'connecting' ? 'text-blue-400' :
+                    'text-red-400'
+                  }`}>
+                    {wsStatus === 'connected' && status.plugins.length > 0 && <FiCheck className="w-3 h-3" />}
+                    {wsStatus === 'connected' && status.plugins.length === 0 && <FiRefreshCw className="w-3 h-3" />}
+                    {wsStatus === 'connecting' && <FiRefreshCw className="w-3 h-3 animate-spin" />}
+                    {wsStatus === 'disconnected' && <FiX className="w-3 h-3" />}
+                    <span>
+                      {wsStatus === 'connected' && status.plugins.length > 0 ? 'Connected' :
+                       wsStatus === 'connected' && status.plugins.length === 0 ? 'Connected (No UDC)' :
+                       wsStatus === 'connecting' ? 'Connecting' :
+                       'Disconnected'}
+                    </span>
+                  </div>
+                  {wsStatus === 'connected' && status.plugins.length === 0 && (
+                    <span className="text-gray-500 text-xs ml-2">
+                      (Universal Desktop Controller not detected)
+                    </span>
+                  )}
+                  {wsStatus === 'disconnected' && (
+                    <span className="text-gray-500 text-xs ml-2">
+                      (Cannot connect to WIT backend)
+                    </span>
+                  )}
+                  {status.plugins.length > 0 && (
+                    <span className="text-gray-500 text-xs ml-2">
+                      ({status.plugins.filter(p => p.id === 'arduino-ide').length > 0 ? 'Arduino plugin loaded' : 'Arduino plugin not loaded'})
+                    </span>
+                  )}
                 </div>
-              )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {devices.filter(d => d.type === 'arduino').map(device => (
+                    <div key={device.id} className="bg-gray-700 rounded-lg p-4 relative">
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete ${device.name}?`)) {
+                            arduinoUDCService.removeDevice(device.id);
+                            setDevices(devices.filter(d => d.id !== device.id));
+                          }
+                        }}
+                        className="absolute top-2 right-2 text-gray-400 hover:text-red-400 transition-colors p-1"
+                      >
+                        <FiX className="w-4 h-4" />
+                      </button>
+                      
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`flex items-center gap-1 ${getStatusColor(device.status)}`}>
+                            {getStatusIcon(device.status)}
+                            <span className="text-sm capitalize">{device.status}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-3">
+                        <h4 className="font-medium text-white">{device.name}</h4>
+                      </div>
+                      
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Port:</span>
+                          <span className="text-gray-300">{device.address || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Board:</span>
+                          <span className="text-gray-300 text-xs">
+                            {device.protocol === 'arduino:avr:uno' ? 'Uno' :
+                             device.protocol === 'arduino:avr:mega' ? 'Mega' :
+                             device.protocol === 'arduino:avr:nano' ? 'Nano' :
+                             'Arduino'}
+                          </span>
+                        </div>
+                        {device.capabilities && device.capabilities.length > 0 && (
+                          <div className="mt-3">
+                            <span className="text-gray-400 block mb-1">Sensors:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {device.capabilities.map((cap, idx) => (
+                                <span key={idx} className="bg-gray-600 px-2 py-1 rounded text-xs text-gray-300">
+                                  {cap}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 flex gap-2">
+                        <button 
+                          onClick={() => {
+                            // Open serial monitor in new modal
+                          }}
+                          className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded text-sm transition-colors flex items-center justify-center gap-1"
+                        >
+                          <FiActivity className="w-3 h-3" />
+                          Monitor
+                        </button>
+                        {device.status === 'disconnected' ? (
+                          <button 
+                            onClick={async () => {
+                              arduinoUDCService.connectDevice({
+                                name: device.name,
+                                port: device.address || '',
+                                baudRate: 9600,
+                                board: device.protocol || 'arduino:avr:uno',
+                                sensors: device.capabilities || []
+                              });
+                              setDevices(devices.map(d => 
+                                d.id === device.id 
+                                  ? { ...d, status: 'connecting' }
+                                  : d
+                              ));
+                              setTimeout(() => {
+                                setDevices(devices.map(d => 
+                                  d.id === device.id 
+                                    ? { ...d, status: 'connected' }
+                                    : d
+                                ));
+                              }, 2000);
+                            }}
+                            disabled={wsStatus !== 'connected' || status.plugins.length === 0}
+                            className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-1 px-3 rounded text-sm transition-colors"
+                          >
+                            Connect
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => {
+                              arduinoUDCService.disconnectDevice(device.id);
+                              setDevices(devices.map(d => 
+                                d.id === device.id 
+                                  ? { ...d, status: 'disconnected' }
+                                  : d
+                              ));
+                            }}
+                            className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white py-1 px-3 rounded text-sm transition-colors"
+                          >
+                            Disconnect
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {devices.filter(d => d.type === 'arduino').length === 0 && (
+                    <div className="col-span-full text-center py-8 text-gray-500">
+                      <FiCpu className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No Arduino devices configured</p>
+                      <p className="text-sm mt-1">Connect via Universal Desktop Controller</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -414,12 +581,38 @@ const SensorConfigurationPage: React.FC = () => {
         />
       )}
 
+      {/* Arduino Configuration Modal */}
+      {showAddModal && selectedType === 'arduino' && (
+        <ArduinoConfigModal
+          isOpen={true}
+          onClose={() => {
+            setShowAddModal(false);
+            setSelectedType(null);
+          }}
+          onConnect={async (config) => {
+            const newDevice = await arduinoUDCService.connectDevice(config);
+            const connectionDevice: ConnectionDevice = {
+              id: newDevice.id,
+              name: newDevice.name,
+              type: 'arduino',
+              status: newDevice.status,
+              protocol: newDevice.board,
+              address: newDevice.port,
+              capabilities: newDevice.sensors
+            };
+            setDevices([...devices, connectionDevice]);
+            setShowAddModal(false);
+            setSelectedType(null);
+          }}
+        />
+      )}
+
       {/* Other Device Modals - Placeholder */}
-      {showAddModal && selectedType !== 'esp32' && (
+      {showAddModal && selectedType !== 'esp32' && selectedType !== 'arduino' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
             <h3 className="text-xl font-bold text-white mb-4">
-              Add {selectedType === 'arduino' ? 'Arduino' : 'DAQ'} Device
+              Add {selectedType === 'daq' ? 'DAQ' : ''} Device
             </h3>
             <p className="text-gray-400 mb-4">Configuration wizard coming soon...</p>
             <button
