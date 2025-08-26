@@ -7,9 +7,9 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
-import MachinesPage from './pages/MachinesPage';
+import MachinesPageWithSubpages from './pages/MachinesPageWithSubpages';
 import ProjectsPage from './pages/ProjectsPage';
-import SensorsPage from './pages/SensorsPage';
+import SensorsPageWithSubpages from './pages/SensorsPageWithSubpages';
 import MachineDetailPage from './pages/MachineDetailPage';
 import SensorDetailPage from './pages/SensorDetailPage';
 import ProjectDetailPageNew from './pages/ProjectDetailPageNew';
@@ -21,6 +21,7 @@ import EmailVerificationPage from './pages/EmailVerificationPage';
 import SettingsPage from './pages/SettingsPage';
 import Terminal from './components/Terminal';
 import './components/Terminal.css';
+import WITPage from './pages/WITPage';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
 import SoftwareIntegrationsPage from './pages/SoftwareIntegrationsPage';
@@ -46,6 +47,10 @@ interface DetailPageState {
   previousPage: Page;
 }
 
+interface WitState {
+  terminalId?: string;
+}
+
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>(() => {
     // Load saved page from localStorage
@@ -62,6 +67,7 @@ function AppContent() {
     console.log('[App] No saved page, defaulting to dashboard');
     return 'dashboard';
   });
+  const [witState, setWitState] = useState<WitState>({});
   const [detailPageState, setDetailPageState] = useState<DetailPageState | null>(() => {
     // Load saved detail state if we're on a detail page
     const savedPage = localStorage.getItem('wit-current-page');
@@ -82,6 +88,14 @@ function AppContent() {
   // Make navigation function globally available for widgets
   useEffect(() => {
     (window as any).__witNavigate = (page: string, id?: string) => {
+      // Special handling for WIT terminal navigation
+      if (page === 'wit') {
+        setCurrentPage('wit');
+        setWitState({ terminalId: id });
+        setDetailPageState(null);
+        return;
+      }
+      
       if (id) {
         // Navigating to a detail page
         const detailPage = `${page}-detail` as Page;
@@ -93,6 +107,7 @@ function AppContent() {
       } else {
         // Regular navigation
         setCurrentPage(page as Page);
+        setWitState({}); // Clear WIT state when navigating away
       }
     };
 
@@ -124,6 +139,13 @@ function AppContent() {
   }, [detailPageState]);
 
   const handleNavigate = (page: string, id?: string) => {
+    // Special handling for WIT terminal navigation
+    if (page === 'wit' && id) {
+      // Update the URL hash to include terminal ID
+      window.location.hash = `/wit/${id}`;
+      return;
+    }
+    
     if (id) {
       // Navigating to a detail page
       const detailPage = `${page}-detail` as Page;
@@ -136,6 +158,7 @@ function AppContent() {
       // Regular navigation
       setCurrentPage(page as Page);
       setDetailPageState(null);
+      setWitState({}); // Clear WIT state when navigating away
       // Clear saved detail state when leaving detail pages
       localStorage.removeItem('wit-detail-state');
     }
@@ -164,11 +187,11 @@ function AppContent() {
       case 'dashboard':
         return <Dashboard />;
       case 'machines':
-        return <MachinesPage onNavigateToDetail={(id) => handleNavigate('machine', id)} />;
+        return <MachinesPageWithSubpages onNavigateToDetail={(id) => handleNavigate('machine', id)} />;
       case 'projects':
         return <ProjectsPage onNavigateToDetail={(id) => handleNavigate('project', id)} />;
       case 'sensors':
-        return <SensorsPage onNavigateToDetail={(id) => handleNavigate('sensor', id)} />;
+        return <SensorsPageWithSubpages onNavigateToDetail={(id) => handleNavigate('sensor', id)} />;
       case 'machine-detail':
         return detailPageState ? (
           <MachineDetailPage 
@@ -192,7 +215,7 @@ function AppContent() {
           />
         ) : null;
       case 'wit':
-        return <Terminal />;
+        return <WITPage terminalId={witState.terminalId} />;
       case 'settings':
         return <SettingsPage />;
       case 'software':
@@ -265,6 +288,9 @@ function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/verify-email" element={<EmailVerificationPage />} />
           <Route path="/*" element={<AppContent />} />
+          <Route path="/machines/*" element={<AppContent />} />
+          <Route path="/sensors/*" element={<AppContent />} />
+          <Route path="/wit/*" element={<AppContent />} />
           </Routes>
         </AuthProvider>
       </ThemeProvider>

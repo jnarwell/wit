@@ -18,6 +18,7 @@ from api.admin_api import router as admin_router
 from api.terminal_api import router as terminal_router
 from api.projects_api import router as projects_router
 from api.ai_config_api import router as ai_config_router
+from api.sensors_api import router as sensors_router
 
 # Import the auth router with email verification from frontend
 # We'll create a proper backend auth router
@@ -31,9 +32,7 @@ materials = APIRouter()
 # files router is now imported from files_api
 
 # Add basic endpoints to placeholder routers
-@projects.get("/")
-async def list_projects():
-    return []
+# Note: projects router endpoints are defined in api/projects_api.py
 
 @tasks.get("/")
 async def list_tasks():
@@ -66,5 +65,6 @@ __all__ = [
     "accounts_router",
     "admin_router",
     "terminal_router",
-    "ai_config_router"
+    "ai_config_router",
+    "sensors_router"
 ]

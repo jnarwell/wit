@@ -21,8 +21,9 @@ from routers import (
     auth_router, voice_router, vision_router, 
     equipment_router, workspace_router, system_router,
     network_router, accounts_router, terminal_router,
-    ai_config_router
+    ai_config_router, sensors_router
 )
+from api.plugin_creation_api import router as plugin_creation_router, set_desktop_controllers
 # Use simplified admin router for development
 from admin_dev import router as admin_router
 # Import enhanced accounts API
@@ -155,11 +156,13 @@ app.include_router(equipment_router)
 app.include_router(workspace_router)
 app.include_router(system_router)
 app.include_router(network_router)
-app.include_router(accounts_router)
 app.include_router(enhanced_accounts_router, prefix="/api/v1/accounts")
+app.include_router(accounts_router)
 app.include_router(admin_router)
 app.include_router(terminal_router)
 app.include_router(ai_config_router)
+app.include_router(plugin_creation_router, prefix="/api", tags=["plugin-creation"])
+app.include_router(sensors_router)
 
 
 # ============== AUTH CONFIGURATION ==============
@@ -180,6 +183,7 @@ class Token(BaseModel):
     token_type: str
 
 class User(BaseModel):
+    id: Optional[str] = None  # Add id field for compatibility with projects_api
     username: str
     email: Optional[str] = None
     full_name: Optional[str] = None
@@ -212,6 +216,7 @@ tasks_db = []
 
 users_db = {
     "admin": {
+        "id": "d61af360f83c479eae8bbd3b51cb0c61",
         "username": "admin",
         "full_name": "Admin User",
         "email": "admin@wit.local",
@@ -221,6 +226,7 @@ users_db = {
         "is_active": True,
     },
     "maker": {
+        "id": "e72bf461f94d58afbf9cce4c62db1d72",
         "username": "maker",
         "full_name": "Maker User",
         "email": "maker@wit.local", 
@@ -230,6 +236,7 @@ users_db = {
         "is_active": True,
     },
     "jamie": {
+        "id": "f83cf571a05e69bfcf9ddf5d73ec2e83",
         "username": "jamie",
         "full_name": "Jamie User",
         "email": "jamie@example.com",
@@ -329,6 +336,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     user_dict = users_db.get(username)
     if user_dict is None:
         raise credentials_exception
+    
+    # Add id field for compatibility with projects_api
+    user_dict = user_dict.copy()
+    # Ensure the id is a proper UUID string, not just the username
+    if 'id' not in user_dict or user_dict['id'] == username:
+        # If id is missing or is just the username, generate a proper UUID
+        import uuid
+        user_dict['id'] = str(uuid.uuid4()).replace('-', '')
     return User(**user_dict)
 
 def get_user(db: dict, username: str):
@@ -364,16 +379,20 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
 import api.projects_api
 import api.terminal_api
 import api.ai_config_api
+import synthesis.synthesis_api
 api.projects_api.get_current_user = get_current_user
 api.terminal_api.get_current_user = get_current_user
 api.ai_config_api.get_current_user = get_current_user
+synthesis.synthesis_api.get_current_user = get_current_user
 
 # ============== AUTH ENDPOINTS ==============
 
 # Helper function to add new users dynamically
 def add_user(username: str, password: str, email: str, is_admin: bool = False):
     """Add a new user to the users_db"""
+    import uuid
     users_db[username] = {
+        "id": str(uuid.uuid4()).replace('-', ''),  # Generate proper UUID without hyphens
         "username": username,
         "full_name": f"{username.title()} User",
         "email": email,
@@ -2133,6 +2152,9 @@ async def broadcast_printer_update(printer_id: str, deleted: bool = False):
 # Store active desktop controllers
 desktop_controllers = {}
 
+# Initialize plugin creation API with desktop controllers reference
+set_desktop_controllers(desktop_controllers)
+
 # Track plugin status
 plugin_status = {
     "arduino-ide": "inactive",
@@ -2310,6 +2332,10 @@ async def websocket_desktop_controller(websocket: WebSocket):
                                 if "state" in plugin:
                                     plugin["status"] = "active" if plugin["state"] == "started" else "inactive"
                                     print(f"[DEBUG] Transformed plugin {plugin['id']}: state={plugin.get('state')} -> status={plugin['status']}")
+                                # Debug log for Inkscape
+                                if plugin['id'] == 'org.inkscape.Inkscape':
+                                    print(f"[DEBUG] Inkscape plugin has commands: {bool(plugin.get('commands'))}")
+                                    print(f"[DEBUG] Inkscape command count: {len(plugin.get('commands', {}))}")
                         
                         # Forward to all web clients
                         web_clients = [cid for cid in desktop_controllers.keys() if cid.startswith("web-ui-")]
@@ -3188,37 +3214,37 @@ def simplify_sqrt(n):
 #         "status": "success"
 #     }
 
-# Projects endpoints
-@app.get("/api/v1/projects/")
-async def list_projects(current_user: User = Depends(get_current_user)):
-    """Get all projects"""
-    return projects_db
+# Projects endpoints - COMMENTED OUT: Using projects_api router with database instead
+# @app.get("/api/v1/projects/")
+# async def list_projects(current_user: User = Depends(get_current_user)):
+#     """Get all projects"""
+#     return projects_db
 
-@app.post("/api/v1/projects/")
-async def create_project(project: dict, current_user: User = Depends(get_current_user)):
-    """Create a new project"""
-    import uuid
-    project_id = str(uuid.uuid4())
-    project_code = f"PROJ-{len(projects_db) + 1:04d}"
-    
-    new_project = {
-        "id": project_id,
-        "project_id": project_code,
-        "name": project.get("name", "New Project"),
-        "description": project.get("description", ""),
-        "type": project.get("type", "general"),
-        "status": project.get("status", "not_started"),
-        "priority": project.get("priority", "medium"),
-        "owner_id": current_user.username,
-        "created_at": datetime.now().isoformat(),
-        "updated_at": datetime.now().isoformat(),
-        "extra_data": project.get("extra_data", {})
-    }
-    
-    projects_db.append(new_project)
-    logger.info(f"Created project: {new_project['name']} ({project_code})")
-    
-    return new_project
+# @app.post("/api/v1/projects/")
+# async def create_project(project: dict, current_user: User = Depends(get_current_user)):
+#     """Create a new project"""
+#     import uuid
+#     project_id = str(uuid.uuid4())
+#     project_code = f"PROJ-{len(projects_db) + 1:04d}"
+#     
+#     new_project = {
+#         "id": project_id,
+#         "project_id": project_code,
+#         "name": project.get("name", "New Project"),
+#         "description": project.get("description", ""),
+#         "type": project.get("type", "general"),
+#         "status": project.get("status", "not_started"),
+#         "priority": project.get("priority", "medium"),
+#         "owner_id": current_user.username,
+#         "created_at": datetime.now().isoformat(),
+#         "updated_at": datetime.now().isoformat(),
+#         "extra_data": project.get("extra_data", {})
+#     }
+#     
+#     projects_db.append(new_project)
+#     logger.info(f"Created project: {new_project['name']} ({project_code})")
+#     
+#     return new_project
 
 @app.get("/api/v1/projects/{project_id}")
 async def get_project(project_id: str, current_user: User = Depends(get_current_user)):
