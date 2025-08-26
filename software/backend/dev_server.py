@@ -21,7 +21,7 @@ from routers import (
     auth_router, voice_router, vision_router, 
     equipment_router, workspace_router, system_router,
     network_router, accounts_router, terminal_router,
-    ai_config_router, sensors_router
+    ai_config_router, sensors_router, daq_router
 )
 from api.plugin_creation_api import router as plugin_creation_router, set_desktop_controllers
 # Use simplified admin router for development
@@ -163,6 +163,7 @@ app.include_router(terminal_router)
 app.include_router(ai_config_router)
 app.include_router(plugin_creation_router, prefix="/api", tags=["plugin-creation"])
 app.include_router(sensors_router)
+app.include_router(daq_router)
 
 
 # ============== AUTH CONFIGURATION ==============

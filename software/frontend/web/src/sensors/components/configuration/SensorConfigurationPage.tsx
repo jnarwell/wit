@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { FiWifi, FiCpu, FiServer, FiPlus, FiCheck, FiX, FiRefreshCw, FiMinus, FiMaximize2, FiActivity } from 'react-icons/fi';
 import ESP32ConfigModal from './ESP32ConfigModal';
 import ArduinoConfigModal from './ArduinoConfigModal';
+import DAQConfigModal from './DAQConfigModal';
 import { arduinoUDCService } from '../../services/arduinoUDCService';
+import { daqService } from '../../services/daqService';
 import { useUDCWebSocket } from '../../../hooks/useUDCWebSocket';
 
 interface ConnectionDevice {
@@ -18,6 +20,7 @@ interface ConnectionDevice {
 
 const SensorConfigurationPage: React.FC = () => {
   const [devices, setDevices] = useState<ConnectionDevice[]>([]);
+  const [daqDevices, setDaqDevices] = useState<any[]>([]);
   const { status, wsStatus, sendCommand } = useUDCWebSocket();
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -35,12 +38,24 @@ const SensorConfigurationPage: React.FC = () => {
     arduinoUDCService.setMessageHandler(sendCommand);
 
     // Subscribe to Arduino sensor data
-    const unsubscribe = arduinoUDCService.subscribe((data) => {
+    const unsubscribeArduino = arduinoUDCService.subscribe((data) => {
       console.log('[SensorConfig] Arduino data:', data);
     });
 
+    // Subscribe to DAQ data updates
+    const unsubscribeDAQ = daqService.subscribe((data) => {
+      console.log('[SensorConfig] DAQ data:', data);
+      if (data.type === 'device_list') {
+        setDaqDevices(data.devices);
+      }
+    });
+
+    // Load initial DAQ devices
+    daqService.getDevices().then(setDaqDevices);
+
     return () => {
-      unsubscribe();
+      unsubscribeArduino();
+      unsubscribeDAQ();
     };
   }, [sendCommand]);
 
@@ -505,13 +520,102 @@ const SensorConfigurationPage: React.FC = () => {
             {!collapsedSections.daq && (
               <div className="px-6 pb-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {devices.filter(d => d.type === 'daq').length === 0 && (
-                <div className="col-span-full text-center py-8 text-gray-500">
-                  <FiServer className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No DAQ systems configured</p>
-                  <p className="text-sm mt-1">Support for Modbus, OPC UA, and more</p>
-                </div>
-              )}
+                  {daqDevices.map(device => (
+                    <div key={device.id} className="bg-gray-700 rounded-lg p-4 relative">
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete ${device.name || device.id}?`)) {
+                            daqService.disconnectDevice(device.id);
+                            setDaqDevices(daqDevices.filter(d => d.id !== device.id));
+                          }
+                        }}
+                        className="absolute top-2 right-2 text-gray-400 hover:text-red-400 transition-colors p-1"
+                      >
+                        <FiX className="w-4 h-4" />
+                      </button>
+                      
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`flex items-center gap-1 ${getStatusColor(device.connected ? 'connected' : 'disconnected')}`}>
+                            {getStatusIcon(device.connected ? 'connected' : 'disconnected')}
+                            <span className="text-sm">{device.connected ? 'Connected' : 'Disconnected'}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-3">
+                        <h4 className="font-medium text-white">{device.name || device.id}</h4>
+                        <p className="text-sm text-gray-400">{device.protocol?.toUpperCase()} • {device.host}:{device.port}</p>
+                      </div>
+                      
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Protocol:</span>
+                          <span className="text-gray-300 capitalize">{device.protocol?.replace('_', ' ')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Channels:</span>
+                          <span className="text-gray-300">{device.channels}</span>
+                        </div>
+                        {device.lastData && (
+                          <div className="mt-3">
+                            <span className="text-gray-400 block mb-1">Latest Data:</span>
+                            <div className="bg-gray-600 rounded p-2 text-xs">
+                              {Object.entries(device.lastData.channels).slice(0, 3).map(([key, value]) => (
+                                <div key={key} className="flex justify-between">
+                                  <span className="text-gray-300">{key}:</span>
+                                  <span className="text-white">{typeof value === 'number' ? value.toFixed(2) : value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 flex gap-2">
+                        <button 
+                          onClick={async () => {
+                            const data = await daqService.readDeviceData(device.id);
+                            console.log('DAQ data:', data);
+                          }}
+                          className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded text-sm transition-colors flex items-center justify-center gap-1"
+                        >
+                          <FiActivity className="w-3 h-3" />
+                          Read
+                        </button>
+                        {!device.connected ? (
+                          <button 
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-sm transition-colors"
+                            disabled
+                          >
+                            Connect
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => {
+                              daqService.disconnectDevice(device.id);
+                              setDaqDevices(daqDevices.map(d => 
+                                d.id === device.id 
+                                  ? { ...d, connected: false }
+                                  : d
+                              ));
+                            }}
+                            className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white py-1 px-3 rounded text-sm transition-colors"
+                          >
+                            Disconnect
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {daqDevices.length === 0 && (
+                    <div className="col-span-full text-center py-8 text-gray-500">
+                      <FiServer className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No DAQ systems configured</p>
+                      <p className="text-sm mt-1">Support for Modbus, OPC UA, and more</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -607,25 +711,28 @@ const SensorConfigurationPage: React.FC = () => {
         />
       )}
 
-      {/* Other Device Modals - Placeholder */}
-      {showAddModal && selectedType !== 'esp32' && selectedType !== 'arduino' && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold text-white mb-4">
-              Add {selectedType === 'daq' ? 'DAQ' : ''} Device
-            </h3>
-            <p className="text-gray-400 mb-4">Configuration wizard coming soon...</p>
-            <button
-              onClick={() => {
-                setShowAddModal(false);
-                setSelectedType(null);
-              }}
-              className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded transition-colors"
-            >
-              Close
-            </button>
-          </div>
-        </div>
+      {/* DAQ Configuration Modal */}
+      {showAddModal && selectedType === 'daq' && (
+        <DAQConfigModal
+          isOpen={true}
+          onClose={() => {
+            setShowAddModal(false);
+            setSelectedType(null);
+          }}
+          onConnect={async (config) => {
+            try {
+              await daqService.connectDevice(config);
+              // Refresh device list
+              const devices = await daqService.getDevices();
+              setDaqDevices(devices);
+              setShowAddModal(false);
+              setSelectedType(null);
+            } catch (error) {
+              console.error('Failed to connect DAQ:', error);
+              alert('Failed to connect to DAQ device');
+            }
+          }}
+        />
       )}
     </div>
   );

@@ -19,6 +19,7 @@ from api.terminal_api import router as terminal_router
 from api.projects_api import router as projects_router
 from api.ai_config_api import router as ai_config_router
 from api.sensors_api import router as sensors_router
+from api.daq_api import router as daq_router
 
 # Import the auth router with email verification from frontend
 # We'll create a proper backend auth router
@@ -66,5 +67,6 @@ __all__ = [
     "admin_router",
     "terminal_router",
     "ai_config_router",
-    "sensors_router"
+    "sensors_router",
+    "daq_router"
 ]
